@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name          3احمد محمد كريم
+// @name         4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      3.6
-// @description  أدوات مركز خدمة العملاء - الوسيط للنقل العام (فحص تأخير تلقائي + تحكم بالشفافية + قوالب رسائل قابلة للتحرير + علامة استخدام)
+// @version      3.10
+// @description  أدوات مركز خدمة العملاء - الوسيط للنقل العام (فحص تأخير تلقائي + تحكم بالشفافية + قوالب رسائل قابلة للتحرير + علامة استخدام + بحث ومراسلة برقمي الزبون الاول والثاني)
 // @match        https://alwaseet-iq.net/*
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -13,6 +13,56 @@
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v3.10):
+  ───────────────────────────────────────────────────────────
+  • NEW: دعم الرقم الثاني للزبون (إن وُجد). الأزرار الثلاثة
+         (💬 واتساب، 📱 SMS، 🔎 بحث) صارت تُبنى لكل رقم هاتف
+         ظاهر فعلياً بخلية الزبون، كل مجموعة توضع مباشرة تحت
+         رقمها الصحيح. زر البحث للرقم الثاني يختار تلقائياً
+         "رقم هاتف الزبون الثاني" بصفحة البحث بدل الأول.
+  • REFACTOR: توحيد الرابط الأساسي للموقع بمتغير BASE_URL
+         واحد بدل تكراره بعدة أماكن بالكود، لتسهيل الصيانة.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v3.9):
+  ───────────────────────────────────────────────────────────
+  • NEW: أيقونة 🔎 صغيرة جداً بجانب رقم هاتف الزبون (بنفس صف
+         أزرار واتساب/SMS). الضغط عليها يفتح تبويباً جديداً على
+         صفحة "البحث" (view_search)، يختار تلقائياً نوع البحث
+         "رقم هاتف الزبون الاول"، يملأ رقم الهاتف، ثم يضغط زر
+         "بحث" تلقائياً — لعرض كل طلبات هذا الزبون بسرعة دون أي
+         إدخال يدوي. يمكن إخفاء الأيقونة من ⚙️ الإعدادات مثل
+         بقية الأزرار.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v3.8):
+  ───────────────────────────────────────────────────────────
+  • NEW: تخزين دائم لنتائج فحص التأخير (GM_setValue/localStorage)
+         بدل الاحتفاظ بها بالذاكرة فقط. الفائدة:
+         - عند فتح الصفحة من جديد (بعد إغلاق التاب، إعادة تحميل،
+           أو حتى بعد ساعات)، النتائج المعروفة سلفاً (متأخر/غير
+           متأخر) تُستعاد فوراً وتُلوَّن الصفوف مباشرة قبل أي
+           فحص جديد — بدل إعادة فحص كل الطلبات من الصفر مثل
+           السابق، وهذا يقلل طلبات السيرفر بشكل كبير.
+         - الكتابة على القرص مؤجَّلة (debounced 1.5 ثانية) لتفادي
+           حفظ كل نتيجة فردية فوراً أثناء فحص دفعة كاملة.
+         - تنظيف تلقائي: أي نتيجة محفوظة أقدم من 48 ساعة تُتجاهل
+           عند التحميل ولا تُعاد كتابتها، لمنع تضخم التخزين بأرقام
+           طلبات قديمة لم تعد ذات صلة.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v3.7):
+  ───────────────────────────────────────────────────────────
+  • FIX H: الوضع "يدوي" لم يكن يعمل فعلياً — كان هناك استدعاء
+           لـ checkNewRows() عند تحميل الصفحة بغض النظر عن
+           الوضع المختار (تلقائي/يدوي)، فيبدو وكأن الفحص
+           يحدث تلقائياً حتى في الوضع اليدوي. الآن الفحص
+           الأولي عند فتح الصفحة يحدث فقط في وضع "تلقائي".
+           في وضع "يدوي" لا يحدث أي فحص إطلاقاً إلا بالضغط
+           على الزر.
+  • NEW:   مؤشر تحميل ⏳ "جاري الفحص..." يظهر فوراً على الزر
+           عند بدء أي فحص (تلقائي أو يدوي)، ويختفي تلقائياً
+           فور الانتهاء ليعرض النتيجة (عدد المتأخرين أو حالة
+           التوقف المؤقت). الزر يُعطَّل مؤقتاً أثناء الفحص
+           لمنع الضغط المتكرر.
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v3.6):
   ───────────────────────────────────────────────────────────
   • FIX G: معالجة خطأ السيرفر "لقد تجاوزت الحد المسموح به..."
@@ -57,6 +107,12 @@
 
 (function () {
   'use strict';
+
+  // ─────────────────────────────────────────
+  // الرابط الأساسي للموقع — موحَّد بمتغير واحد بدل تكراره
+  // في كل مكان، يسهّل التحديث لو تغيّر الدومين مستقبلاً
+  // ─────────────────────────────────────────
+  var BASE_URL = 'https://alwaseet-iq.net';
 
   // ─────────────────────────────────────────
   // تخزين عام — يدعم GM وlocalStorage معاً
@@ -297,6 +353,7 @@
     showWsMerchant:  true,
     showWsCustomer:  true,
     showSms:         true,
+    showPhoneSearch: true,
     showDelayCheck:  true,
     showCopyReport:  true,
     showCopyReps:    true,
@@ -333,6 +390,7 @@
     'ws-merchant':   'showWsMerchant',
     'ws-customer':   'showWsCustomer',
     'sms-customer':  'showSms',
+    'phone-search':  'showPhoneSearch',
     'delay-check':   'showDelayCheck',
     'copy-report':   'showCopyReport',
     'copy-reps':     'showCopyReps'
@@ -439,8 +497,9 @@
       { key: 'showEdit',       label: '🌐 زر تغيير العنوان' },
       { key: 'showWsMerchant', label: '💬 واتساب التاجر' },
       { key: 'showWsCustomer', label: '📦 واتساب الزبون' },
-      { key: 'showSms',        label: '📱 رسالة SMS للزبون' },
-      { key: 'showDelayCheck', label: '🔎 زر فحص التأخير' },
+      { key: 'showSms',         label: '📱 رسالة SMS للزبون' },
+      { key: 'showPhoneSearch', label: '🔎 بحث عن الزبون برقم الهاتف' },
+      { key: 'showDelayCheck',  label: '🔎 زر فحص التأخير' },
       { key: 'showCopyReport', label: '📋 زر نسخ التقرير (صفحة الأجور)' },
       { key: 'showCopyReps',   label: '📋 زر نسخ قائمة المناديب' }
     ];
@@ -745,13 +804,16 @@
       return null;
     }
 
-    function extractPhone(cell) {
-      var link = cell.querySelector('a.phone-number');
+    function phoneFromLink(link) {
       if (!link) { return ''; }
       return (link.href || '')
         .replace('https://wa.me/', '')
         .replace(/\+/g, '')
         .trim();
+    }
+
+    function extractPhone(cell) {
+      return phoneFromLink(cell.querySelector('a.phone-number'));
     }
 
     function getMerchantName(row) {
@@ -826,14 +888,22 @@
       if (!row.dataset.wsCustomer) {
         var cCell = getCustomerCell(row);
         if (cCell && !cCell.querySelector('[data-ws-customer]')) {
-          var cPhone = extractPhone(cCell);
-          if (cPhone && cPhone.length >= 7) {
-            row.dataset.wsCustomer = '1';
+          // NEW v3.10: الزبون قد يكون له رقم هاتف ثانٍ مسجَّل، يظهر بسطر
+          // منفصل تحت الرقم الأول بنفس الخلية، وله رابط <a class="phone-number">
+          // خاص به. نمر على كل روابط الأرقام الموجودة فعلياً (مو بس الأول)
+          // ونبني مجموعة أزرار (واتساب/SMS/بحث) مستقلة لكل رقم، ونضعها
+          // مباشرة بعد رابط ذلك الرقم تحديداً — حتى تبقى الأزرار دائماً
+          // تحت رقمها الصحيح بغض النظر عن عدد الأرقام الموجودة.
+          var cLinks = [];
+          cCell.querySelectorAll('a.phone-number').forEach(function (l) { cLinks.push(l); });
 
-            var localPhone = cPhone;
-            if (localPhone.indexOf('964') === 0) {
-              localPhone = '0' + localPhone.slice(3);
-            }
+          var validLinks = cLinks.filter(function (l) {
+            var p = phoneFromLink(l);
+            return p && p.length >= 7;
+          });
+
+          if (validLinks.length) {
+            row.dataset.wsCustomer = '1';
 
             function buildCustomerMessage() {
               var pageName   = getMerchantName(row);
@@ -846,48 +916,92 @@
               });
             }
 
-            var cBtn = document.createElement('button');
-            cBtn.type = 'button';
-            cBtn.textContent = '📦';
-            cBtn.title = 'واتساب الزبون';
-            cBtn.setAttribute('data-ws-customer', '1');
-            cBtn.style.cssText = 'display:inline-block;font-size:20px;background:none;border:none;cursor:pointer;line-height:1.3;padding:0;';
+            // يبني مجموعة الأزرار الثلاثة (واتساب/SMS/بحث) لرقم واحد محدد،
+            // ويضعها مباشرة بعد رابط هذا الرقم بالـ DOM (وليس بآخر الخلية)
+            // حتى تظهر دائماً تحت الرقم الصحيح حتى لو وُجد أكثر من رقم.
+            function buildPhoneButtons(phone, afterLink, searchType, isFirst) {
+              var localPhone = phone;
+              if (localPhone.indexOf('964') === 0) {
+                localPhone = '0' + localPhone.slice(3);
+              }
+              var labelSuffix = isFirst ? '' : ' (الرقم الثاني)';
 
-            var cWrap = makeUsedBadgeWrapper(cBtn);
-            cWrap.el.setAttribute('data-ws-btn', 'ws-customer');
-            cWrap.el.style.marginTop = '4px';
-            cWrap.el.style.marginLeft = '4px';
+              var groupWrap = document.createElement('span');
+              groupWrap.style.cssText = 'display:inline-block;vertical-align:middle;';
 
-            cBtn.addEventListener('click', function (e) {
-              e.preventDefault();
-              e.stopPropagation();
-              var msg = buildCustomerMessage();
-              openTab('https://wa.me/' + cPhone + '?text=' + encodeURIComponent(msg), 'ws_wa_c_' + orderNum);
-              cWrap.markUsed();
+              var cBtn = document.createElement('button');
+              cBtn.type = 'button';
+              cBtn.textContent = '📦';
+              cBtn.title = 'واتساب الزبون' + labelSuffix;
+              if (isFirst) { cBtn.setAttribute('data-ws-customer', '1'); }
+              cBtn.style.cssText = 'display:inline-block;font-size:20px;background:none;border:none;cursor:pointer;line-height:1.3;padding:0;';
+
+              var cWrap = makeUsedBadgeWrapper(cBtn);
+              cWrap.el.setAttribute('data-ws-btn', 'ws-customer');
+              cWrap.el.style.marginTop = '4px';
+              cWrap.el.style.marginLeft = '4px';
+
+              cBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var msg = buildCustomerMessage();
+                openTab('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), 'ws_wa_c_' + orderNum);
+                cWrap.markUsed();
+              });
+              groupWrap.appendChild(cWrap.el);
+
+              var smsBtn = document.createElement('button');
+              smsBtn.type = 'button';
+              smsBtn.textContent = '📱';
+              smsBtn.title = 'رسالة خط (شريحة) للزبون' + labelSuffix;
+              smsBtn.setAttribute('data-sms-customer', '1');
+              smsBtn.style.cssText = 'display:inline-block;font-size:20px;background:none;border:none;cursor:pointer;line-height:1.3;padding:0;';
+
+              var smsWrap = makeUsedBadgeWrapper(smsBtn);
+              smsWrap.el.setAttribute('data-ws-btn', 'sms-customer');
+              smsWrap.el.style.marginTop = '4px';
+              smsWrap.el.style.marginLeft = '4px';
+
+              smsBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var msg = buildCustomerMessage();
+                openSmsLink(localPhone, msg);
+                smsWrap.markUsed();
+              });
+              groupWrap.appendChild(smsWrap.el);
+
+              var phoneBtn = document.createElement('button');
+              phoneBtn.type = 'button';
+              phoneBtn.textContent = '🔎';
+              phoneBtn.title = 'بحث عن كل طلبات هذا الزبون برقم الهاتف' + labelSuffix;
+              phoneBtn.setAttribute('data-phone-search', '1');
+              phoneBtn.setAttribute('data-ws-btn', 'phone-search');
+              phoneBtn.style.cssText = 'display:inline-block;font-size:12px;background:none;border:none;cursor:pointer;line-height:1;padding:0;opacity:.8;vertical-align:middle;margin-top:4px;margin-left:4px;';
+
+              phoneBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                // صفحة view_search تتطلب الصيغة الدولية بدون صفر بالبداية
+                // (مثال: 9647901380255) — وهي نفس صيغة phone كما وردت من
+                // رابط واتساب الأصلي. ws_search_type يحدد خانة البحث:
+                // 2 = رقم هاتف الزبون الاول، 3 = رقم هاتف الزبون الثاني.
+                openTab(
+                  BASE_URL + '/cs/view_search?ws_phone=' + encodeURIComponent(phone) +
+                  '&ws_search_type=' + searchType,
+                  'ws_phone_search'
+                );
+              });
+              groupWrap.appendChild(phoneBtn);
+
+              afterLink.insertAdjacentElement('afterend', groupWrap);
+            }
+
+            validLinks.forEach(function (link, idx) {
+              var phone      = phoneFromLink(link);
+              var searchType = (idx === 0) ? '2' : '3';
+              buildPhoneButtons(phone, link, searchType, idx === 0);
             });
-
-            cCell.appendChild(cWrap.el);
-
-            var smsBtn = document.createElement('button');
-            smsBtn.type = 'button';
-            smsBtn.textContent = '📱';
-            smsBtn.title = 'رسالة خط (شريحة) للزبون';
-            smsBtn.setAttribute('data-sms-customer', '1');
-            smsBtn.style.cssText = 'display:inline-block;font-size:20px;background:none;border:none;cursor:pointer;line-height:1.3;padding:0;';
-
-            var smsWrap = makeUsedBadgeWrapper(smsBtn);
-            smsWrap.el.setAttribute('data-ws-btn', 'sms-customer');
-            smsWrap.el.style.marginTop = '4px';
-            smsWrap.el.style.marginLeft = '4px';
-
-            smsBtn.addEventListener('click', function (e) {
-              e.preventDefault();
-              e.stopPropagation();
-              var msg = buildCustomerMessage();
-              openSmsLink(localPhone, msg);
-              smsWrap.markUsed();
-            });
-            cCell.appendChild(smsWrap.el);
           }
         }
       }
@@ -912,13 +1026,13 @@
         wrap.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:4px;';
 
         wrap.appendChild(makeBtn('🔍', 'قصة الطلب: ' + capturedTxt, '#2e5bff', function () {
-          openTab('https://alwaseet-iq.net/order-story?ws_order=' + encodeURIComponent(capturedTxt), 'ws_story');
+          openTab(BASE_URL + '/order-story?ws_order=' + encodeURIComponent(capturedTxt), 'ws_story');
         }, 'story'));
         wrap.appendChild(makeBtn('➕', 'أجور التوصيل: ' + capturedTxt, '#28a745', function () {
-          openTab('https://alwaseet-iq.net/cs/delivery-fees-differences?ws_order=' + encodeURIComponent(capturedTxt), 'ws_fees');
+          openTab(BASE_URL + '/cs/delivery-fees-differences?ws_order=' + encodeURIComponent(capturedTxt), 'ws_fees');
         }, 'fees'));
         wrap.appendChild(makeBtn('🌐', 'تغيير العنوان: ' + capturedTxt, '#e67e22', function () {
-          openTab('https://alwaseet-iq.net/cs/editOrder?ws_order=' + encodeURIComponent(capturedTxt), 'ws_edit');
+          openTab(BASE_URL + '/cs/editOrder?ws_order=' + encodeURIComponent(capturedTxt), 'ws_edit');
         }, 'edit'));
 
         cell.appendChild(wrap);
@@ -1290,7 +1404,7 @@
       var xsrfCookie = getCookie('XSRF-TOKEN');
       if (xsrfCookie) { headers['X-XSRF-TOKEN'] = xsrfCookie; }
 
-      return fetch('https://alwaseet-iq.net/order-story/get-order-story', {
+      return fetch(BASE_URL + '/order-story/get-order-story', {
         method: 'POST',
         headers: headers,
         credentials: 'same-origin',
@@ -1367,6 +1481,71 @@
     // فاصل زمني صغير بين كل طلب وآخر ضمن نفس العامل (worker)
     var FETCH_GAP_MS = 350;
 
+    // ─────────────────────────────────────────
+    // NEW v3.8: تخزين دائم لنتائج فحص التأخير
+    // ─────────────────────────────────────────
+    // المشكلة التي يحلّها: wsDelayResults كانت Map بالذاكرة فقط، تضيع
+    // بمجرد إغلاق التاب أو إعادة تحميل الصفحة. فكل فتح جديد للصفحة كان
+    // يعيد فحص كل الطلبات من الصفر حتى لو فُحصت قبل دقيقة واحدة، مما
+    // يضاعف الضغط على السيرفر بلا داعٍ (وهو نفس سبب "تجاوزت الحد").
+    // الحل: حفظ النتائج بـ GM_setValue/localStorage بحيث تبقى متاحة بين
+    // الجلسات، مع تنظيف دوري للنتائج القديمة جداً حتى لا يتضخم التخزين.
+    var DELAY_STORE_KEY = 'waseet_delay_results_v1';
+    // أي نتيجة محفوظة أقدم من هذا لا فائدة من الاحتفاظ بها (الطلب على
+    // الأغلب لم يعد ظاهراً أصلاً على الشاشة بعد هذه المدة)
+    var DELAY_STORE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+    // لا نكتب على القرص عند كل نتيجة فردية (مكلف)، بل نجمّع الكتابات
+    var wsDelayStoreSaveTimer = null;
+    var DELAY_STORE_SAVE_DEBOUNCE_MS = 1500;
+
+    function loadDelayResultsFromStorage() {
+      var raw = storeGet(DELAY_STORE_KEY);
+      if (!raw) { return; }
+      try {
+        var parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') { return; }
+        var now = Date.now();
+        Object.keys(parsed).forEach(function (orderId) {
+          var entry = parsed[orderId];
+          if (!entry || !entry.checkedAt) { return; }
+          // تجاهل أي نتيجة قديمة جداً عند التحميل بدل إعادتها للذاكرة
+          if (now - entry.checkedAt > DELAY_STORE_MAX_AGE_MS) { return; }
+          wsDelayResults.set(orderId, entry);
+        });
+      } catch (e) {
+        console.warn('[أدوات الوسيط] تعذرت قراءة نتائج فحص التأخير المحفوظة:', e);
+      }
+    }
+
+    function saveDelayResultsToStorageNow() {
+      var obj = {};
+      var now = Date.now();
+      wsDelayResults.forEach(function (entry, orderId) {
+        if (!entry || !entry.checkedAt) { return; }
+        // لا نكتب النتائج القديمة جداً على القرص، تنظيف تلقائي مستمر
+        if (now - entry.checkedAt > DELAY_STORE_MAX_AGE_MS) { return; }
+        obj[orderId] = entry;
+      });
+      try {
+        storeSet(DELAY_STORE_KEY, JSON.stringify(obj));
+      } catch (e) {
+        console.warn('[أدوات الوسيط] تعذر حفظ نتائج فحص التأخير:', e);
+      }
+    }
+
+    // كتابة مؤجَّلة (debounced) لتفادي الكتابة على القرص مرات كثيرة متتالية
+    // أثناء فحص دفعة كاملة من الطلبات في نفس الدورة
+    function scheduleDelayResultsSave() {
+      if (wsDelayStoreSaveTimer) { clearTimeout(wsDelayStoreSaveTimer); }
+      wsDelayStoreSaveTimer = setTimeout(function () {
+        wsDelayStoreSaveTimer = null;
+        saveDelayResultsToStorageNow();
+      }, DELAY_STORE_SAVE_DEBOUNCE_MS);
+    }
+
+    // تحميل النتائج المحفوظة فوراً عند بدء تشغيل هذا القسم من السكربت
+    loadDelayResultsFromStorage();
+
     // إعادة رسم ألوان كل الصفوف الموجودة حالياً في DOM
     function reapplyAllColors() {
       var rows = getRows();
@@ -1403,6 +1582,16 @@
       wsDelayResults.forEach(function (r) { if (r && r.late) { late++; } });
       var mode = wsSettings.delayCheckMode || 'auto';
       var modeLabel = mode === 'auto' ? '🔄' : '👆';
+
+      // FIX I: إظهار مؤشر "جاري الفحص" أثناء التنفيذ الفعلي، يختفي تلقائياً
+      // فور انتهاء checkNewRows لأن finally تستدعي هذه الدالة دائماً.
+      if (wsDelayRunning) {
+        badge.textContent = '⏳ جاري الفحص...';
+        badge.style.background = '#2e5bff';
+        badge.disabled = true;
+        return;
+      }
+      badge.disabled = false;
 
       if (Date.now() < wsRateLimitedUntil) {
         var remainMin = Math.ceil((wsRateLimitedUntil - Date.now()) / 60000);
@@ -1441,6 +1630,7 @@
       }
 
       wsDelayRunning = true;
+      updateCheckBtnLabel();
 
       try {
         var rows = getRows();
@@ -1503,6 +1693,7 @@
                 var hours  = (fetchTime - date) / 3600000;
                 var isLate = (fetchTime - date) >= ONE_DAY;
                 wsDelayResults.set(orderId, { late: isLate, hours: hours, checkedAt: Date.now() });
+                scheduleDelayResultsSave();
 
                 // ابحث عن الصف في DOM الآن (وليس المرجع القديم)
                 var currentRows = getRows();
@@ -1585,14 +1776,60 @@
     onReady(function () {
       setTimeout(function () {
         renderAndSync(addCheckBtn);
-        // فحص فوري عند تحميل الصفحة
-        checkNewRows();
+        // NEW v3.8: النتائج المحفوظة من جلسة سابقة (إن وُجدت) تُطبَّق فوراً
+        // على الصفوف الظاهرة الآن، قبل أي فحص جديد. هذا يجعل الطلبات
+        // المتأخرة المعروفة سلفاً تظهر ملوّنة فوراً عند فتح الصفحة بدل
+        // الانتظار لحين اكتمال أول دورة فحص.
+        reapplyAllColors();
+        updateCheckBtnLabel();
+        // FIX H: الفحص الأولي عند تحميل الصفحة كان يحدث دائماً بغض النظر
+        // عن الوضع المختار (حتى لو كان "يدوي")، فكان يبدو وكأن الوضع
+        // اليدوي لا يعمل. الآن: الفحص الأول يحدث فقط إذا كان الوضع تلقائي.
+        // في الوضع اليدوي لا يحدث أي فحص إطلاقاً حتى يضغط المستخدم الزر.
+        if ((wsSettings.delayCheckMode || 'auto') === 'auto') {
+          checkNewRows();
+        }
         // تطبيق وضع الفحص (تلقائي أو يدوي) حسب الإعداد الحالي
         applyDelayMode();
         // تحديث نص الزر دورياً (لإظهار العد التنازلي لفترة التوقف المؤقت)
         setInterval(updateCheckBtnLabel, 10000);
       }, 1000);
     });
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  //  ⑦ view_search — بحث تلقائي بكل طلبات الزبون عبر رقم هاتفه (v3.10)
+  // ═════════════════════════════════════════════════════════════
+  if (PAGE.indexOf('/cs/view_search') !== -1) {
+    var phoneSearchParams = new URLSearchParams(location.search);
+    var phoneSearchNum  = phoneSearchParams.get('ws_phone');
+    // ws_search_type: '2' = رقم هاتف الزبون الاول، '3' = رقم هاتف الزبون
+    // الثاني — يحدَّد حسب أي زر ضُغط عليه بصفحة call_center. افتراضياً
+    // '2' لو ما وصل أي قيمة (توافقاً مع الروابط القديمة قبل دعم الرقم الثاني).
+    var phoneSearchType = phoneSearchParams.get('ws_search_type') || '2';
+    if (phoneSearchNum) {
+      onReady(function () {
+        waitFor('#search-type', function (sel) {
+          // اختيار نوع البحث: "رقم هاتف الزبون الاول/الثاني"
+          sel.value = phoneSearchType;
+          sel.dispatchEvent(new Event('input',  { bubbles: true }));
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+
+          waitFor('#order_id', function (inp) {
+            inp.value = phoneSearchNum;
+            inp.dispatchEvent(new Event('input',  { bubbles: true }));
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
+            inp.focus();
+
+            // فاصل بسيط لضمان أن الصفحة استوعبت تغيير القيمة قبل الضغط
+            setTimeout(function () {
+              var btn = document.querySelector('#myBtn');
+              if (btn) { btn.click(); }
+            }, 400);
+          });
+        });
+      });
+    }
   }
 
 })();
