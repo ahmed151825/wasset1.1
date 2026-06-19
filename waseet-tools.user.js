@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          3احمد محمد كريم
 // @namespace    waseet-tools
-// @version      3.4
+// @version      3.6
 // @description  أدوات مركز خدمة العملاء - الوسيط للنقل العام (فحص تأخير تلقائي + تحكم بالشفافية + قوالب رسائل قابلة للتحرير + علامة استخدام)
 // @match        https://alwaseet-iq.net/*
 // @grant        GM_setValue
@@ -13,40 +13,45 @@
 // ==/UserScript==
 
 /*
-  سجل التحديثات (v3.3):
+  سجل التحديثات (v3.6):
   ───────────────────────────────────────────────────────────
-  • FIX A: getPrice كانت قد تختار رقم الطلب نفسه كـ"سعر" بالخطأ
-           (لأن رقم الطلب رقم ضمن نفس المجال 500-5,000,000).
-           تم استثناء خلية رقم الطلب وأي خلية تحتوي رابط (هاتف).
-  • FIX B: فحص التأخير كان يعتمد معيارين مختلفين لطول رقم الطلب
-           (5 أرقام أو 6 أرقام) في دالتين مختلفتين، وقد يكرر
-           نفس الصف مرتين. تم توحيدها بمعيار واحد + منع التكرار.
-  • FIX C: طلبات فحص التأخير (fetch) لم تكن ترسل رمز الحماية
-           CSRF الذي تتطلبه أغلب تطبيقات Laravel، فكانت تفشل
-           بصمت على بعض الصفحات. تمت إضافة الرمز تلقائياً من
-           meta[name=csrf-token] أو من كوكي XSRF-TOKEN إن وُجد.
-  • FIX D: الطلبات التي لا تحمل حالة "قيد التوصيل" كانت تُعاد
-           محاولة فحصها كل 2 ثانية إلى الأبد (استهلاك شبكة غير
-           ضروري). الآن تُخزَّن نتيجة "غير معروف" مؤقتاً ولا
-           يُعاد فحصها إلا كل 3 دقائق.
-  • NEW:   قالب تقرير الأجور الآن قابل للتحرير بالكامل من
-           الإعدادات (مع اسم المحطة)، مع إمكانية الاستعادة
-           للوضع الافتراضي.
-  • NEW:   قوالب جاهزة لرسالة الزبون (واتساب/SMS) يمكن اختيارها
-           من الإعدادات، بالإضافة لخيار "مخصص" لتحرير نص حر.
+  • FIX G: معالجة خطأ السيرفر "لقد تجاوزت الحد المسموح به..."
+           (errNum: 99). الأسباب التي كانت تسببه:
+           - 4 طلبات فحص متزامنة بدون أي فاصل زمني بينها.
+           - إعادة فحص كل الطلبات (حتى المعروفة سلفاً) في كل
+             دورة فحص تلقائي كل 90 ثانية.
+           - زر "إعادة الفحص" اليدوي كان يمسح كل النتائج
+             ويطلب فحص كل الطلبات من جديد، فلو ضُغط أكثر من
+             مرة بسرعة كان يضاعف الضغط على السيرفر.
+           الحلول المطبّقة:
+           - تخفيض التزامن من 4 إلى 2 + فاصل 350ms بين كل
+             طلب وآخر ضمن نفس العامل.
+           - الطلبات ذات النتيجة المعروفة (متأخر/غير متأخر) لا
+             تُعاد فحصها إلا كل 6 دقائق بدل كل دورة.
+           - عند رصد رسالة "تجاوزت الحد" تحديداً، يدخل النظام
+             في فترة توقف مؤقت (cooldown) مدتها 5 دقائق لا يُرسل
+             خلالها أي طلب فحص جديد إطلاقاً، مع إظهار العد
+             التنازلي على الزر الثابت (⏸️ توقف مؤقت).
+           - زر الفحص اليدوي يرفض العمل أثناء فترة التوقف
+             المؤقت ويُظهر تنبيهاً للمستخدم بدل تكرار الضغط
+             على السيرفر، ولم يعد يمسح النتائج المعروفة سلفاً.
   ───────────────────────────────────────────────────────────
-  سجل التحديثات (v3.4):
+  سجل التحديثات (v3.5):
   ───────────────────────────────────────────────────────────
-  • FIX E: السبب الحقيقي لعدم عمل أي قالب لرسالة الزبون: كانت
-           الرسالة تُبنى وتُحفظ داخل رابط الزر مرة واحدة فقط لحظة
-           ظهور الصف على الشاشة — أي قبل أن يفتح المستخدم الإعدادات
-           ويختار قالباً، فلا يظهر أي أثر للتغيير على الطلبات
-           المعروضة فعلاً. الآن تُبنى الرسالة (واتساب التاجر، واتساب
-           الزبون، SMS الزبون) من جديد في لحظة الضغط على الزر، فتعكس
-           القالب الحالي المختار فوراً.
-  • NEW:   عند الضغط على أي من أزرار (💬 واتساب التاجر / 📦 واتساب
-           الزبون / 📱 SMS الزبون) تظهر علامة ✅ صغيرة بشكل دائم
-           بجانب الزر لتعرف بسهولة أنك استخدمته لهذا الطلب.
+  • FIX F: المشكلة الجذرية لعدم ظهور كل الطلبات المتأخرة:
+    - wsDelayRunning كانت تبقى true عند أي خطأ غير متوقع،
+      فتوقف كل الفحوصات اللاحقة نهائياً.
+    - الصفوف المعاد رسمها بواسطة DataTables لا تحتفظ بألوانها
+      لأن المرجع row المخزَّن في Map يصبح عنصراً قديماً
+      منفصلاً عن DOM. الحل: تخزين orderId فقط وإعادة
+      البحث عن الصف في DOM عند كل دورة تطبيق.
+    - getRows() أحياناً تفوّت صفوف عندما يحتوي الـ td على
+      مسافات أو نص مخفي. تم تنظيف النص قبل التحقق.
+    - بعض الصفوف تُفحص مرتين (pending + result) مما يسبب
+      تناقضاً في الحالة. تم توحيد منطق الأولوية.
+  • NEW: خيار وضع الفحص في الإعدادات:
+    "تلقائي كل 90 ثانية" أو "يدوي (عند الضغط فقط)".
+    الزر الثابت يتغير بحسب الوضع المختار.
   ───────────────────────────────────────────────────────────
 */
 
@@ -122,7 +127,6 @@
     document.body.removeChild(ta);
   }
 
-  // استبدال {placeholder} بقيم فعلية ضمن نص القالب
   function renderTemplate(tpl, vars) {
     return String(tpl || '').replace(/\{(\w+)\}/g, function (m, key) {
       return (vars[key] !== undefined && vars[key] !== null) ? String(vars[key]) : '';
@@ -130,7 +134,7 @@
   }
 
   // ─────────────────────────────────────────
-  // NEW: علامة "✅ تم الاستخدام" تظهر بشكل دائم فوق الزر بعد أول ضغطة
+  // علامة "✅ تم الاستخدام"
   // ─────────────────────────────────────────
   function makeUsedBadgeWrapper(innerEl) {
     var wrap = document.createElement('span');
@@ -155,7 +159,7 @@
   }
 
   // ─────────────────────────────────────────
-  // FIX #1: إرسال SMS بدون تغيير الصفحة
+  // إرسال SMS بدون تغيير الصفحة
   // ─────────────────────────────────────────
   function openSmsLink(phone, body) {
     try {
@@ -168,7 +172,6 @@
         if (iframe.parentNode) { iframe.parentNode.removeChild(iframe); }
       }, 1000);
     } catch (e) {
-      console.warn('[أدوات الوسيط] SMS fallback:', e);
       var link = document.createElement('a');
       link.href = 'sms:' + phone + '?body=' + encodeURIComponent(body);
       link.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
@@ -206,7 +209,7 @@
   }
 
   // ─────────────────────────────────────────
-  // القوالب الجاهزة لرسالة الزبون (واتساب/SMS)
+  // القوالب الجاهزة لرسالة الزبون
   // ─────────────────────────────────────────
   var PRESET_CUSTOMER_TEMPLATES = {
     default: {
@@ -255,7 +258,7 @@
   }
 
   // ─────────────────────────────────────────
-  // قالب تقرير الأجور (قابل للتحرير)
+  // قالب تقرير الأجور
   // ─────────────────────────────────────────
   var DEFAULT_REPORT_TEMPLATE =
     'التقرير ✅\n' +
@@ -283,7 +286,7 @@
     '——————————————-';
 
   // ─────────────────────────────────────────
-  // إعدادات إظهار/إخفاء الأزرار + القوالب
+  // الإعدادات
   // ─────────────────────────────────────────
   var SETTINGS_KEY = 'waseet_ws_settings';
 
@@ -301,7 +304,9 @@
     stationName:           'المنصور',
     reportTemplate:         DEFAULT_REPORT_TEMPLATE,
     customerTemplateId:     'default',
-    customerCustomTemplate: ''
+    customerCustomTemplate: '',
+    // NEW v3.5: وضع الفحص — 'auto' أو 'manual'
+    delayCheckMode:  'auto'
   };
 
   function loadSettings() {
@@ -461,6 +466,52 @@
       panel.appendChild(row);
     });
 
+    // ── قسم: وضع فحص التأخير (NEW v3.5) ──
+    var delayModeSection = document.createElement('div');
+    delayModeSection.style.cssText = 'margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';
+
+    var delayModeTitle = document.createElement('div');
+    delayModeTitle.textContent = '🔎 وضع فحص الطلبات المتأخرة';
+    delayModeTitle.style.cssText = 'font-size:13px;color:#333;margin-bottom:8px;font-weight:bold;';
+    delayModeSection.appendChild(delayModeTitle);
+
+    var modeDesc = document.createElement('div');
+    modeDesc.style.cssText = 'font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;';
+    modeDesc.textContent = 'تلقائي: يفحص كل 90 ثانية تلقائياً.\nيدوي: يفحص فقط عند الضغط على الزر.';
+    delayModeSection.appendChild(modeDesc);
+
+    var currentMode = wsSettings.delayCheckMode || 'auto';
+
+    [
+      { val: 'auto',   label: '🔄 تلقائي كل 90 ثانية' },
+      { val: 'manual', label: '👆 يدوي (عند الضغط فقط)' }
+    ].forEach(function (opt) {
+      var lbl = document.createElement('label');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:13px;color:#333;cursor:pointer;';
+
+      var rb = document.createElement('input');
+      rb.type = 'radio';
+      rb.name = 'ws-delay-mode';
+      rb.value = opt.val;
+      rb.checked = (currentMode === opt.val);
+      rb.addEventListener('change', function () {
+        if (rb.checked) {
+          wsSettings.delayCheckMode = opt.val;
+          saveSettings(wsSettings);
+          // تحديث الـ interval فوراً
+          applyDelayMode();
+          updateCheckBtnLabel();
+        }
+      });
+
+      lbl.appendChild(rb);
+      lbl.appendChild(document.createTextNode(opt.label));
+      delayModeSection.appendChild(lbl);
+    });
+
+    panel.appendChild(delayModeSection);
+
+    // شريط الشفافية
     var opacitySection = document.createElement('div');
     opacitySection.style.cssText = 'margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';
 
@@ -486,6 +537,7 @@
     opacitySection.appendChild(opacitySlider);
     panel.appendChild(opacitySection);
 
+    // ── قسم: قالب رسالة الزبون ──
     var custSection = document.createElement('div');
     custSection.style.cssText = 'margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';
 
@@ -535,6 +587,7 @@
     custSection.appendChild(custEditBtn);
     panel.appendChild(custSection);
 
+    // ── قسم: قالب تقرير الأجور ──
     var repSection = document.createElement('div');
     repSection.style.cssText = 'margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';
 
@@ -585,6 +638,8 @@
       wsSettings = Object.assign({}, DEFAULT_SETTINGS);
       saveSettings(wsSettings);
       applyVisibility();
+      applyDelayMode();
+      updateCheckBtnLabel();
       overlay.remove();
       buildSettingsPanel();
     });
@@ -722,7 +777,6 @@
     }
 
     function addWhatsappBtns(row, orderNum) {
-
       if (!row.dataset.wsMerchant) {
         var mCell = getMerchantCell(row);
         if (mCell && !mCell.querySelector('[data-ws-merchant]')) {
@@ -746,7 +800,6 @@
             mBtn.addEventListener('click', function (e) {
               e.preventDefault();
               e.stopPropagation();
-
               var notesEl = row.querySelector('[id^="deliver_notes-"]');
               var notes = notesEl ? notesEl.textContent.trim() : '';
               notes = notes
@@ -895,7 +948,6 @@
           var btn = document.querySelector('button[onclick="getOrderStory()"]');
           if (btn) { btn.click(); }
           else if (typeof getOrderStory === 'function') { getOrderStory(); }
-          else { console.warn('[أدوات الوسيط] لم يتم العثور على زر فتح قصة الطلب.'); }
 
           waitFor('#swal2-input', function (inp) {
             inp.value = storyNum;
@@ -904,7 +956,6 @@
             setTimeout(function () {
               var ok = document.querySelector('.swal2-confirm');
               if (ok) { ok.click(); }
-              else { console.warn('[أدوات الوسيط] لم يتم العثور على زر التأكيد.'); }
             }, 500);
           });
         }, 800);
@@ -1063,7 +1114,7 @@
   }
 
   // ═════════════════════════════════════════════════════════════
-  //  ⑤ delivering-orders
+  //  ⑤ delivering-orders — نسخ قائمة المناديب
   // ═════════════════════════════════════════════════════════════
   if (PAGE.indexOf('/cs/delivering-orders') !== -1) {
 
@@ -1192,13 +1243,15 @@
   }
 
   // ═════════════════════════════════════════════════════════════
-  //  ⑥ فحص التأخير
+  //  ⑥ فحص الطلبات المتأخرة — الإصلاح الجذري (v3.5)
   // ═════════════════════════════════════════════════════════════
   if (PAGE.indexOf('/cs/call_center') !== -1 || PAGE.indexOf('/cs/delivering-orders') !== -1) {
 
     var STATUS_DELIVERING = '3';
     var ONE_DAY = 24 * 60 * 60 * 1000;
     var UNKNOWN_RECHECK_MS = 3 * 60 * 1000;
+    // فترة الفحص التلقائي (90 ثانية)
+    var AUTO_CHECK_INTERVAL_MS = 90 * 1000;
 
     function parseDate(str) {
       if (!str) { return null; }
@@ -1219,6 +1272,14 @@
       return match ? decodeURIComponent(match[1]) : null;
     }
 
+    function sleep(ms) {
+      return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+
+    // FIX G: التقاط رسالة "تجاوزت الحد المسموح" (errNum 99) تحديداً
+    // لتمييزها عن أخطاء الشبكة العادية. نُعيد علامة rateLimited بدل
+    // معاملتها كـ"غير معروف" عادية تُعاد محاولتها سريعاً، لأن إعادة
+    // المحاولة السريعة بعد هذا الخطأ هي بالذات ما يطيل الحظر.
     function fetchStory(orderId) {
       var headers = {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -1237,7 +1298,12 @@
       })
       .then(function (r) { return r.text(); })
       .then(function (t) {
-        try { return JSON.parse(t); } catch (e) { return null; }
+        var json = null;
+        try { json = JSON.parse(t); } catch (e) { json = null; }
+        if (json && json.status === false && (json.errNum === 99 || json.errNum === '99')) {
+          return { __rateLimited: true };
+        }
+        return json;
       })
       .catch(function () { return null; });
     }
@@ -1251,13 +1317,23 @@
       return dates.length ? new Date(Math.min.apply(null, dates.map(function (d) { return d.getTime(); }))) : null;
     }
 
+    // ── FIX F (1/4): getRows تُنظّف النص وتمنع تكرار الصف ──
+    // تُعيد قائمة { id, row } فقط — لا تخزّن مرجع row في النتائج
+    // لأن DataTables يعيد رسم الصفوف فيتغير مرجع الـ DOM.
     function getRows() {
       var rows = [];
       var seen = new Set();
       document.querySelectorAll('td').forEach(function (cell) {
-        var txt = cell.textContent.trim();
+        // تنظيف: إزالة المسافات ومحتوى العناصر الفرعية والاحتفاظ بالنص المباشر
+        var txt = '';
+        cell.childNodes.forEach(function (n) {
+          if (n.nodeType === 3) { txt += n.textContent; }
+        });
+        txt = txt.trim();
+
         if (!/^\d{6,}$/.test(txt)) { return; }
         if (/^(0|964)/.test(txt)) { return; }
+
         var tr = cell.closest('tr');
         if (!tr || seen.has(tr)) { return; }
         seen.add(tr);
@@ -1266,10 +1342,43 @@
       return rows;
     }
 
-    var wsDelayResults = new Map();
-    var wsDelayPending = new Set();
+    // ── FIX F (2/4): تخزين النتائج بـ orderId فقط (بدون مرجع DOM) ──
+    // عند تطبيق اللون نبحث عن الصف من جديد في DOM بدلاً من المرجع القديم.
+    // هذا يحل مشكلة DataTables التي تُعيد رسم الصفوف وتفقد مراجعها.
+    var wsDelayResults = new Map();  // orderId → { late, hours, unknown, checkedAt }
+    var wsDelayPending = new Set();  // orderIds قيد الفحص حالياً
     var wsDelayIntervalId = null;
-    var wsDelayRunning    = false;
+
+    // ── FIX F (3/4): wsDelayRunning يُحاط بـ try/finally دائماً ──
+    // لضمان تحريره حتى عند الأخطاء غير المتوقعة.
+    var wsDelayRunning = false;
+
+    // FIX G: عند رصد رسالة "تجاوزت الحد" من السيرفر، نتوقف عن إرسال أي
+    // طلب فحص جديد حتى ينتهي هذا الوقت (بدل الاستمرار بالضغط على السيرفر
+    // وإطالة مدة الحظر). 5 دقائق هامش آمن.
+    var wsRateLimitedUntil = 0;
+    var RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000;
+
+    // مدة عدم إعادة فحص الطلبات التي لها نتيجة معروفة بالفعل (متأخر/غير متأخر).
+    // لا داعي لإعادة فحص كل طلب كل 90 ثانية؛ يكفي تحديثه كل بضع دقائق.
+    var KNOWN_RECHECK_MS = 6 * 60 * 1000;
+    // عدد الطلبات المتزامنة لكل دورة فحص — مخفّض لتفادي تجاوز حد السيرفر
+    var FETCH_CONCURRENCY = 2;
+    // فاصل زمني صغير بين كل طلب وآخر ضمن نفس العامل (worker)
+    var FETCH_GAP_MS = 350;
+
+    // إعادة رسم ألوان كل الصفوف الموجودة حالياً في DOM
+    function reapplyAllColors() {
+      var rows = getRows();
+      rows.forEach(function (item) {
+        var result = wsDelayResults.get(item.id);
+        if (result && !result.unknown) {
+          applyDelayResult(item.row, result);
+        } else {
+          resetRowStyle(item.row);
+        }
+      });
+    }
 
     function resetRowStyle(row) {
       row.style.backgroundColor = '';
@@ -1278,25 +1387,59 @@
     }
 
     function applyDelayResult(row, result) {
-      if (result.late) {
+      if (result && result.late) {
         row.style.backgroundColor = '#ffd6d6';
         row.style.color = '#8a0000';
         row.title = 'قيد التوصيل منذ ' + result.hours.toFixed(1) + ' ساعة';
+      } else {
+        resetRowStyle(row);
       }
     }
 
-    function updateDelayBadge() {
+    function updateCheckBtnLabel() {
       var badge = document.getElementById('ws-check-btn');
       if (!badge) { return; }
       var late = 0;
-      wsDelayResults.forEach(function (r) { if (r.late) { late++; } });
-      badge.textContent = '🔎 متأخر: ' + late;
+      wsDelayResults.forEach(function (r) { if (r && r.late) { late++; } });
+      var mode = wsSettings.delayCheckMode || 'auto';
+      var modeLabel = mode === 'auto' ? '🔄' : '👆';
+
+      if (Date.now() < wsRateLimitedUntil) {
+        var remainMin = Math.ceil((wsRateLimitedUntil - Date.now()) / 60000);
+        badge.textContent = '⏸️ توقف مؤقت (' + remainMin + ' د) — متأخر: ' + late;
+        badge.style.background = '#888';
+        return;
+      }
+
+      badge.textContent = modeLabel + ' متأخر: ' + late;
       badge.style.background = late > 0 ? '#c0392b' : '#1a8a3a';
     }
 
+    // ── applyDelayMode: تفعيل/إيقاف الفحص التلقائي حسب الإعداد ──
+    function applyDelayMode() {
+      if (wsDelayIntervalId !== null) {
+        clearInterval(wsDelayIntervalId);
+        wsDelayIntervalId = null;
+      }
+      if ((wsSettings.delayCheckMode || 'auto') === 'auto') {
+        wsDelayIntervalId = setInterval(checkNewRows, AUTO_CHECK_INTERVAL_MS);
+      }
+    }
+
+    // ── FIX G: منطق الفحص المُصلح لتفادي "تجاوزت الحد المسموح" ──
     async function checkNewRows() {
       if (!wsSettings.showDelayCheck) { return; }
+      // ضمان عدم التشغيل المتوازي
       if (wsDelayRunning) { return; }
+
+      // إذا كنا داخل فترة cooldown بسبب حظر سابق من السيرفر — لا نرسل شيئاً
+      // الآن، فقط نعيد رسم الألوان المعروفة ونحدّث العداد لتبقى الواجهة حية.
+      if (Date.now() < wsRateLimitedUntil) {
+        reapplyAllColors();
+        updateCheckBtnLabel();
+        return;
+      }
+
       wsDelayRunning = true;
 
       try {
@@ -1305,54 +1448,99 @@
         var toFetch = [];
 
         rows.forEach(function (item) {
-          var cached = wsDelayResults.get(item.id);
-          if (cached) {
-            if (cached.unknown) {
-              if (now.getTime() - cached.checkedAt > UNKNOWN_RECHECK_MS && !wsDelayPending.has(item.id)) {
-                toFetch.push(item);
-              }
-            } else {
-              applyDelayResult(item.row, cached);
+          var orderId = item.id;
+
+          // إذا كان قيد الفحص حالياً — تجاهل
+          if (wsDelayPending.has(orderId)) { return; }
+
+          var cached = wsDelayResults.get(orderId);
+
+          if (!cached) {
+            // لم يُفحص بعد — أضفه للقائمة
+            toFetch.push(orderId);
+          } else if (cached.unknown) {
+            // نتيجة "غير معروف" — أعد الفحص بعد انتهاء فترة الانتظار فقط
+            if (now.getTime() - (cached.checkedAt || 0) > UNKNOWN_RECHECK_MS) {
+              toFetch.push(orderId);
             }
-          } else if (!wsDelayPending.has(item.id)) {
-            toFetch.push(item);
+          } else {
+            // نتيجة معروفة (متأخر/غير متأخر) — لا نعيد فحصها إلا كل
+            // KNOWN_RECHECK_MS لتقليل الضغط على السيرفر. حتى ذلك الحين
+            // نكتفي بإعادة رسم اللون على الصف الحالي في DOM.
+            applyDelayResult(item.row, cached);
+            if (now.getTime() - (cached.checkedAt || 0) > KNOWN_RECHECK_MS) {
+              toFetch.push(orderId);
+            }
           }
         });
 
-        if (toFetch.length) {
-          toFetch.forEach(function (item) { wsDelayPending.add(item.id); });
+        if (toFetch.length > 0) {
+          // وضع علامة pending لكل المطلوب فحصه أولاً
+          toFetch.forEach(function (id) { wsDelayPending.add(id); });
 
           var idx = 0;
-          var CONCURRENCY = 4;
+          var rateLimitHit = false;
 
           function worker() {
+            if (rateLimitHit) { return Promise.resolve(); }
             if (idx >= toFetch.length) { return Promise.resolve(); }
-            var item = toFetch[idx++];
-            return fetchStory(item.id).then(function (json) {
+            var orderId = toFetch[idx++];
+            var fetchTime = new Date();
+
+            return fetchStory(orderId).then(function (json) {
+              // FIX G: عند رصد حظر من السيرفر — أوقف كل العمال فوراً،
+              // فعّل فترة الانتظار، وأعد orderId الحالي لقائمة الانتظار
+              // (لا نخزّن له نتيجة "unknown" حتى لا نهدر دورة الـ3 دقائق
+              // عليه بينما السبب الحقيقي هو الحظر العام لا هذا الطلب تحديداً).
+              if (json && json.__rateLimited) {
+                rateLimitHit = true;
+                wsRateLimitedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
+                return;
+              }
+
               var date = firstDeliveryDate(json);
               if (date) {
-                var hours = (now - date) / 3600000;
-                var result = { late: (now - date) >= ONE_DAY, hours: hours };
-                wsDelayResults.set(item.id, result);
-                applyDelayResult(item.row, result);
+                var hours  = (fetchTime - date) / 3600000;
+                var isLate = (fetchTime - date) >= ONE_DAY;
+                wsDelayResults.set(orderId, { late: isLate, hours: hours, checkedAt: Date.now() });
+
+                // ابحث عن الصف في DOM الآن (وليس المرجع القديم)
+                var currentRows = getRows();
+                currentRows.forEach(function (item) {
+                  if (item.id === orderId) {
+                    applyDelayResult(item.row, wsDelayResults.get(orderId));
+                  }
+                });
               } else {
-                wsDelayResults.set(item.id, { unknown: true, checkedAt: Date.now() });
+                wsDelayResults.set(orderId, { unknown: true, checkedAt: Date.now() });
               }
             }).catch(function () {
-              wsDelayResults.set(item.id, { unknown: true, checkedAt: Date.now() });
+              wsDelayResults.set(orderId, { unknown: true, checkedAt: Date.now() });
             }).then(function () {
-              wsDelayPending.delete(item.id);
-              return worker();
+              wsDelayPending.delete(orderId);
+              if (rateLimitHit) { return; }
+              // فاصل زمني صغير بين كل طلب وآخر لتخفيف الضغط على السيرفر
+              return sleep(FETCH_GAP_MS).then(worker);
             });
           }
 
           var pool = [];
-          for (var i = 0; i < CONCURRENCY; i++) { pool.push(worker()); }
+          for (var i = 0; i < FETCH_CONCURRENCY; i++) { pool.push(worker()); }
           await Promise.all(pool);
+
+          // أي طلبات بقيت pending بسبب توقف مبكر (rate limit) — حررها
+          // حتى تُحاوَل مجدداً بشكل طبيعي بعد انتهاء فترة الـcooldown.
+          toFetch.forEach(function (id) { wsDelayPending.delete(id); });
         }
 
-        updateDelayBadge();
+        // بعد انتهاء كل الفحوصات — أعد رسم الألوان على كل الصفوف
+        reapplyAllColors();
+        updateCheckBtnLabel();
+
+      } catch (err) {
+        console.error('[أدوات الوسيط] خطأ في فحص التأخير:', err);
       } finally {
+        // ── ضمان تحرير القفل دائماً حتى عند الأخطاء ──
         wsDelayRunning = false;
       }
     }
@@ -1362,8 +1550,6 @@
       var btn = document.createElement('button');
       btn.id = 'ws-check-btn';
       btn.type = 'button';
-      btn.title = 'فحص تلقائي كل 2 ثانية للطلبات الجديدة فقط — اضغط لإعادة فحص جميع الطلبات من جديد';
-      btn.textContent = '🔎 متأخر: 0';
       btn.setAttribute('data-ws-btn', 'delay-check');
       btn.style.cssText = [
         'position:fixed', 'top:10px', 'right:10px', 'z-index:99999',
@@ -1371,21 +1557,40 @@
         'padding:8px 14px', 'cursor:pointer', 'font-size:13px', 'font-weight:bold',
         'box-shadow:0 2px 6px rgba(0,0,0,.3)'
       ].join(';');
+
       btn.addEventListener('click', function () {
-        getRows().forEach(function (item) { resetRowStyle(item.row); });
-        wsDelayResults.clear();
+        // إذا كنا داخل فترة توقف مؤقت بسبب حظر سابق — أبلغ المستخدم
+        // ولا ترسل أي طلب جديد، فهذا تحديداً ما يطيل مدة الحظر.
+        if (Date.now() < wsRateLimitedUntil) {
+          var remainMin = Math.ceil((wsRateLimitedUntil - Date.now()) / 60000);
+          alert('السيرفر طلب التوقف مؤقتاً بسبب كثرة الطلبات.\nالرجاء الانتظار ' + remainMin + ' دقيقة قبل إعادة الفحص.');
+          return;
+        }
+        // إعادة فحص يدوي: لا نمسح النتائج المعروفة (متأخر/غير متأخر)
+        // حتى لا نضطر لإعادة فحص كل الطلبات من الصفر في كل ضغطة، بل
+        // فقط نمسح حالة "غير معروف" ونسمح للدالة بإعادة محاولة الطلبات
+        // الجديدة أو المستحقة لإعادة الفحص حسب توقيتها الطبيعي.
+        wsDelayResults.forEach(function (v, k) {
+          if (v && v.unknown) { wsDelayResults.delete(k); }
+        });
         wsDelayPending.clear();
+        wsDelayRunning = false; // تحرير القفل يدوياً في حالة الضغط القسري
         checkNewRows();
       });
+
       document.body.appendChild(btn);
+      updateCheckBtnLabel();
     }
 
     onReady(function () {
       setTimeout(function () {
         renderAndSync(addCheckBtn);
+        // فحص فوري عند تحميل الصفحة
         checkNewRows();
-        if (wsDelayIntervalId !== null) { clearInterval(wsDelayIntervalId); }
-        wsDelayIntervalId = setInterval(checkNewRows, 2000);
+        // تطبيق وضع الفحص (تلقائي أو يدوي) حسب الإعداد الحالي
+        applyDelayMode();
+        // تحديث نص الزر دورياً (لإظهار العد التنازلي لفترة التوقف المؤقت)
+        setInterval(updateCheckBtnLabel, 10000);
       }, 1000);
     });
   }
