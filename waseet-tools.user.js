@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      3.11
+// @version      3.12
 // @description  أدوات مركز خدمة العملاء - الوسيط للنقل العام (فحص تأخير تلقائي + تحكم بالشفافية + قوالب رسائل قابلة للتحرير + علامة استخدام + بحث ومراسلة برقمي الزبون الاول والثاني)
 // @match        https://alwaseet-iq.net/*
 // @grant        GM_setValue
