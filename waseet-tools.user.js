@@ -1280,7 +1280,7 @@
     function formatReps(data) {
       return Object.keys(data).map(function (name) {
         var n = data[name];
-        return name + ' (' + n + ')' + (n > 10 ? ' - القيد عالي' : '');
+        return name + ' (' + n + ')' + (n > 10 ? ' - ❌ القيد عالي' : '');
       }).join('\n');
     }
 
