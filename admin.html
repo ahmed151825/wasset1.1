@@ -766,7 +766,6 @@ async function pub(){
 
   // الخطوة 2: البحث عن marker
   var M='<script id="wsData" type="application/json">';
-  var ME='<\/script>';
   var i1=html.indexOf(M);
   if(i1===-1){
     pstep('❌ كتلة wsData غير موجودة — ارفع index.html الجديد على GitHub أولاً','err');
