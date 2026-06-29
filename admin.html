@@ -982,7 +982,7 @@ async function testGh(){
   var rep=document.getElementById('ghRepo').value.trim();
   if(!tok){el.innerHTML='<div class="gh-box gh-err">❌ أدخل Token أولاً</div>';return;}
   try{
-    var r=await fetch('https://api.github.com/repos/'+usr+'/'+rep,{headers:{'Authorization':'token '+tok}});
+    var r=await fetch('https://api.github.com/repos/'+usr+'/'+rep,{headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}});
     if(r.ok){var d=await r.json();el.innerHTML='<div class="gh-box gh-ok">✅ اتصال ناجح — '+d.full_name+' ('+(d.private?'خاص':'عام')+')</div>';addLog('اختبار GitHub — ناجح','ok');}
     else{el.innerHTML='<div class="gh-box gh-err">❌ فشل الاتصال — تحقق من Token والمستودع</div>';}
   }catch(e){el.innerHTML='<div class="gh-box gh-err">❌ خطأ في الشبكة: '+e.message+'</div>';}
@@ -1006,6 +1006,9 @@ function clearLogs(){if(!confirm('مسح سجل النشاط كاملاً؟'))re
 // PUBLISH — يجلب SHA الحالي دائماً قبل الرفع
 async function publishData(){
   if(!S.gh.token){toast('⚠️ أدخل GitHub Token في إعدادات GitHub','err');goTab('github');return;}
+  if(!S.gh.token.startsWith('ghp_')&&!S.gh.token.startsWith('github_pat_')){
+    toast('⚠️ Token غير صحيح — يجب أن يبدأ بـ ghp_','err');goTab('github');return;
+  }
 
   var data={
     version:S.version, status:S.status, desc:S.desc,
@@ -1018,10 +1021,10 @@ async function publishData(){
   var encoded=btoa(unescape(encodeURIComponent(content)));
   var apiBase='https://api.github.com/repos/'+S.gh.user+'/'+S.gh.repo+'/contents/';
   var headers={
-    'Authorization':'token '+S.gh.token,
-    'Accept':'application/vnd.github.v3+json',
-    'Content-Type':'application/json',
-    'Cache-Control':'no-cache'
+    'Authorization':'Bearer '+S.gh.token,
+    'Accept':'application/vnd.github+json',
+    'X-GitHub-Api-Version':'2022-11-28',
+    'Content-Type':'application/json'
   };
 
   toast('⏳ جاري جلب البيانات من GitHub...','');
