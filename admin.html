@@ -6,73 +6,157 @@
 <title>لوحة تحكم — waseet-tools</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#1E3A8A;--navy-d:#0F2057;--blue:#2563EB;--gold:#F59E0B;--green:#10B981;--red:#EF4444;--bg:#F0F4FF;--surface:#fff;--text:#0F172A;--muted:#64748B;--border:#E2E8F0;}
+:root{--navy:#1E3A8A;--navy-d:#0F2057;--blue:#2563EB;--gold:#F59E0B;--green:#10B981;--red:#EF4444;--purple:#8B5CF6;--orange:#F97316;--bg:#F0F4FF;--surface:#fff;--text:#0F172A;--muted:#64748B;--border:#E2E8F0;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* LOGIN */
 .login-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy-d),var(--navy));display:flex;align-items:center;justify-content:center;z-index:9999;}
-.login-box{background:#fff;border-radius:20px;padding:40px;width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);}
-.login-title{font-size:1.4rem;font-weight:800;color:var(--navy);margin-bottom:4px;margin-top:16px;}
-.login-sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+.login-box{background:#fff;border-radius:20px;padding:44px 40px;width:380px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.45);}
+.login-title{font-size:1.5rem;font-weight:900;color:var(--navy);margin:16px 0 4px;}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;}
 .login-field{position:relative;margin-bottom:14px;}
-.login-input{width:100%;padding:12px 16px;padding-left:44px;border:2px solid var(--border);border-radius:10px;font-family:'Cairo',sans-serif;font-size:14px;outline:none;text-align:center;transition:border-color .2s;}
+.login-input{width:100%;padding:13px 16px;padding-left:48px;border:2px solid var(--border);border-radius:12px;font-family:'Cairo',sans-serif;font-size:14px;outline:none;text-align:center;transition:border-color .2s;}
 .login-input:focus{border-color:var(--blue);}
-.eye-btn{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);}
-.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),#D97706);border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;color:#000;transition:transform .2s;}
+.eye-btn{position:absolute;left:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);}
+.login-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--gold),#D97706);border:none;border-radius:12px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;color:#000;transition:transform .2s,box-shadow .2s;box-shadow:0 4px 16px rgba(245,158,11,.4);}
 .login-btn:hover{transform:translateY(-2px);}
-.login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+.login-err{color:var(--red);font-size:13px;margin-top:12px;display:none;}
+
+/* LAYOUT */
 .admin-layout{display:flex;min-height:100vh;}
-.sidebar{width:240px;background:var(--navy-d);color:#fff;padding:24px 0;flex-shrink:0;position:fixed;top:0;bottom:0;overflow-y:auto;}
-.sidebar-brand{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:16px;}
-.sidebar-brand h2{font-size:15px;font-weight:800;}
-.sidebar-brand p{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;cursor:pointer;font-size:13px;font-weight:600;color:rgba(255,255,255,.7);transition:background .2s,color .2s;border-right:3px solid transparent;}
+.sidebar{width:260px;background:var(--navy-d);color:#fff;flex-shrink:0;position:fixed;top:0;bottom:0;overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar-brand{padding:22px 20px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sidebar-brand h2{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;}
+.sidebar-brand p{font-size:11px;color:rgba(255,255,255,.45);margin-top:3px;}
+.nav-section{padding:14px 20px 6px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.08em;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:rgba(255,255,255,.65);transition:all .2s;border-right:3px solid transparent;}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
 .nav-item.active{background:rgba(245,158,11,.12);color:var(--gold);border-right-color:var(--gold);}
-.main-content{margin-right:240px;flex:1;padding:32px;}
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
-.page-title{font-size:1.5rem;font-weight:800;color:var(--navy);}
-.page-sub{font-size:13px;color:var(--muted);margin-top:2px;}
-.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px;}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px;}
-.sci{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
-.sci-blue{background:#EFF6FF;}.sci-green{background:#ECFDF5;}.sci-gold{background:#FFFBEB;}.sci-purple{background:#F5F3FF;}
-.stat-val{font-size:1.6rem;font-weight:900;color:var(--navy);font-family:'JetBrains Mono',monospace;}
-.stat-lbl{font-size:12px;color:var(--muted);}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:24px;overflow:hidden;}
-.panel-header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
-.panel-title{font-size:15px;font-weight:700;color:var(--navy);}
-.panel-body{padding:24px;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-.form-row.full{grid-template-columns:1fr;}
-.form-group{display:flex;flex-direction:column;gap:6px;}
-.form-label{font-size:13px;font-weight:600;}
-.form-input,.form-select,.form-textarea{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;outline:none;transition:border-color .2s;background:#fff;color:var(--text);}
-.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--blue);}
-.form-textarea{resize:vertical;min-height:90px;line-height:1.6;}
-.form-hint{font-size:11px;color:var(--muted);}
-.btn{padding:10px 20px;border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:transform .15s;}
-.btn:hover{transform:translateY(-1px);}
-.btn-primary{background:linear-gradient(135deg,var(--blue),#1d4ed8);color:#fff;}
-.btn-success{background:linear-gradient(135deg,var(--green),#059669);color:#fff;}
-.btn-gold{background:linear-gradient(135deg,var(--gold),#D97706);color:#000;}
+.nav-icon{width:22px;text-align:center;font-size:15px;}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(255,255,255,.25);text-align:center;}
+.main-content{margin-right:260px;flex:1;padding:28px;}
+
+/* TOP BAR */
+.topbar{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+.topbar-title{font-size:1.2rem;font-weight:800;color:var(--navy);}
+.topbar-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.topbar-actions{display:flex;gap:8px;}
+
+/* STAT CARDS */
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;align-items:center;gap:12px;}
+.sc-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.sci-b{background:#EFF6FF;}.sci-g{background:#ECFDF5;}.sci-gold{background:#FFFBEB;}.sci-p{background:#F5F3FF;}.sci-r{background:#FEF2F2;}.sci-o{background:#FFF7ED;}
+.sc-val{font-size:1.5rem;font-weight:900;color:var(--navy);font-family:'JetBrains Mono',monospace;line-height:1;}
+.sc-lbl{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* PANEL */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:20px;overflow:hidden;}
+.panel-hdr{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.panel-title{font-size:14px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:7px;}
+.panel-body{padding:22px;}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.form-grid.full{grid-template-columns:1fr;}
+.form-grid.tri{grid-template-columns:1fr 1fr 1fr;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.flabel{font-size:12px;font-weight:700;color:var(--text);}
+.finput,.fselect,.ftextarea{width:100%;padding:9px 13px;border:2px solid var(--border);border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;outline:none;transition:border-color .2s;background:#fff;color:var(--text);}
+.finput:focus,.fselect:focus,.ftextarea:focus{border-color:var(--blue);}
+.ftextarea{resize:vertical;min-height:80px;line-height:1.6;}
+.fhint{font-size:11px;color:var(--muted);}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:transform .15s,opacity .2s;white-space:nowrap;}
+.btn:hover{transform:translateY(-1px);opacity:.9;}
+.btn:active{transform:translateY(0);}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-success{background:var(--green);color:#fff;}
+.btn-gold{background:var(--gold);color:#000;}
 .btn-danger{background:var(--red);color:#fff;}
+.btn-purple{background:var(--purple);color:#fff;}
+.btn-orange{background:var(--orange);color:#fff;}
 .btn-ghost{background:var(--bg);color:var(--text);border:1px solid var(--border);}
-.btn-sm{padding:6px 14px;font-size:12px;}
-.cl-table{width:100%;border-collapse:collapse;}
-.cl-table th{background:#F8FAFF;padding:10px 14px;text-align:right;font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);}
-.cl-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
-.cl-table tr:last-child td{border-bottom:none;}
-.cl-table tr:hover td{background:#F8FAFF;}
-.vbadge{background:#EFF6FF;color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;white-space:nowrap;}
-.sbadge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:8px;}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{background:#F8FAFF;padding:9px 14px;text-align:right;font-size:11px;color:var(--muted);font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap;}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:#F8FAFF;}
+.vbadge{background:#EFF6FF;color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap;}
+.sbadge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;}
 .sb-new{background:#ECFDF5;color:#059669;}.sb-old{background:#F1F5F9;color:var(--muted);}
-.gh-status{display:flex;align-items:center;gap:8px;font-size:12px;padding:10px 14px;border-radius:8px;margin-top:12px;}
-.gh-ok{background:#ECFDF5;color:#059669;}.gh-err{background:#FEF2F2;color:#DC2626;}.gh-warn{background:#FFFBEB;color:#D97706;}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:12px 28px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:transform .3s;z-index:99999;white-space:nowrap;}
+.sb-active{background:#ECFDF5;color:#059669;}.sb-inactive{background:#FEF2F2;color:#DC2626;}
+.sb-info{background:#EFF6FF;color:var(--blue);}.sb-warn{background:#FFFBEB;color:#D97706;}.sb-err{background:#FEF2F2;color:var(--red);}
+
+/* TOGGLE */
+.toggle{position:relative;width:42px;height:23px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.tslider{position:absolute;inset:0;background:#CBD5E1;border-radius:23px;cursor:pointer;transition:.3s;}
+.tslider::before{content:"";position:absolute;width:17px;height:17px;background:#fff;border-radius:50%;top:3px;right:3px;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.toggle input:checked + .tslider{background:var(--green);}
+.toggle input:checked + .tslider::before{transform:translateX(-19px);}
+
+/* NOTIF PREVIEW */
+.notif-preview{border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600;}
+.np-info{background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE;}
+.np-success{background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;}
+.np-warning{background:#FFFBEB;color:#92400E;border:1px solid #FCD34D;}
+.np-danger{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;}
+
+/* COLOR PICKER ROW */
+.color-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.color-chip{width:28px;height:28px;border-radius:8px;cursor:pointer;border:3px solid transparent;transition:transform .15s;}
+.color-chip:hover{transform:scale(1.15);}
+.color-chip.selected{border-color:var(--text);}
+
+/* ACTIVITY LOG */
+.log-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.log-item:last-child{border-bottom:none;}
+.log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.log-ld-ok{background:var(--green);}.log-ld-info{background:var(--blue);}.log-ld-warn{background:var(--gold);}
+.log-time{font-size:11px;color:var(--muted);white-space:nowrap;font-family:'JetBrains Mono',monospace;}
+.log-text{font-size:12px;color:var(--text);line-height:1.5;}
+
+/* GH STATUS */
+.gh-box{border-radius:10px;padding:10px 14px;font-size:12px;margin-top:12px;display:flex;align-items:center;gap:8px;}
+.gh-ok{background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;}
+.gh-err{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;}
+.gh-warn{background:#FFFBEB;color:#D97706;border:1px solid #FCD34D;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);color:#fff;padding:12px 28px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:transform .3s;z-index:99999;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal-box{background:#fff;border-radius:18px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4);transform:scale(.94);transition:transform .25s;}
+.modal-overlay.open .modal-box{transform:scale(1);}
+.modal-hdr{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:15px;font-weight:800;color:var(--navy);}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);}
+.modal-body{padding:22px 24px;}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
+/* TABS */
 .tab-content{display:none;}.tab-content.active{display:block;}
-.warn-box{background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:#92400E;line-height:1.6;}
-@media(max-width:768px){.sidebar{display:none;}.main-content{margin-right:0;padding:16px;}.form-row{grid-template-columns:1fr;}}
+
+/* WARN BOX */
+.warn-box{background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;font-size:13px;color:#92400E;line-height:1.6;margin-bottom:16px;}
+
+/* QUICK ACTIONS */
+.qa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;}
+.qa-btn{background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.qa-btn:hover{border-color:var(--blue);background:#EFF6FF;transform:translateY(-2px);}
+.qa-icon{font-size:1.6rem;}
+.qa-label{font-size:12px;font-weight:700;color:var(--text);}
+
+@media(max-width:768px){.sidebar{display:none;}.main-content{margin-right:0;padding:14px;}.form-grid{grid-template-columns:1fr;}.stat-cards{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -80,14 +164,14 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- LOGIN -->
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+    <svg width="60" height="60" viewBox="0 0 64 64" fill="none">
       <rect x="12" y="28" width="40" height="28" rx="6" fill="#1E3A8A"/>
       <path d="M20 28V20C20 13.373 25.373 8 32 8C38.627 8 44 13.373 44 20V28" stroke="#1E3A8A" stroke-width="5" stroke-linecap="round" fill="none"/>
       <circle cx="32" cy="42" r="5" fill="#F59E0B"/>
       <rect x="30" y="42" width="4" height="8" rx="2" fill="#F59E0B"/>
     </svg>
     <div class="login-title">لوحة التحكم</div>
-    <div class="login-sub">waseet-tools — أحمد محمد كريم</div>
+    <div class="login-sub">waseet-tools · أحمد محمد كريم</div>
     <div class="login-field">
       <input class="login-input" type="password" id="pwdInput" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
       <button class="eye-btn" onclick="toggleEye()">👁️</button>
@@ -99,105 +183,130 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
 
 <!-- LAYOUT -->
 <div class="admin-layout" id="adminLayout" style="display:none;">
+
+  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-brand">
       <h2>⚙️ لوحة التحكم</h2>
-      <p>waseet-tools admin</p>
+      <p>waseet-tools Admin Panel</p>
     </div>
-    <div class="nav-item active" data-tab="dashboard">📊 الرئيسية</div>
-    <div class="nav-item" data-tab="version">🚀 إدارة الإصدار</div>
-    <div class="nav-item" data-tab="changelog">📜 سجل التحديثات</div>
-    <div class="nav-item" data-tab="github">🐙 إعدادات GitHub</div>
-    <div style="position:absolute;bottom:16px;width:100%;padding:0 20px;text-align:center;font-size:10px;color:rgba(255,255,255,.25);">v3.20.4 © أحمد محمد كريم</div>
+    <div class="nav-section">الرئيسية</div>
+    <div class="nav-item active" data-tab="dashboard"><span class="nav-icon">📊</span> لوحة المعلومات</div>
+    <div class="nav-section">محتوى الموقع</div>
+    <div class="nav-item" data-tab="version"><span class="nav-icon">🚀</span> الإصدار والوصف</div>
+    <div class="nav-item" data-tab="changelog"><span class="nav-icon">📜</span> سجل التحديثات</div>
+    <div class="nav-item" data-tab="features"><span class="nav-icon">✨</span> الميزات والبطاقات</div>
+    <div class="nav-item" data-tab="hero"><span class="nav-icon">🖼️</span> قسم الهيرو</div>
+    <div class="nav-section">التواصل</div>
+    <div class="nav-item" data-tab="notif"><span class="nav-icon">🔔</span> الإشعارات والرسائل</div>
+    <div class="nav-item" data-tab="banner"><span class="nav-icon">📢</span> شريط الإعلانات</div>
+    <div class="nav-section">النظام</div>
+    <div class="nav-item" data-tab="github"><span class="nav-icon">🐙</span> إعدادات GitHub</div>
+    <div class="nav-item" data-tab="logs"><span class="nav-icon">📋</span> سجل النشاط</div>
+    <div class="sidebar-footer">v3.20.4 © أحمد محمد كريم 2026</div>
   </div>
 
+  <!-- MAIN -->
   <div class="main-content">
 
-    <!-- DASHBOARD -->
+    <!-- ══ DASHBOARD ══ -->
     <div class="tab-content active" id="tab-dashboard">
-      <div class="page-header">
-        <div><div class="page-title">📊 الرئيسية</div><div class="page-sub">مرحباً أحمد — إليك ملخص الحالة</div></div>
-        <button class="btn btn-gold" onclick="publishData()">🚀 نشر التغييرات على الموقع</button>
+      <div class="topbar">
+        <div><div class="topbar-title">📊 لوحة المعلومات</div><div class="topbar-sub">مرحباً أحمد — إليك ملخص الحالة الحالية</div></div>
+        <div class="topbar-actions">
+          <button class="btn btn-gold" onclick="publishData()">🚀 نشر التغييرات</button>
+          <button class="btn btn-ghost" onclick="window.open('https://ahmed151825.github.io/wasset1.1/','_blank')">🌐 معاينة</button>
+        </div>
       </div>
       <div class="stat-cards">
-        <div class="stat-card"><div class="sci sci-blue">🚀</div><div><div class="stat-val" id="dVer">—</div><div class="stat-lbl">الإصدار</div></div></div>
-        <div class="stat-card"><div class="sci sci-green">📜</div><div><div class="stat-val" id="dCl">—</div><div class="stat-lbl">تحديثات</div></div></div>
-        <div class="stat-card"><div class="sci sci-purple">🐙</div><div><div class="stat-val" id="dGh">—</div><div class="stat-lbl">GitHub</div></div></div>
+        <div class="sc"><div class="sc-icon sci-b">🚀</div><div><div class="sc-val" id="dVer">—</div><div class="sc-lbl">الإصدار</div></div></div>
+        <div class="sc"><div class="sc-icon sci-g">📜</div><div><div class="sc-val" id="dCl">—</div><div class="sc-lbl">تحديثات</div></div></div>
+        <div class="sc"><div class="sc-icon sci-gold">✨</div><div><div class="sc-val" id="dFeat">—</div><div class="sc-lbl">ميزات</div></div></div>
+        <div class="sc"><div class="sc-icon sci-p">🔔</div><div><div class="sc-val" id="dNotif">—</div><div class="sc-lbl">إشعارات</div></div></div>
+        <div class="sc"><div class="sc-icon sci-r">🐙</div><div><div class="sc-val" id="dGh">—</div><div class="sc-lbl">GitHub</div></div></div>
+        <div class="sc"><div class="sc-icon sci-o">📢</div><div><div class="sc-val" id="dBanner">—</div><div class="sc-lbl">الشريط</div></div></div>
       </div>
       <div class="panel">
-        <div class="panel-header"><div class="panel-title">⚡ إجراءات سريعة</div></div>
-        <div class="panel-body" style="display:flex;flex-wrap:wrap;gap:10px;">
-          <button class="btn btn-primary" onclick="goTab('version')">🚀 تحديث الإصدار</button>
-          <button class="btn btn-success" onclick="goTab('changelog')">➕ إضافة تحديث</button>
-          <button class="btn btn-ghost" onclick="window.open('https://ahmed151825.github.io/wasset1.1/','_blank')">🌐 معاينة الموقع</button>
-          <button class="btn btn-ghost" onclick="window.open('https://github.com/ahmed151825/wasset1.1','_blank')">🐙 فتح GitHub</button>
+        <div class="panel-hdr"><div class="panel-title">⚡ إجراءات سريعة</div></div>
+        <div class="panel-body">
+          <div class="qa-grid">
+            <div class="qa-btn" onclick="goTab('version')"><div class="qa-icon">🚀</div><div class="qa-label">تحديث الإصدار</div></div>
+            <div class="qa-btn" onclick="goTab('changelog');setTimeout(showAddForm,100)"><div class="qa-icon">➕</div><div class="qa-label">إضافة تحديث</div></div>
+            <div class="qa-btn" onclick="goTab('notif');setTimeout(function(){document.getElementById('notifActive').checked=true;},100)"><div class="qa-icon">🔔</div><div class="qa-label">إرسال إشعار</div></div>
+            <div class="qa-btn" onclick="goTab('banner')"><div class="qa-icon">📢</div><div class="qa-label">تعديل الشريط</div></div>
+            <div class="qa-btn" onclick="goTab('features')"><div class="qa-icon">✨</div><div class="qa-label">الميزات</div></div>
+            <div class="qa-btn" onclick="goTab('hero')"><div class="qa-icon">🖼️</div><div class="qa-label">قسم الهيرو</div></div>
+            <div class="qa-btn" onclick="publishData()"><div class="qa-icon">🚀</div><div class="qa-label">نشر الآن</div></div>
+            <div class="qa-btn" onclick="window.open('https://ahmed151825.github.io/wasset1.1/','_blank')"><div class="qa-icon">🌐</div><div class="qa-label">معاينة الموقع</div></div>
+          </div>
         </div>
       </div>
       <div class="panel">
-        <div class="panel-header"><div class="panel-title">📋 آخر التحديثات</div></div>
-        <div class="panel-body" id="dashCl" style="font-size:13px;color:var(--muted);line-height:2;"></div>
+        <div class="panel-hdr"><div class="panel-title">📋 آخر التحديثات المسجّلة</div></div>
+        <div class="panel-body" id="dashCl"></div>
       </div>
     </div>
 
-    <!-- VERSION -->
+    <!-- ══ VERSION ══ -->
     <div class="tab-content" id="tab-version">
-      <div class="page-header">
-        <div><div class="page-title">🚀 إدارة الإصدار</div></div>
-        <button class="btn btn-gold" onclick="publishData()">🚀 نشر على الموقع</button>
+      <div class="topbar">
+        <div><div class="topbar-title">🚀 الإصدار والوصف</div><div class="topbar-sub">تحديث رقم الإصدار وبيانات الموقع</div></div>
+        <button class="btn btn-gold" onclick="publishData()">🚀 نشر</button>
       </div>
       <div class="panel">
-        <div class="panel-header"><div class="panel-title">📝 بيانات الإصدار</div></div>
+        <div class="panel-hdr"><div class="panel-title">📝 بيانات الإصدار</div></div>
         <div class="panel-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">رقم الإصدار</label>
-              <input class="form-input" id="fVersion" placeholder="3.20.5">
-            </div>
-            <div class="form-group">
-              <label class="form-label">الحالة</label>
-              <select class="form-select" id="fStatus">
-                <option>متاح الآن</option>
-                <option>تحديث جديد</option>
-                <option>إصلاح عاجل</option>
-                <option>إصدار تجريبي</option>
+          <div class="form-grid">
+            <div class="fg"><label class="flabel">رقم الإصدار</label><input class="finput" id="fVer" placeholder="3.20.5"></div>
+            <div class="fg"><label class="flabel">الحالة</label>
+              <select class="fselect" id="fStatus">
+                <option>متاح الآن</option><option>تحديث جديد</option><option>إصلاح عاجل</option><option>إصدار تجريبي</option><option>قيد الاختبار</option>
               </select>
             </div>
           </div>
-          <div class="form-row full">
-            <div class="form-group">
-              <label class="form-label">وصف الموقع (hero)</label>
-              <input class="form-input" id="fDesc">
-            </div>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">وصف الموقع (hero-sub)</label><input class="finput" id="fDesc"></div>
           </div>
-          <div style="margin-top:4px;display:flex;gap:10px;">
+          <div class="form-grid tri">
+            <div class="fg"><label class="flabel">إجمالي الميزات</label><input class="finput" type="number" id="fStatFeat" value="11"></div>
+            <div class="fg"><label class="flabel">الصفحات المدعومة</label><input class="finput" type="number" id="fStatPages" value="4"></div>
+            <div class="fg"><label class="flabel">نص إضافي (stat3)</label><input class="finput" id="fStat3" value="100%"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
             <button class="btn btn-success" onclick="saveVersion()">💾 حفظ</button>
+            <button class="btn btn-ghost" onclick="loadVerFields()">↩️ تراجع</button>
           </div>
-          <div style="margin-top:16px;background:linear-gradient(135deg,#0F2057,#1E3A8A);border-radius:10px;padding:16px;text-align:center;">
-            <div style="display:inline-block;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:#FCD34D;font-size:12px;font-weight:600;padding:5px 16px;border-radius:20px;" id="badgePrev">🚀 الإصدار — </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">👁️ معاينة الشارة</div></div>
+        <div class="panel-body">
+          <div style="background:linear-gradient(135deg,#0F2057,#1E3A8A);border-radius:12px;padding:28px;text-align:center;">
+            <div style="display:inline-block;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:#FCD34D;font-size:13px;font-weight:600;padding:6px 18px;border-radius:20px;" id="badgePrev">🚀 الإصدار — </div>
+            <div style="color:rgba(255,255,255,.7);font-size:14px;margin-top:12px;" id="descPrev"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- CHANGELOG -->
+    <!-- ══ CHANGELOG ══ -->
     <div class="tab-content" id="tab-changelog">
-      <div class="page-header">
-        <div><div class="page-title">📜 سجل التحديثات</div></div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-success" onclick="showAddForm()">➕ إضافة</button>
+      <div class="topbar">
+        <div><div class="topbar-title">📜 سجل التحديثات</div><div class="topbar-sub">إضافة وتعديل وحذف تحديثات الإصدارات</div></div>
+        <div class="topbar-actions">
+          <button class="btn btn-success" onclick="showAddForm()">➕ إضافة تحديث</button>
           <button class="btn btn-gold" onclick="publishData()">🚀 نشر</button>
         </div>
       </div>
-
       <div class="panel" id="addPanel" style="display:none;">
-        <div class="panel-header"><div class="panel-title" id="addPanelTitle">➕ إضافة تحديث</div></div>
+        <div class="panel-hdr"><div class="panel-title" id="addPanelTitle">➕ تحديث جديد</div><button class="btn btn-ghost btn-sm" onclick="hideAddForm()">✕ إغلاق</button></div>
         <div class="panel-body">
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">رقم الإصدار</label><input class="form-input" id="nVer" placeholder="v3.20.5"></div>
-            <div class="form-group"><label class="form-label">التاريخ/الحالة</label><input class="form-input" id="nDate" placeholder="الأحدث"></div>
+          <div class="form-grid">
+            <div class="fg"><label class="flabel">رقم الإصدار</label><input class="finput" id="nVer" placeholder="v3.20.5"></div>
+            <div class="fg"><label class="flabel">التاريخ / الحالة</label><input class="finput" id="nDate" placeholder="الأحدث"></div>
           </div>
-          <div class="form-row full">
-            <div class="form-group"><label class="form-label">نص التحديث</label><textarea class="form-textarea" id="nText" placeholder="وصف التحديث أو الإصلاح..."></textarea></div>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">نص التحديث</label><textarea class="ftextarea" id="nText" placeholder="وصف التحديث أو الإصلاح..."></textarea></div>
           </div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-success" onclick="saveEntry()">💾 حفظ</button>
@@ -205,43 +314,217 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
           </div>
         </div>
       </div>
-
       <div class="panel">
-        <div class="panel-header"><div class="panel-title">📋 قائمة التحديثات</div></div>
+        <div class="panel-hdr"><div class="panel-title">📋 قائمة التحديثات</div><span id="clCount" style="font-size:12px;color:var(--muted);"></span></div>
         <div style="overflow-x:auto;">
-          <table class="cl-table">
-            <thead><tr><th>الإصدار</th><th>التاريخ</th><th>الوصف</th><th></th></tr></thead>
-            <tbody id="clBody"></tbody>
-          </table>
+          <table class="tbl"><thead><tr><th>الإصدار</th><th>التاريخ</th><th>الوصف</th><th>إجراءات</th></tr></thead><tbody id="clBody"></tbody></table>
         </div>
       </div>
     </div>
 
-    <!-- GITHUB -->
-    <div class="tab-content" id="tab-github">
-      <div class="page-header"><div><div class="page-title">🐙 إعدادات GitHub</div></div></div>
+    <!-- ══ FEATURES ══ -->
+    <div class="tab-content" id="tab-features">
+      <div class="topbar">
+        <div><div class="topbar-title">✨ الميزات والبطاقات</div><div class="topbar-sub">تحكم في الميزات الظاهرة في الموقع</div></div>
+        <div class="topbar-actions">
+          <button class="btn btn-success" onclick="openAddFeatModal()">➕ إضافة ميزة</button>
+          <button class="btn btn-gold" onclick="publishData()">🚀 نشر</button>
+        </div>
+      </div>
       <div class="panel">
-        <div class="panel-header"><div class="panel-title">🔑 بيانات API</div></div>
+        <div class="panel-hdr"><div class="panel-title">🎛️ قائمة الميزات</div><span id="featCount" style="font-size:12px;color:var(--muted);"></span></div>
+        <div style="overflow-x:auto;">
+          <table class="tbl"><thead><tr><th>الأيقونة</th><th>الاسم</th><th>الوصف</th><th>الوسم</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="featBody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HERO ══ -->
+    <div class="tab-content" id="tab-hero">
+      <div class="topbar">
+        <div><div class="topbar-title">🖼️ قسم الهيرو</div><div class="topbar-sub">تخصيص القسم الرئيسي في أعلى الصفحة</div></div>
+        <button class="btn btn-gold" onclick="publishData()">🚀 نشر</button>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">📝 نصوص الهيرو</div></div>
         <div class="panel-body">
-          <div class="warn-box">⚠️ <b>تنبيه:</b> لا تشارك هذه الصفحة مع أحد — تحتوي على صلاحيات تعديل المستودع.</div>
-          <div class="form-row full">
-            <div class="form-group">
-              <label class="form-label">GitHub Token</label>
-              <div style="position:relative;">
-                <input class="form-input" type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx" style="padding-left:44px;">
-                <button onclick="var i=document.getElementById('ghToken');i.type=i.type==='password'?'text':'password';" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;">👁️</button>
-              </div>
-              <span class="form-hint">من: github.com/settings/tokens → Generate new token (classic) → اختر repo</span>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">العنوان الرئيسي (السطر الأول)</label><input class="finput" id="heroTitle1" value="أدوات مركز"></div>
+          </div>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">العنوان الرئيسي (السطر الثاني — ذهبي)</label><input class="finput" id="heroTitle2" value="خدمة العملاء"></div>
+          </div>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">زر التثبيت</label><input class="finput" id="heroBtnText" value="⬇️ تثبيت الإضافة الآن"></div>
+          </div>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">زر الثانوي</label><input class="finput" id="heroBtnSecond" value="تعرف على المزايا ↓"></div>
+          </div>
+          <button class="btn btn-success" onclick="saveHero()" style="margin-top:8px;">💾 حفظ</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">🎨 ألوان الهيرو</div></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="fg"><label class="flabel">لون الخلفية (بداية)</label><input type="color" class="finput" id="heroBg1" value="#0F2057" style="height:44px;padding:4px;cursor:pointer;"></div>
+            <div class="fg"><label class="flabel">لون الخلفية (نهاية)</label><input type="color" class="finput" id="heroBg2" value="#1E40AF" style="height:44px;padding:4px;cursor:pointer;"></div>
+          </div>
+          <button class="btn btn-success" onclick="saveHero()" style="margin-top:8px;">💾 حفظ الألوان</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ NOTIFICATIONS ══ -->
+    <div class="tab-content" id="tab-notif">
+      <div class="topbar">
+        <div><div class="topbar-title">🔔 الإشعارات والرسائل</div><div class="topbar-sub">إرسال إشعار أو رسالة تظهر لزوار الموقع</div></div>
+        <button class="btn btn-gold" onclick="publishData()">🚀 نشر</button>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr">
+          <div class="panel-title">🔔 إعداد الإشعار</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;">
+            تفعيل الإشعار
+            <label class="toggle"><input type="checkbox" id="notifActive"><span class="tslider"></span></label>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">عنوان الإشعار</label><input class="finput" id="notifTitle" placeholder="مثال: تحديث جديد متاح 🎉"></div>
+          </div>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">نص الإشعار</label><textarea class="ftextarea" id="notifText" placeholder="اكتب محتوى الرسالة هنا..."></textarea></div>
+          </div>
+          <div class="form-grid">
+            <div class="fg">
+              <label class="flabel">نوع الإشعار</label>
+              <select class="fselect" id="notifType" onchange="updateNotifPreview()">
+                <option value="info">💙 معلومة</option>
+                <option value="success">💚 نجاح</option>
+                <option value="warning">💛 تحذير</option>
+                <option value="danger">❤️ تنبيه عاجل</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="flabel">موضع الإشعار</label>
+              <select class="fselect" id="notifPos">
+                <option value="top">أعلى الصفحة</option>
+                <option value="bottom">أسفل الصفحة</option>
+                <option value="modal">نافذة منبثقة</option>
+              </select>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">المستخدم</label><input class="form-input" id="ghUser" value="ahmed151825"></div>
-            <div class="form-group"><label class="form-label">المستودع</label><input class="form-input" id="ghRepo" value="wasset1.1"></div>
+          <div class="form-grid">
+            <div class="fg">
+              <label class="flabel">مدة الظهور</label>
+              <select class="fselect" id="notifDuration">
+                <option value="0">دائم حتى الإغلاق</option>
+                <option value="5000">5 ثوانٍ</option>
+                <option value="10000">10 ثوانٍ</option>
+                <option value="30000">30 ثانية</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="flabel">زر الإجراء (اختياري)</label>
+              <input class="finput" id="notifBtn" placeholder="مثال: تحديث الآن">
+            </div>
           </div>
-          <div class="form-row full">
-            <div class="form-group"><label class="form-label">الفرع</label><input class="form-input" id="ghBranch" value="main"></div>
+          <button class="btn btn-success" onclick="saveNotif()" style="margin-top:8px;">💾 حفظ الإشعار</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">👁️ معاينة الإشعار</div></div>
+        <div class="panel-body" id="notifPreviewBox">
+          <div class="notif-preview np-info">💙 <span>معاينة الإشعار ستظهر هنا...</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">📋 سجل الإشعارات السابقة</div></div>
+        <div class="panel-body" id="notifHistory"></div>
+      </div>
+    </div>
+
+    <!-- ══ BANNER ══ -->
+    <div class="tab-content" id="tab-banner">
+      <div class="topbar">
+        <div><div class="topbar-title">📢 شريط الإعلانات</div><div class="topbar-sub">شريط ثابت يظهر في أعلى أو أسفل الموقع</div></div>
+        <button class="btn btn-gold" onclick="publishData()">🚀 نشر</button>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr">
+          <div class="panel-title">📢 إعداد الشريط</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;">
+            تفعيل الشريط
+            <label class="toggle"><input type="checkbox" id="bannerActive"><span class="tslider"></span></label>
           </div>
-          <div style="display:flex;gap:8px;margin-top:4px;">
+        </div>
+        <div class="panel-body">
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">نص الشريط</label><input class="finput" id="bannerText" placeholder="مثال: 🎉 الإصدار الجديد v3.21 متاح الآن — اضغط للتحديث"></div>
+          </div>
+          <div class="form-grid">
+            <div class="fg">
+              <label class="flabel">لون الخلفية</label>
+              <div class="color-row" id="bannerColorRow">
+                <div class="color-chip selected" style="background:#1E3A8A;" data-color="#1E3A8A" onclick="pickBannerColor(this)"></div>
+                <div class="color-chip" style="background:#059669;" data-color="#059669" onclick="pickBannerColor(this)"></div>
+                <div class="color-chip" style="background:#DC2626;" data-color="#DC2626" onclick="pickBannerColor(this)"></div>
+                <div class="color-chip" style="background:#D97706;" data-color="#D97706" onclick="pickBannerColor(this)"></div>
+                <div class="color-chip" style="background:#7C3AED;" data-color="#7C3AED" onclick="pickBannerColor(this)"></div>
+                <div class="color-chip" style="background:#0F172A;" data-color="#0F172A" onclick="pickBannerColor(this)"></div>
+                <input type="color" style="width:28px;height:28px;border:none;border-radius:8px;cursor:pointer;padding:0;" id="bannerColorCustom" onchange="setCustomBannerColor(this.value)">
+              </div>
+            </div>
+            <div class="fg">
+              <label class="flabel">موضع الشريط</label>
+              <select class="fselect" id="bannerPos">
+                <option value="top">أعلى الصفحة</option>
+                <option value="bottom">أسفل الصفحة</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid full">
+            <div class="fg"><label class="flabel">رابط (اختياري — عند الضغط على الشريط)</label><input class="finput" id="bannerLink" placeholder="https://..."></div>
+          </div>
+          <button class="btn btn-success" onclick="saveBanner()" style="margin-top:8px;">💾 حفظ الشريط</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">👁️ معاينة الشريط</div></div>
+        <div class="panel-body">
+          <div id="bannerPreview" style="background:#1E3A8A;color:#fff;padding:10px 20px;border-radius:8px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;">
+            📢 اضغط على حفظ الشريط لمعاينته
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ GITHUB ══ -->
+    <div class="tab-content" id="tab-github">
+      <div class="topbar">
+        <div><div class="topbar-title">🐙 إعدادات GitHub</div><div class="topbar-sub">ربط لوحة التحكم بمستودعك</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">🔑 بيانات API</div></div>
+        <div class="panel-body">
+          <div class="warn-box">⚠️ <b>تنبيه أمان:</b> لا تشارك هذه الصفحة مع أحد — تحتوي على صلاحيات تعديل المستودع.</div>
+          <div class="form-grid full">
+            <div class="fg">
+              <label class="flabel">GitHub Personal Access Token</label>
+              <div style="position:relative;">
+                <input class="finput" type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx" style="padding-left:46px;">
+                <button onclick="var i=document.getElementById('ghToken');i.type=i.type==='password'?'text':'password';" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;">👁️</button>
+              </div>
+              <span class="fhint">من: <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--blue);">github.com/settings/tokens/new ←</a> — اختر repo</span>
+            </div>
+          </div>
+          <div class="form-grid tri">
+            <div class="fg"><label class="flabel">المستخدم</label><input class="finput" id="ghUser" value="ahmed151825"></div>
+            <div class="fg"><label class="flabel">المستودع</label><input class="finput" id="ghRepo" value="wasset1.1"></div>
+            <div class="fg"><label class="flabel">الفرع</label><input class="finput" id="ghBranch" value="main"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
             <button class="btn btn-primary" onclick="saveGh()">💾 حفظ</button>
             <button class="btn btn-ghost" onclick="testGh()">🔗 اختبار الاتصال</button>
           </div>
@@ -249,10 +532,10 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
         </div>
       </div>
       <div class="panel">
-        <div class="panel-header"><div class="panel-title">📖 كيفية إنشاء Token</div></div>
+        <div class="panel-hdr"><div class="panel-title">📖 كيفية إنشاء Token</div></div>
         <div class="panel-body">
-          <ol style="padding-right:20px;font-size:13px;line-height:2.2;">
-            <li>اذهب لـ <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--blue);font-weight:600;">github.com/settings/tokens/new ←</a></li>
+          <ol style="padding-right:20px;font-size:13px;line-height:2.4;color:var(--text);">
+            <li>اذهب لـ <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--blue);font-weight:700;">github.com/settings/tokens/new ←</a></li>
             <li>Note: <b>waseet-admin</b> &nbsp;|&nbsp; Expiration: <b>No expiration</b></li>
             <li>ضع ✅ على <b>repo</b> فقط</li>
             <li>اضغط <b>Generate token</b> وانسخ الرمز (يبدأ بـ ghp_)</li>
@@ -262,39 +545,115 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
       </div>
     </div>
 
+    <!-- ══ LOGS ══ -->
+    <div class="tab-content" id="tab-logs">
+      <div class="topbar">
+        <div><div class="topbar-title">📋 سجل النشاط</div><div class="topbar-sub">كل العمليات التي تمت عبر لوحة التحكم</div></div>
+        <button class="btn btn-danger" onclick="clearLogs()">🗑️ مسح السجل</button>
+      </div>
+      <div class="panel">
+        <div class="panel-hdr"><div class="panel-title">📋 آخر العمليات</div><span id="logCount" style="font-size:12px;color:var(--muted);"></span></div>
+        <div class="panel-body" id="logsBody"></div>
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
+</div>
+
+<!-- MODAL: إضافة/تعديل ميزة -->
+<div class="modal-overlay" id="featModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div class="modal-title" id="featModalTitle">➕ إضافة ميزة جديدة</div>
+      <button class="modal-close" onclick="closeFeatModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg"><label class="flabel">الأيقونة (إيموجي)</label><input class="finput" id="fIcon" placeholder="💬" style="font-size:1.5rem;text-align:center;"></div>
+        <div class="fg"><label class="flabel">لون البطاقة</label>
+          <select class="fselect" id="fColor">
+            <option value="fc-blue">أزرق</option><option value="fc-green">أخضر</option><option value="fc-gold">ذهبي</option>
+            <option value="fc-purple">بنفسجي</option><option value="fc-red">أحمر</option><option value="fc-navy">كحلي</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid full">
+        <div class="fg"><label class="flabel">اسم الميزة</label><input class="finput" id="fFeatName" placeholder="مثال: واتساب بضغطة واحدة"></div>
+      </div>
+      <div class="form-grid full">
+        <div class="fg"><label class="flabel">وصف الميزة</label><textarea class="ftextarea" id="fFeatDesc" placeholder="وصف مختصر للميزة..."></textarea></div>
+      </div>
+      <div class="form-grid">
+        <div class="fg"><label class="flabel">نص الوسم</label><input class="finput" id="fFeatTag" placeholder="📦 call_center"></div>
+        <div class="fg"><label class="flabel">لون الوسم</label>
+          <select class="fselect" id="fTagColor">
+            <option value="tag-blue">أزرق</option><option value="tag-green">أخضر</option><option value="tag-gold">ذهبي</option><option value="tag-purple">بنفسجي</option><option value="tag-red">أحمر</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeFeatModal()">إلغاء</button>
+      <button class="btn btn-success" onclick="saveFeat()">💾 حفظ الميزة</button>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ══ كلمة المرور — غيّرها ══
 var PASS = 'waseet2026';
-
-// ══ STATE ══
 var S = {
   version:'3.20.4', status:'متاح الآن',
   desc:'إضافة متصفح احترافية تُضاف على بوابة الوسيط — واتساب بلحظة، محفظة شهرية، فحص تأخير تلقائي، وتقييم للمناديب.',
+  statFeat:11, statPages:4, stat3:'100%',
+  hero:{title1:'أدوات مركز',title2:'خدمة العملاء',btn1:'⬇️ تثبيت الإضافة الآن',btn2:'تعرف على المزايا ↓',bg1:'#0F2057',bg2:'#1E40AF'},
   changelog:[
     {version:'v3.20.4',date:'الأحدث',text:'✅ إصلاح حاسم: المحفظة تقرأ طلبات اليوم الحالي فقط.'},
     {version:'v3.20.3',date:'إصدار سابق',text:'✅ إصلاح جوهري: buildCountsForDate() تفلتر الصفوف بتاريخها الفعلي.'},
     {version:'v3.20.x',date:'سلسلة إصلاحات',text:'🔧 إصلاح MutationObserver اللانهائي — منع تكرار النوافذ.'},
     {version:'v3.x',date:'نسخ سابقة',text:'🎉 إضافة نظام المحفظة الشهرية — التقييم الأسبوعي — فحص التأخير.'}
   ],
+  features:[
+    {emoji:'💬',name:'واتساب بضغطة واحدة',desc:'رسائل للتاجر والزبون مباشرةً',tag:'📦 call_center',tagColor:'tag-blue',color:'fc-blue',active:true},
+    {emoji:'💰',name:'المحفظة الشهرية',desc:'تتبع الأجور اليومية',tag:'💾 حفظ تلقائي',tagColor:'tag-green',color:'fc-green',active:true},
+    {emoji:'🔴',name:'فحص التأخير التلقائي',desc:'رصد الطلبات المتأخرة 24 ساعة',tag:'⏱ كل 90 ث',tagColor:'tag-red',color:'fc-red',active:true},
+    {emoji:'⭐',name:'تقييم المناديب',desc:'إحصائية أسبوعية',tag:'📊 تقرير أسبوعي',tagColor:'tag-purple',color:'fc-purple',active:true},
+    {emoji:'📱',name:'رسالة SMS',desc:'رسالة نصية للزبون',tag:'📨 SMS',tagColor:'tag-gold',color:'fc-gold',active:true},
+    {emoji:'🔎',name:'بحث برقم الهاتف',desc:'سجل الزبون من رقمه',tag:'🔗 ربط مباشر',tagColor:'tag-blue',color:'fc-navy',active:true},
+    {emoji:'🔍',name:'قصة الطلب',desc:'تاريخ الطلب كاملاً',tag:'🪟 نافذة منفصلة',tagColor:'tag-blue',color:'fc-blue',active:true},
+    {emoji:'📋',name:'تقرير الأجور',desc:'نسخ تقرير منسّق',tag:'📝 قالب مخصص',tagColor:'tag-green',color:'fc-green',active:true},
+    {emoji:'🌐',name:'تغيير العنوان',desc:'فتح صفحة التعديل مباشرةً',tag:'✏️ تعديل',tagColor:'tag-purple',color:'fc-purple',active:true},
+    {emoji:'📊',name:'نسخ قائمة المناديب',desc:'جمع من كل الصفحات',tag:'📑 جميع الصفحات',tagColor:'tag-gold',color:'fc-gold',active:true},
+    {emoji:'⚙️',name:'إعدادات كاملة',desc:'إخفاء وإظهار وتخصيص',tag:'💾 حفظ دائم',tagColor:'tag-red',color:'fc-red',active:true}
+  ],
+  notif:{active:false,title:'',text:'',type:'info',pos:'top',duration:0,btn:''},
+  notifHistory:[],
+  banner:{active:false,text:'',color:'#1E3A8A',pos:'top',link:''},
   gh:{token:'',user:'ahmed151825',repo:'wasset1.1',branch:'main'},
-  editIdx:-1
+  logs:[]
 };
+var editIdx=-1, featEditIdx=-1, bannerColor='#1E3A8A';
 
 function loadS(){
-  try{var s=localStorage.getItem('wsAdm');if(s)Object.assign(S,JSON.parse(s));}catch(e){}
+  try{var s=localStorage.getItem('wsAdm2');if(s){var p=JSON.parse(s);Object.keys(p).forEach(function(k){if(k!=='gh')S[k]=p[k];});}}catch(e){}
   try{var g=localStorage.getItem('wsAdmGh');if(g)S.gh=Object.assign(S.gh,JSON.parse(g));}catch(e){}
 }
 function saveS(){
-  try{localStorage.setItem('wsAdm',JSON.stringify({version:S.version,status:S.status,desc:S.desc,changelog:S.changelog}));}catch(e){}
+  try{
+    var save={version:S.version,status:S.status,desc:S.desc,statFeat:S.statFeat,statPages:S.statPages,stat3:S.stat3,
+      hero:S.hero,changelog:S.changelog,features:S.features,notif:S.notif,notifHistory:S.notifHistory,banner:S.banner,logs:S.logs};
+    localStorage.setItem('wsAdm2',JSON.stringify(save));
+  }catch(e){}
 }
 function saveGhS(){try{localStorage.setItem('wsAdmGh',JSON.stringify(S.gh));}catch(e){}}
+function addLog(text,type){
+  S.logs.unshift({text:text,type:type||'info',time:new Date().toLocaleString('ar-IQ')});
+  if(S.logs.length>50)S.logs.pop();
+  saveS();
+}
 
-// ══ LOGIN ══
+// LOGIN
 function toggleEye(){var i=document.getElementById('pwdInput');i.type=i.type==='password'?'text':'password';}
 function doLogin(){
   if(document.getElementById('pwdInput').value===PASS){
@@ -304,108 +663,120 @@ function doLogin(){
   } else {
     document.getElementById('loginErr').style.display='block';
     document.getElementById('pwdInput').value='';
+    document.getElementById('pwdInput').focus();
   }
 }
 
-// ══ TABS ══
+// TABS
 function goTab(id){
   document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   document.getElementById('tab-'+id).classList.add('active');
-  document.querySelector('[data-tab="'+id+'"]').classList.add('active');
-  if(id==='dashboard')renderDash();
-  if(id==='changelog')renderCl();
-  if(id==='version')loadVerFields();
-  if(id==='github')loadGhFields();
+  var ni=document.querySelector('[data-tab="'+id+'"]');if(ni)ni.classList.add('active');
+  var fns={dashboard:renderDash,changelog:renderCl,features:renderFeat,version:loadVerFields,github:loadGhFields,notif:loadNotifFields,banner:loadBannerFields,logs:renderLogs,hero:loadHeroFields};
+  if(fns[id])fns[id]();
 }
 document.querySelectorAll('.nav-item[data-tab]').forEach(function(el){
   el.addEventListener('click',function(){goTab(this.dataset.tab);});
 });
 
-// ══ TOAST ══
+// TOAST
 function toast(m,t){
   var el=document.getElementById('toast');
   el.textContent=m;
-  el.style.background=t==='err'?'#DC2626':t==='ok'?'#059669':'#1E3A8A';
+  el.style.background=t==='err'?'#DC2626':t==='ok'?'#059669':t==='warn'?'#D97706':'#1E3A8A';
   el.classList.add('show');
   setTimeout(function(){el.classList.remove('show');},3000);
 }
 
-// ══ DASHBOARD ══
+// HELPERS
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// DASHBOARD
 function renderDash(){
   document.getElementById('dVer').textContent=S.version;
   document.getElementById('dCl').textContent=S.changelog.length;
+  document.getElementById('dFeat').textContent=S.features.filter(function(f){return f.active;}).length;
+  document.getElementById('dNotif').textContent=S.notif.active?'✅':'❌';
   document.getElementById('dGh').textContent=S.gh.token?'✅':'❌';
-  var el=document.getElementById('dashCl');
-  el.innerHTML='';
-  S.changelog.slice(0,3).forEach(function(cl){
-    el.innerHTML+='<div style="padding:6px 0;border-bottom:1px solid var(--border);"><span style="background:#EFF6FF;color:#2563EB;font-family:monospace;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;">'+cl.version+'</span>'+cl.text.slice(0,70)+(cl.text.length>70?'...':'')+'</div>';
+  document.getElementById('dBanner').textContent=S.banner.active?'✅':'❌';
+  var el=document.getElementById('dashCl');el.innerHTML='';
+  S.changelog.slice(0,4).forEach(function(cl){
+    el.innerHTML+='<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;"><span class="vbadge">'+esc(cl.version)+'</span><span style="font-size:12px;color:var(--muted);flex:1;">'+esc(cl.text).slice(0,80)+(cl.text.length>80?'...':'')+'</span></div>';
   });
 }
 
-// ══ VERSION ══
+// VERSION
 function loadVerFields(){
-  document.getElementById('fVersion').value=S.version;
+  document.getElementById('fVer').value=S.version;
   document.getElementById('fStatus').value=S.status;
   document.getElementById('fDesc').value=S.desc;
+  document.getElementById('fStatFeat').value=S.statFeat;
+  document.getElementById('fStatPages').value=S.statPages;
+  document.getElementById('fStat3').value=S.stat3;
   updateBadge();
 }
 function updateBadge(){
-  var v=document.getElementById('fVersion').value||S.version;
+  var v=document.getElementById('fVer').value||S.version;
   var s=document.getElementById('fStatus').value||S.status;
+  var d=document.getElementById('fDesc').value||S.desc;
   document.getElementById('badgePrev').textContent='🚀 الإصدار '+v+' — '+s;
+  document.getElementById('descPrev').textContent=d;
 }
-document.getElementById('fVersion').addEventListener('input',updateBadge);
+['fVer','fDesc'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('input',updateBadge);});
 document.getElementById('fStatus').addEventListener('change',updateBadge);
 function saveVersion(){
-  S.version=document.getElementById('fVersion').value.trim()||S.version;
+  S.version=document.getElementById('fVer').value.trim()||S.version;
   S.status=document.getElementById('fStatus').value;
   S.desc=document.getElementById('fDesc').value.trim()||S.desc;
-  saveS();
-  toast('✅ تم الحفظ — اضغط نشر لتفعيله على الموقع','ok');
+  S.statFeat=parseInt(document.getElementById('fStatFeat').value)||S.statFeat;
+  S.statPages=parseInt(document.getElementById('fStatPages').value)||S.statPages;
+  S.stat3=document.getElementById('fStat3').value.trim()||S.stat3;
+  saveS();addLog('تم تحديث الإصدار إلى v'+S.version,'ok');
+  toast('✅ تم الحفظ — اضغط نشر لتفعيله','ok');
+  updateBadge();
 }
 
-// ══ CHANGELOG ══
+// CHANGELOG
 function renderCl(){
   var tb=document.getElementById('clBody');tb.innerHTML='';
+  document.getElementById('clCount').textContent=S.changelog.length+' تحديث';
   S.changelog.forEach(function(cl,i){
     var tr=document.createElement('tr');
     tr.innerHTML=
       '<td><span class="vbadge">'+esc(cl.version)+'</span></td>'+
       '<td><span class="sbadge '+(i===0?'sb-new':'sb-old')+'">'+esc(cl.date)+'</span></td>'+
-      '<td style="max-width:320px;color:var(--muted);font-size:12px;">'+esc(cl.text).slice(0,90)+(cl.text.length>90?'...':'')+'</td>'+
+      '<td style="max-width:300px;color:var(--muted);font-size:12px;">'+esc(cl.text).slice(0,80)+(cl.text.length>80?'...':'')+'</td>'+
       '<td style="white-space:nowrap;">'+
-        '<button class="btn btn-ghost btn-sm" onclick="editEntry('+i+')" style="margin-left:6px;">✏️</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="editEntry('+i+')" style="margin-left:4px;">✏️ تعديل</button>'+
         '<button class="btn btn-danger btn-sm" onclick="delEntry('+i+')">🗑️</button>'+
       '</td>';
     tb.appendChild(tr);
   });
 }
 function showAddForm(){
-  S.editIdx=-1;
-  document.getElementById('addPanelTitle').textContent='➕ إضافة تحديث جديد';
+  editIdx=-1;
+  document.getElementById('addPanelTitle').textContent='➕ تحديث جديد';
   document.getElementById('nVer').value='';
   document.getElementById('nDate').value='الأحدث';
   document.getElementById('nText').value='';
   document.getElementById('addPanel').style.display='block';
   document.getElementById('nVer').focus();
 }
-function hideAddForm(){document.getElementById('addPanel').style.display='none';}
+function hideAddForm(){document.getElementById('addPanel').style.display='none';editIdx=-1;}
 function saveEntry(){
   var v=document.getElementById('nVer').value.trim();
   var d=document.getElementById('nDate').value.trim()||'إضافة جديدة';
   var t=document.getElementById('nText').value.trim();
-  if(!v||!t){toast('يرجى ملء الإصدار والوصف','err');return;}
-  if(S.editIdx>=0){
-    S.changelog[S.editIdx]={version:v,date:d,text:t};
-  } else {
-    S.changelog.unshift({version:v,date:d,text:t});
-  }
+  if(!v||!t){toast('يرجى ملء رقم الإصدار والوصف','err');return;}
+  if(editIdx>=0){S.changelog[editIdx]={version:v,date:d,text:t};}
+  else{S.changelog.unshift({version:v,date:d,text:t});}
   saveS();renderCl();hideAddForm();
-  toast('✅ تم الحفظ — اضغط نشر لتفعيله','ok');
+  addLog((editIdx>=0?'تعديل':'إضافة')+' تحديث '+v,'ok');
+  toast('✅ تم — اضغط نشر لتفعيله','ok');
 }
 function editEntry(i){
-  S.editIdx=i;
+  editIdx=i;
   document.getElementById('addPanelTitle').textContent='✏️ تعديل تحديث';
   document.getElementById('nVer').value=S.changelog[i].version;
   document.getElementById('nDate').value=S.changelog[i].date;
@@ -415,11 +786,181 @@ function editEntry(i){
 }
 function delEntry(i){
   if(!confirm('حذف هذا التحديث؟'))return;
+  var v=S.changelog[i].version;
   S.changelog.splice(i,1);saveS();renderCl();
+  addLog('حذف تحديث '+v,'warn');
   toast('🗑️ تم الحذف','ok');
 }
 
-// ══ GITHUB ══
+// FEATURES
+function renderFeat(){
+  var tb=document.getElementById('featBody');tb.innerHTML='';
+  document.getElementById('featCount').textContent=S.features.filter(function(f){return f.active;}).length+' نشطة / '+S.features.length+' إجمالي';
+  S.features.forEach(function(f,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML=
+      '<td style="font-size:1.4rem;text-align:center;">'+esc(f.emoji)+'</td>'+
+      '<td style="font-weight:700;">'+esc(f.name)+'</td>'+
+      '<td style="color:var(--muted);font-size:12px;max-width:200px;">'+esc(f.desc)+'</td>'+
+      '<td><span class="sbadge sb-info" style="font-size:10px;">'+esc(f.tag)+'</span></td>'+
+      '<td><label class="toggle"><input type="checkbox" '+(f.active?'checked':'')+' onchange="toggleFeat('+i+',this.checked)"><span class="tslider"></span></label></td>'+
+      '<td style="white-space:nowrap;">'+
+        '<button class="btn btn-ghost btn-sm" onclick="editFeat('+i+')" style="margin-left:4px;">✏️</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delFeat('+i+')">🗑️</button>'+
+      '</td>';
+    tb.appendChild(tr);
+  });
+}
+function toggleFeat(i,val){
+  S.features[i].active=val;saveS();
+  document.getElementById('featCount').textContent=S.features.filter(function(f){return f.active;}).length+' نشطة / '+S.features.length+' إجمالي';
+  addLog((val?'تفعيل':'إخفاء')+' ميزة: '+S.features[i].name,'info');
+  toast((val?'✅ تم تفعيل':'❌ تم إخفاء')+' '+S.features[i].name,'ok');
+}
+function openAddFeatModal(){
+  featEditIdx=-1;
+  document.getElementById('featModalTitle').textContent='➕ إضافة ميزة جديدة';
+  document.getElementById('fIcon').value='';document.getElementById('fFeatName').value='';
+  document.getElementById('fFeatDesc').value='';document.getElementById('fFeatTag').value='';
+  document.getElementById('fColor').value='fc-blue';document.getElementById('fTagColor').value='tag-blue';
+  document.getElementById('featModal').classList.add('open');
+}
+function editFeat(i){
+  featEditIdx=i;var f=S.features[i];
+  document.getElementById('featModalTitle').textContent='✏️ تعديل ميزة';
+  document.getElementById('fIcon').value=f.emoji;document.getElementById('fFeatName').value=f.name;
+  document.getElementById('fFeatDesc').value=f.desc;document.getElementById('fFeatTag').value=f.tag;
+  document.getElementById('fColor').value=f.color||'fc-blue';document.getElementById('fTagColor').value=f.tagColor||'tag-blue';
+  document.getElementById('featModal').classList.add('open');
+}
+function closeFeatModal(){document.getElementById('featModal').classList.remove('open');featEditIdx=-1;}
+function saveFeat(){
+  var icon=document.getElementById('fIcon').value.trim();
+  var name=document.getElementById('fFeatName').value.trim();
+  var desc=document.getElementById('fFeatDesc').value.trim();
+  var tag=document.getElementById('fFeatTag').value.trim();
+  var color=document.getElementById('fColor').value;
+  var tagColor=document.getElementById('fTagColor').value;
+  if(!name){toast('أدخل اسم الميزة','err');return;}
+  var obj={emoji:icon||'⭐',name:name,desc:desc,tag:tag,tagColor:tagColor,color:color,active:true};
+  if(featEditIdx>=0){S.features[featEditIdx]=obj;}else{S.features.push(obj);}
+  saveS();renderFeat();closeFeatModal();
+  addLog((featEditIdx>=0?'تعديل':'إضافة')+' ميزة: '+name,'ok');
+  toast('✅ تم — اضغط نشر لتفعيله','ok');
+}
+function delFeat(i){
+  if(!confirm('حذف ميزة "'+S.features[i].name+'"؟'))return;
+  var n=S.features[i].name;S.features.splice(i,1);saveS();renderFeat();
+  addLog('حذف ميزة: '+n,'warn');toast('🗑️ تم الحذف','ok');
+}
+
+// HERO
+function loadHeroFields(){
+  document.getElementById('heroTitle1').value=S.hero.title1||'أدوات مركز';
+  document.getElementById('heroTitle2').value=S.hero.title2||'خدمة العملاء';
+  document.getElementById('heroBtnText').value=S.hero.btn1||'⬇️ تثبيت الإضافة الآن';
+  document.getElementById('heroBtnSecond').value=S.hero.btn2||'تعرف على المزايا ↓';
+  document.getElementById('heroBg1').value=S.hero.bg1||'#0F2057';
+  document.getElementById('heroBg2').value=S.hero.bg2||'#1E40AF';
+}
+function saveHero(){
+  S.hero={
+    title1:document.getElementById('heroTitle1').value.trim(),
+    title2:document.getElementById('heroTitle2').value.trim(),
+    btn1:document.getElementById('heroBtnText').value.trim(),
+    btn2:document.getElementById('heroBtnSecond').value.trim(),
+    bg1:document.getElementById('heroBg1').value,
+    bg2:document.getElementById('heroBg2').value
+  };
+  saveS();addLog('تعديل قسم الهيرو','info');
+  toast('✅ تم حفظ الهيرو — اضغط نشر','ok');
+}
+
+// NOTIFICATIONS
+function loadNotifFields(){
+  document.getElementById('notifActive').checked=S.notif.active||false;
+  document.getElementById('notifTitle').value=S.notif.title||'';
+  document.getElementById('notifText').value=S.notif.text||'';
+  document.getElementById('notifType').value=S.notif.type||'info';
+  document.getElementById('notifPos').value=S.notif.pos||'top';
+  document.getElementById('notifDuration').value=S.notif.duration||0;
+  document.getElementById('notifBtn').value=S.notif.btn||'';
+  renderNotifHistory();updateNotifPreview();
+}
+function updateNotifPreview(){
+  var type=document.getElementById('notifType').value;
+  var title=document.getElementById('notifTitle').value||'عنوان الإشعار';
+  var text=document.getElementById('notifText').value||'نص الإشعار...';
+  var cls={info:'np-info',success:'np-success',warning:'np-warning',danger:'np-danger'}[type]||'np-info';
+  var icon={info:'💙',success:'💚',warning:'💛',danger:'❤️'}[type]||'💙';
+  document.getElementById('notifPreviewBox').innerHTML=
+    '<div class="notif-preview '+cls+'">'+icon+' <div><div style="font-weight:800;margin-bottom:3px;">'+esc(title)+'</div><div style="font-size:12px;font-weight:400;">'+esc(text)+'</div></div></div>';
+}
+document.getElementById('notifTitle').addEventListener('input',updateNotifPreview);
+document.getElementById('notifText').addEventListener('input',updateNotifPreview);
+document.getElementById('notifType').addEventListener('change',updateNotifPreview);
+function saveNotif(){
+  var prev=S.notif.active;
+  S.notif={
+    active:document.getElementById('notifActive').checked,
+    title:document.getElementById('notifTitle').value.trim(),
+    text:document.getElementById('notifText').value.trim(),
+    type:document.getElementById('notifType').value,
+    pos:document.getElementById('notifPos').value,
+    duration:parseInt(document.getElementById('notifDuration').value)||0,
+    btn:document.getElementById('notifBtn').value.trim()
+  };
+  if(S.notif.active&&S.notif.title){
+    S.notifHistory.unshift({title:S.notif.title,text:S.notif.text,type:S.notif.type,time:new Date().toLocaleString('ar-IQ')});
+    if(S.notifHistory.length>20)S.notifHistory.pop();
+  }
+  saveS();renderNotifHistory();addLog((S.notif.active?'تفعيل':'إيقاف')+' إشعار: '+S.notif.title,'info');
+  toast('✅ تم حفظ الإشعار — اضغط نشر','ok');
+}
+function renderNotifHistory(){
+  var el=document.getElementById('notifHistory');
+  if(!S.notifHistory||!S.notifHistory.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;">لا توجد إشعارات سابقة</div>';return;}
+  el.innerHTML='';
+  S.notifHistory.slice(0,8).forEach(function(n){
+    var icon={info:'💙',success:'💚',warning:'💛',danger:'❤️'}[n.type]||'💙';
+    el.innerHTML+='<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;display:flex;gap:10px;align-items:center;">'+
+      '<span>'+icon+'</span><div style="flex:1;"><b>'+esc(n.title)+'</b><span style="color:var(--muted);margin-right:8px;">'+esc(n.time)+'</span></div></div>';
+  });
+}
+
+// BANNER
+function loadBannerFields(){
+  document.getElementById('bannerActive').checked=S.banner.active||false;
+  document.getElementById('bannerText').value=S.banner.text||'';
+  document.getElementById('bannerPos').value=S.banner.pos||'top';
+  document.getElementById('bannerLink').value=S.banner.link||'';
+  bannerColor=S.banner.color||'#1E3A8A';
+  updateBannerPreview();
+}
+function pickBannerColor(el){
+  document.querySelectorAll('.color-chip').forEach(function(c){c.classList.remove('selected');});
+  el.classList.add('selected');bannerColor=el.dataset.color;updateBannerPreview();
+}
+function setCustomBannerColor(c){bannerColor=c;updateBannerPreview();}
+function updateBannerPreview(){
+  var txt=document.getElementById('bannerText').value||'📢 نص الشريط يظهر هنا...';
+  var el=document.getElementById('bannerPreview');
+  el.style.background=bannerColor;el.textContent=txt;
+}
+document.getElementById('bannerText').addEventListener('input',updateBannerPreview);
+function saveBanner(){
+  S.banner={
+    active:document.getElementById('bannerActive').checked,
+    text:document.getElementById('bannerText').value.trim(),
+    color:bannerColor,
+    pos:document.getElementById('bannerPos').value,
+    link:document.getElementById('bannerLink').value.trim()
+  };
+  saveS();addLog((S.banner.active?'تفعيل':'إيقاف')+' شريط الإعلانات','info');
+  updateBannerPreview();toast('✅ تم حفظ الشريط — اضغط نشر','ok');
+}
+
+// GITHUB
 function loadGhFields(){
   document.getElementById('ghToken').value=S.gh.token||'';
   document.getElementById('ghUser').value=S.gh.user;
@@ -431,66 +972,78 @@ function saveGh(){
   S.gh.user=document.getElementById('ghUser').value.trim();
   S.gh.repo=document.getElementById('ghRepo').value.trim();
   S.gh.branch=document.getElementById('ghBranch').value.trim();
-  saveGhS();toast('✅ تم حفظ إعدادات GitHub','ok');
+  saveGhS();addLog('حفظ إعدادات GitHub','info');toast('✅ تم حفظ إعدادات GitHub','ok');
 }
 async function testGh(){
   var el=document.getElementById('ghResult');
-  el.innerHTML='<div class="gh-status gh-warn">⏳ جاري الاختبار...</div>';
+  el.innerHTML='<div class="gh-box gh-warn">⏳ جاري الاختبار...</div>';
   var tok=document.getElementById('ghToken').value.trim();
   var usr=document.getElementById('ghUser').value.trim();
   var rep=document.getElementById('ghRepo').value.trim();
-  if(!tok){el.innerHTML='<div class="gh-status gh-err">❌ أدخل Token أولاً</div>';return;}
+  if(!tok){el.innerHTML='<div class="gh-box gh-err">❌ أدخل Token أولاً</div>';return;}
   try{
     var r=await fetch('https://api.github.com/repos/'+usr+'/'+rep,{headers:{'Authorization':'token '+tok}});
-    if(r.ok){var d=await r.json();el.innerHTML='<div class="gh-status gh-ok">✅ اتصال ناجح — '+d.full_name+'</div>';}
-    else{el.innerHTML='<div class="gh-status gh-err">❌ فشل الاتصال — تحقق من Token والمستودع</div>';}
-  }catch(e){el.innerHTML='<div class="gh-status gh-err">❌ خطأ في الشبكة</div>';}
+    if(r.ok){var d=await r.json();el.innerHTML='<div class="gh-box gh-ok">✅ اتصال ناجح — '+d.full_name+' ('+(d.private?'خاص':'عام')+')</div>';addLog('اختبار GitHub — ناجح','ok');}
+    else{el.innerHTML='<div class="gh-box gh-err">❌ فشل الاتصال — تحقق من Token والمستودع</div>';}
+  }catch(e){el.innerHTML='<div class="gh-box gh-err">❌ خطأ في الشبكة: '+e.message+'</div>';}
 }
 
-// ══ PUBLISH — يكتب data.json فقط ولا يلمس index.html ══
+// LOGS
+function renderLogs(){
+  var el=document.getElementById('logsBody');
+  document.getElementById('logCount').textContent=S.logs.length+' عملية';
+  if(!S.logs.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">لا توجد عمليات مسجّلة</div>';return;}
+  el.innerHTML='';
+  S.logs.forEach(function(l){
+    var cls={ok:'log-ld-ok',info:'log-ld-info',warn:'log-ld-warn'}[l.type]||'log-ld-info';
+    var item=document.createElement('div');item.className='log-item';
+    item.innerHTML='<div class="log-dot '+cls+'"></div><div style="flex:1;"><div class="log-text">'+esc(l.text)+'</div></div><div class="log-time">'+esc(l.time)+'</div>';
+    el.appendChild(item);
+  });
+}
+function clearLogs(){if(!confirm('مسح سجل النشاط كاملاً؟'))return;S.logs=[];saveS();renderLogs();toast('🗑️ تم مسح السجل','ok');}
+
+// PUBLISH — يكتب data.json فقط
 async function publishData(){
   if(!S.gh.token){toast('⚠️ أدخل GitHub Token في إعدادات GitHub','err');goTab('github');return;}
-
-  var data={version:S.version,status:S.status,desc:S.desc,changelog:S.changelog};
+  var data={
+    version:S.version, status:S.status, desc:S.desc,
+    statFeat:S.statFeat, statPages:S.statPages, stat3:S.stat3,
+    hero:S.hero, changelog:S.changelog,
+    features:S.features.filter(function(f){return f.active;}),
+    notif:S.notif, banner:S.banner
+  };
   var content=JSON.stringify(data,null,2);
   var encoded=btoa(unescape(encodeURIComponent(content)));
   var apiBase='https://api.github.com/repos/'+S.gh.user+'/'+S.gh.repo+'/contents/';
   var headers={'Authorization':'token '+S.gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
-
   toast('⏳ جاري النشر...','');
-
   try{
-    // جلب SHA الحالي لـ data.json (إن وُجد)
     var sha='';
-    try{
-      var getR=await fetch(apiBase+'data.json?ref='+S.gh.branch,{headers:headers});
-      if(getR.ok){var gd=await getR.json();sha=gd.sha||'';}
-    }catch(e){}
-
-    // رفع data.json
-    var body={message:'تحديث data.json — v'+S.version,content:encoded,branch:S.gh.branch};
+    try{var gr=await fetch(apiBase+'data.json?ref='+S.gh.branch,{headers:headers});if(gr.ok){var gd=await gr.json();sha=gd.sha||'';}}catch(e){}
+    var body={message:'تحديث data.json — v'+S.version+' ['+ new Date().toLocaleTimeString('ar-IQ')+']',content:encoded,branch:S.gh.branch};
     if(sha)body.sha=sha;
-
-    var putR=await fetch(apiBase+'data.json',{method:'PUT',headers:headers,body:JSON.stringify(body)});
-    if(putR.ok){
+    var pr=await fetch(apiBase+'data.json',{method:'PUT',headers:headers,body:JSON.stringify(body)});
+    if(pr.ok){
+      addLog('نشر ناجح على GitHub — v'+S.version,'ok');
       toast('✅ تم النشر! سيظهر على الموقع خلال دقيقة','ok');
     } else {
-      var err=await putR.json();
+      var err=await pr.json();
+      addLog('فشل النشر: '+(err.message||'خطأ'),'warn');
       toast('❌ فشل: '+(err.message||'خطأ'),'err');
     }
-  }catch(e){
-    toast('❌ خطأ في الاتصال: '+e.message,'err');
-  }
+  }catch(e){addLog('خطأ في النشر: '+e.message,'warn');toast('❌ خطأ: '+e.message,'err');}
 }
 
-// ══ HELPERS ══
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// MODAL CLOSE
+document.getElementById('featModal').addEventListener('click',function(e){if(e.target===this)closeFeatModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeFeatModal();});
 
-// ══ INIT ══
+// INIT
 function init(){
-  loadS();
-  renderDash();
-  loadGhFields();
+  loadS();renderDash();
+  document.getElementById('fVer').addEventListener('input',updateBadge);
+  document.getElementById('fStatus').addEventListener('change',updateBadge);
 }
 </script>
 </body>
