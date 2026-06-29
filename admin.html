@@ -1003,9 +1003,10 @@ function renderLogs(){
 }
 function clearLogs(){if(!confirm('مسح سجل النشاط كاملاً؟'))return;S.logs=[];saveS();renderLogs();toast('🗑️ تم مسح السجل','ok');}
 
-// PUBLISH — يكتب data.json فقط
+// PUBLISH — يجلب SHA الحالي دائماً قبل الرفع
 async function publishData(){
   if(!S.gh.token){toast('⚠️ أدخل GitHub Token في إعدادات GitHub','err');goTab('github');return;}
+
   var data={
     version:S.version, status:S.status, desc:S.desc,
     statFeat:S.statFeat, statPages:S.statPages, stat3:S.stat3,
@@ -1016,23 +1017,72 @@ async function publishData(){
   var content=JSON.stringify(data,null,2);
   var encoded=btoa(unescape(encodeURIComponent(content)));
   var apiBase='https://api.github.com/repos/'+S.gh.user+'/'+S.gh.repo+'/contents/';
-  var headers={'Authorization':'token '+S.gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
-  toast('⏳ جاري النشر...','');
+  var headers={
+    'Authorization':'token '+S.gh.token,
+    'Accept':'application/vnd.github.v3+json',
+    'Content-Type':'application/json',
+    'Cache-Control':'no-cache'
+  };
+
+  toast('⏳ جاري جلب البيانات من GitHub...','');
+
   try{
+    // ① جلب SHA الحالي دائماً — بدون cache
     var sha='';
-    try{var gr=await fetch(apiBase+'data.json?ref='+S.gh.branch,{headers:headers});if(gr.ok){var gd=await gr.json();sha=gd.sha||'';}}catch(e){}
-    var body={message:'تحديث data.json — v'+S.version+' ['+ new Date().toLocaleTimeString('ar-IQ')+']',content:encoded,branch:S.gh.branch};
+    var getUrl=apiBase+'data.json?ref='+S.gh.branch+'&t='+Date.now();
+    var gr=await fetch(getUrl,{headers:headers,cache:'no-store'});
+    if(gr.ok){
+      var gd=await gr.json();
+      sha=gd.sha||'';
+    } else if(gr.status!==404){
+      var e1=await gr.json();
+      toast('❌ خطأ في قراءة الملف: '+(e1.message||gr.status),'err');
+      return;
+    }
+
+    toast('⏳ جاري رفع التغييرات...','');
+
+    // ② رفع الملف مع SHA الصحيح
+    var body={
+      message:'تحديث data.json — v'+S.version+' ['+new Date().toLocaleTimeString('ar-IQ')+']',
+      content:encoded,
+      branch:S.gh.branch
+    };
     if(sha)body.sha=sha;
-    var pr=await fetch(apiBase+'data.json',{method:'PUT',headers:headers,body:JSON.stringify(body)});
+
+    var pr=await fetch(apiBase+'data.json',{
+      method:'PUT',
+      headers:headers,
+      body:JSON.stringify(body)
+    });
+
     if(pr.ok){
       addLog('نشر ناجح على GitHub — v'+S.version,'ok');
       toast('✅ تم النشر! سيظهر على الموقع خلال دقيقة','ok');
     } else {
       var err=await pr.json();
+      // إذا كانت مشكلة SHA — أعد المحاولة مرة واحدة
+      if(err.message&&err.message.indexOf('does not match')!==-1){
+        toast('⏳ جاري إعادة المحاولة...','');
+        var gr2=await fetch(getUrl.replace(/&t=\d+/,'&t='+Date.now()),{headers:headers,cache:'no-store'});
+        if(gr2.ok){
+          var gd2=await gr2.json();
+          body.sha=gd2.sha||'';
+          var pr2=await fetch(apiBase+'data.json',{method:'PUT',headers:headers,body:JSON.stringify(body)});
+          if(pr2.ok){
+            addLog('نشر ناجح (محاولة ثانية) — v'+S.version,'ok');
+            toast('✅ تم النشر بنجاح!','ok');
+            return;
+          }
+        }
+      }
       addLog('فشل النشر: '+(err.message||'خطأ'),'warn');
       toast('❌ فشل: '+(err.message||'خطأ'),'err');
     }
-  }catch(e){addLog('خطأ في النشر: '+e.message,'warn');toast('❌ خطأ: '+e.message,'err');}
+  }catch(e){
+    addLog('خطأ في النشر: '+e.message,'warn');
+    toast('❌ خطأ في الاتصال: '+e.message,'err');
+  }
 }
 
 // MODAL CLOSE
