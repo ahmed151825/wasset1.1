@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم — waseet-tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1E3A8A;--navy-d:#0F2057;--blue:#2563EB;--gold:#F59E0B;--green:#10B981;--red:#EF4444;--bg:#F0F4FF;--surface:#fff;--text:#0F172A;--muted:#64748B;--border:#E2E8F0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy-d),var(--navy));display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:#fff;border-radius:20px;padding:40px;width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.login-title{font-size:1.4rem;font-weight:800;color:var(--navy);margin-bottom:4px;margin-top:16px;}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+.login-field{position:relative;margin-bottom:14px;}
+.login-input{width:100%;padding:12px 16px;padding-left:44px;border:2px solid var(--border);border-radius:10px;font-family:'Cairo',sans-serif;font-size:14px;outline:none;text-align:center;transition:border-color .2s;}
+.login-input:focus{border-color:var(--blue);}
+.eye-btn{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),#D97706);border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;color:#000;transition:transform .2s;}
+.login-btn:hover{transform:translateY(-2px);}
+.login-err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+.admin-layout{display:flex;min-height:100vh;}
+.sidebar{width:240px;background:var(--navy-d);color:#fff;padding:24px 0;flex-shrink:0;position:fixed;top:0;bottom:0;overflow-y:auto;}
+.sidebar-brand{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:16px;}
+.sidebar-brand h2{font-size:15px;font-weight:800;}
+.sidebar-brand p{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;cursor:pointer;font-size:13px;font-weight:600;color:rgba(255,255,255,.7);transition:background .2s,color .2s;border-right:3px solid transparent;}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+.nav-item.active{background:rgba(245,158,11,.12);color:var(--gold);border-right-color:var(--gold);}
+.main-content{margin-right:240px;flex:1;padding:32px;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
+.page-title{font-size:1.5rem;font-weight:800;color:var(--navy);}
+.page-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px;}
+.sci{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.sci-blue{background:#EFF6FF;}.sci-green{background:#ECFDF5;}.sci-gold{background:#FFFBEB;}.sci-purple{background:#F5F3FF;}
+.stat-val{font-size:1.6rem;font-weight:900;color:var(--navy);font-family:'JetBrains Mono',monospace;}
+.stat-lbl{font-size:12px;color:var(--muted);}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:24px;overflow:hidden;}
+.panel-header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-size:15px;font-weight:700;color:var(--navy);}
+.panel-body{padding:24px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.form-row.full{grid-template-columns:1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:13px;font-weight:600;}
+.form-input,.form-select,.form-textarea{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;outline:none;transition:border-color .2s;background:#fff;color:var(--text);}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--blue);}
+.form-textarea{resize:vertical;min-height:90px;line-height:1.6;}
+.form-hint{font-size:11px;color:var(--muted);}
+.btn{padding:10px 20px;border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:transform .15s;}
+.btn:hover{transform:translateY(-1px);}
+.btn-primary{background:linear-gradient(135deg,var(--blue),#1d4ed8);color:#fff;}
+.btn-success{background:linear-gradient(135deg,var(--green),#059669);color:#fff;}
+.btn-gold{background:linear-gradient(135deg,var(--gold),#D97706);color:#000;}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-ghost{background:var(--bg);color:var(--text);border:1px solid var(--border);}
+.btn-sm{padding:6px 14px;font-size:12px;}
+.cl-table{width:100%;border-collapse:collapse;}
+.cl-table th{background:#F8FAFF;padding:10px 14px;text-align:right;font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);}
+.cl-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.cl-table tr:last-child td{border-bottom:none;}
+.cl-table tr:hover td{background:#F8FAFF;}
+.vbadge{background:#EFF6FF;color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;white-space:nowrap;}
+.sbadge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;}
+.sb-new{background:#ECFDF5;color:#059669;}.sb-old{background:#F1F5F9;color:var(--muted);}
+.gh-status{display:flex;align-items:center;gap:8px;font-size:12px;padding:10px 14px;border-radius:8px;margin-top:12px;}
+.gh-ok{background:#ECFDF5;color:#059669;}.gh-err{background:#FEF2F2;color:#DC2626;}.gh-warn{background:#FFFBEB;color:#D97706;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:12px 28px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:transform .3s;z-index:99999;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.tab-content{display:none;}.tab-content.active{display:block;}
+.warn-box{background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:#92400E;line-height:1.6;}
+@media(max-width:768px){.sidebar{display:none;}.main-content{margin-right:0;padding:16px;}.form-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+      <rect x="12" y="28" width="40" height="28" rx="6" fill="#1E3A8A"/>
+      <path d="M20 28V20C20 13.373 25.373 8 32 8C38.627 8 44 13.373 44 20V28" stroke="#1E3A8A" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <circle cx="32" cy="42" r="5" fill="#F59E0B"/>
+      <rect x="30" y="42" width="4" height="8" rx="2" fill="#F59E0B"/>
+    </svg>
+    <div class="login-title">لوحة التحكم</div>
+    <div class="login-sub">waseet-tools — أحمد محمد كريم</div>
+    <div class="login-field">
+      <input class="login-input" type="password" id="pwdInput" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="eye-btn" onclick="toggleEye()">👁️</button>
+    </div>
+    <button class="login-btn" onclick="doLogin()">🔓 دخول</button>
+    <div class="login-err" id="loginErr">❌ كلمة المرور غير صحيحة</div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="admin-layout" id="adminLayout" style="display:none;">
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <h2>⚙️ لوحة التحكم</h2>
+      <p>waseet-tools admin</p>
+    </div>
+    <div class="nav-item active" data-tab="dashboard">📊 الرئيسية</div>
+    <div class="nav-item" data-tab="version">🚀 إدارة الإصدار</div>
+    <div class="nav-item" data-tab="changelog">📜 سجل التحديثات</div>
+    <div class="nav-item" data-tab="github">🐙 إعدادات GitHub</div>
+    <div style="position:absolute;bottom:16px;width:100%;padding:0 20px;text-align:center;font-size:10px;color:rgba(255,255,255,.25);">v3.20.4 © أحمد محمد كريم</div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- DASHBOARD -->
+    <div class="tab-content active" id="tab-dashboard">
+      <div class="page-header">
+        <div><div class="page-title">📊 الرئيسية</div><div class="page-sub">مرحباً أحمد — إليك ملخص الحالة</div></div>
+        <button class="btn btn-gold" onclick="publishData()">🚀 نشر التغييرات على الموقع</button>
+      </div>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="sci sci-blue">🚀</div><div><div class="stat-val" id="dVer">—</div><div class="stat-lbl">الإصدار</div></div></div>
+        <div class="stat-card"><div class="sci sci-green">📜</div><div><div class="stat-val" id="dCl">—</div><div class="stat-lbl">تحديثات</div></div></div>
+        <div class="stat-card"><div class="sci sci-purple">🐙</div><div><div class="stat-val" id="dGh">—</div><div class="stat-lbl">GitHub</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚡ إجراءات سريعة</div></div>
+        <div class="panel-body" style="display:flex;flex-wrap:wrap;gap:10px;">
+          <button class="btn btn-primary" onclick="goTab('version')">🚀 تحديث الإصدار</button>
+          <button class="btn btn-success" onclick="goTab('changelog')">➕ إضافة تحديث</button>
+          <button class="btn btn-ghost" onclick="window.open('https://ahmed151825.github.io/wasset1.1/','_blank')">🌐 معاينة الموقع</button>
+          <button class="btn btn-ghost" onclick="window.open('https://github.com/ahmed151825/wasset1.1','_blank')">🐙 فتح GitHub</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📋 آخر التحديثات</div></div>
+        <div class="panel-body" id="dashCl" style="font-size:13px;color:var(--muted);line-height:2;"></div>
+      </div>
+    </div>
+
+    <!-- VERSION -->
+    <div class="tab-content" id="tab-version">
+      <div class="page-header">
+        <div><div class="page-title">🚀 إدارة الإصدار</div></div>
+        <button class="btn btn-gold" onclick="publishData()">🚀 نشر على الموقع</button>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📝 بيانات الإصدار</div></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">رقم الإصدار</label>
+              <input class="form-input" id="fVersion" placeholder="3.20.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">الحالة</label>
+              <select class="form-select" id="fStatus">
+                <option>متاح الآن</option>
+                <option>تحديث جديد</option>
+                <option>إصلاح عاجل</option>
+                <option>إصدار تجريبي</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">وصف الموقع (hero)</label>
+              <input class="form-input" id="fDesc">
+            </div>
+          </div>
+          <div style="margin-top:4px;display:flex;gap:10px;">
+            <button class="btn btn-success" onclick="saveVersion()">💾 حفظ</button>
+          </div>
+          <div style="margin-top:16px;background:linear-gradient(135deg,#0F2057,#1E3A8A);border-radius:10px;padding:16px;text-align:center;">
+            <div style="display:inline-block;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:#FCD34D;font-size:12px;font-weight:600;padding:5px 16px;border-radius:20px;" id="badgePrev">🚀 الإصدار — </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHANGELOG -->
+    <div class="tab-content" id="tab-changelog">
+      <div class="page-header">
+        <div><div class="page-title">📜 سجل التحديثات</div></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-success" onclick="showAddForm()">➕ إضافة</button>
+          <button class="btn btn-gold" onclick="publishData()">🚀 نشر</button>
+        </div>
+      </div>
+
+      <div class="panel" id="addPanel" style="display:none;">
+        <div class="panel-header"><div class="panel-title" id="addPanelTitle">➕ إضافة تحديث</div></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">رقم الإصدار</label><input class="form-input" id="nVer" placeholder="v3.20.5"></div>
+            <div class="form-group"><label class="form-label">التاريخ/الحالة</label><input class="form-input" id="nDate" placeholder="الأحدث"></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">نص التحديث</label><textarea class="form-textarea" id="nText" placeholder="وصف التحديث أو الإصلاح..."></textarea></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-success" onclick="saveEntry()">💾 حفظ</button>
+            <button class="btn btn-ghost" onclick="hideAddForm()">إلغاء</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📋 قائمة التحديثات</div></div>
+        <div style="overflow-x:auto;">
+          <table class="cl-table">
+            <thead><tr><th>الإصدار</th><th>التاريخ</th><th>الوصف</th><th></th></tr></thead>
+            <tbody id="clBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GITHUB -->
+    <div class="tab-content" id="tab-github">
+      <div class="page-header"><div><div class="page-title">🐙 إعدادات GitHub</div></div></div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🔑 بيانات API</div></div>
+        <div class="panel-body">
+          <div class="warn-box">⚠️ <b>تنبيه:</b> لا تشارك هذه الصفحة مع أحد — تحتوي على صلاحيات تعديل المستودع.</div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">GitHub Token</label>
+              <div style="position:relative;">
+                <input class="form-input" type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx" style="padding-left:44px;">
+                <button onclick="var i=document.getElementById('ghToken');i.type=i.type==='password'?'text':'password';" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;">👁️</button>
+              </div>
+              <span class="form-hint">من: github.com/settings/tokens → Generate new token (classic) → اختر repo</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">المستخدم</label><input class="form-input" id="ghUser" value="ahmed151825"></div>
+            <div class="form-group"><label class="form-label">المستودع</label><input class="form-input" id="ghRepo" value="wasset1.1"></div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group"><label class="form-label">الفرع</label><input class="form-input" id="ghBranch" value="main"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn btn-primary" onclick="saveGh()">💾 حفظ</button>
+            <button class="btn btn-ghost" onclick="testGh()">🔗 اختبار الاتصال</button>
+          </div>
+          <div id="ghResult"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📖 كيفية إنشاء Token</div></div>
+        <div class="panel-body">
+          <ol style="padding-right:20px;font-size:13px;line-height:2.2;">
+            <li>اذهب لـ <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--blue);font-weight:600;">github.com/settings/tokens/new ←</a></li>
+            <li>Note: <b>waseet-admin</b> &nbsp;|&nbsp; Expiration: <b>No expiration</b></li>
+            <li>ضع ✅ على <b>repo</b> فقط</li>
+            <li>اضغط <b>Generate token</b> وانسخ الرمز (يبدأ بـ ghp_)</li>
+            <li>الصقه في الحقل أعلاه واضغط <b>حفظ</b></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ كلمة المرور — غيّرها ══
+var PASS = 'waseet2026';
+
+// ══ STATE ══
+var S = {
+  version:'3.20.4', status:'متاح الآن',
+  desc:'إضافة متصفح احترافية تُضاف على بوابة الوسيط — واتساب بلحظة، محفظة شهرية، فحص تأخير تلقائي، وتقييم للمناديب.',
+  changelog:[
+    {version:'v3.20.4',date:'الأحدث',text:'✅ إصلاح حاسم: المحفظة تقرأ طلبات اليوم الحالي فقط.'},
+    {version:'v3.20.3',date:'إصدار سابق',text:'✅ إصلاح جوهري: buildCountsForDate() تفلتر الصفوف بتاريخها الفعلي.'},
+    {version:'v3.20.x',date:'سلسلة إصلاحات',text:'🔧 إصلاح MutationObserver اللانهائي — منع تكرار النوافذ.'},
+    {version:'v3.x',date:'نسخ سابقة',text:'🎉 إضافة نظام المحفظة الشهرية — التقييم الأسبوعي — فحص التأخير.'}
+  ],
+  gh:{token:'',user:'ahmed151825',repo:'wasset1.1',branch:'main'},
+  editIdx:-1
+};
+
+function loadS(){
+  try{var s=localStorage.getItem('wsAdm');if(s)Object.assign(S,JSON.parse(s));}catch(e){}
+  try{var g=localStorage.getItem('wsAdmGh');if(g)S.gh=Object.assign(S.gh,JSON.parse(g));}catch(e){}
+}
+function saveS(){
+  try{localStorage.setItem('wsAdm',JSON.stringify({version:S.version,status:S.status,desc:S.desc,changelog:S.changelog}));}catch(e){}
+}
+function saveGhS(){try{localStorage.setItem('wsAdmGh',JSON.stringify(S.gh));}catch(e){}}
+
+// ══ LOGIN ══
+function toggleEye(){var i=document.getElementById('pwdInput');i.type=i.type==='password'?'text':'password';}
+function doLogin(){
+  if(document.getElementById('pwdInput').value===PASS){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('adminLayout').style.display='flex';
+    init();
+  } else {
+    document.getElementById('loginErr').style.display='block';
+    document.getElementById('pwdInput').value='';
+  }
+}
+
+// ══ TABS ══
+function goTab(id){
+  document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  document.getElementById('tab-'+id).classList.add('active');
+  document.querySelector('[data-tab="'+id+'"]').classList.add('active');
+  if(id==='dashboard')renderDash();
+  if(id==='changelog')renderCl();
+  if(id==='version')loadVerFields();
+  if(id==='github')loadGhFields();
+}
+document.querySelectorAll('.nav-item[data-tab]').forEach(function(el){
+  el.addEventListener('click',function(){goTab(this.dataset.tab);});
+});
+
+// ══ TOAST ══
+function toast(m,t){
+  var el=document.getElementById('toast');
+  el.textContent=m;
+  el.style.background=t==='err'?'#DC2626':t==='ok'?'#059669':'#1E3A8A';
+  el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show');},3000);
+}
+
+// ══ DASHBOARD ══
+function renderDash(){
+  document.getElementById('dVer').textContent=S.version;
+  document.getElementById('dCl').textContent=S.changelog.length;
+  document.getElementById('dGh').textContent=S.gh.token?'✅':'❌';
+  var el=document.getElementById('dashCl');
+  el.innerHTML='';
+  S.changelog.slice(0,3).forEach(function(cl){
+    el.innerHTML+='<div style="padding:6px 0;border-bottom:1px solid var(--border);"><span style="background:#EFF6FF;color:#2563EB;font-family:monospace;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;">'+cl.version+'</span>'+cl.text.slice(0,70)+(cl.text.length>70?'...':'')+'</div>';
+  });
+}
+
+// ══ VERSION ══
+function loadVerFields(){
+  document.getElementById('fVersion').value=S.version;
+  document.getElementById('fStatus').value=S.status;
+  document.getElementById('fDesc').value=S.desc;
+  updateBadge();
+}
+function updateBadge(){
+  var v=document.getElementById('fVersion').value||S.version;
+  var s=document.getElementById('fStatus').value||S.status;
+  document.getElementById('badgePrev').textContent='🚀 الإصدار '+v+' — '+s;
+}
+document.getElementById('fVersion').addEventListener('input',updateBadge);
+document.getElementById('fStatus').addEventListener('change',updateBadge);
+function saveVersion(){
+  S.version=document.getElementById('fVersion').value.trim()||S.version;
+  S.status=document.getElementById('fStatus').value;
+  S.desc=document.getElementById('fDesc').value.trim()||S.desc;
+  saveS();
+  toast('✅ تم الحفظ — اضغط نشر لتفعيله على الموقع','ok');
+}
+
+// ══ CHANGELOG ══
+function renderCl(){
+  var tb=document.getElementById('clBody');tb.innerHTML='';
+  S.changelog.forEach(function(cl,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML=
+      '<td><span class="vbadge">'+esc(cl.version)+'</span></td>'+
+      '<td><span class="sbadge '+(i===0?'sb-new':'sb-old')+'">'+esc(cl.date)+'</span></td>'+
+      '<td style="max-width:320px;color:var(--muted);font-size:12px;">'+esc(cl.text).slice(0,90)+(cl.text.length>90?'...':'')+'</td>'+
+      '<td style="white-space:nowrap;">'+
+        '<button class="btn btn-ghost btn-sm" onclick="editEntry('+i+')" style="margin-left:6px;">✏️</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="delEntry('+i+')">🗑️</button>'+
+      '</td>';
+    tb.appendChild(tr);
+  });
+}
+function showAddForm(){
+  S.editIdx=-1;
+  document.getElementById('addPanelTitle').textContent='➕ إضافة تحديث جديد';
+  document.getElementById('nVer').value='';
+  document.getElementById('nDate').value='الأحدث';
+  document.getElementById('nText').value='';
+  document.getElementById('addPanel').style.display='block';
+  document.getElementById('nVer').focus();
+}
+function hideAddForm(){document.getElementById('addPanel').style.display='none';}
+function saveEntry(){
+  var v=document.getElementById('nVer').value.trim();
+  var d=document.getElementById('nDate').value.trim()||'إضافة جديدة';
+  var t=document.getElementById('nText').value.trim();
+  if(!v||!t){toast('يرجى ملء الإصدار والوصف','err');return;}
+  if(S.editIdx>=0){
+    S.changelog[S.editIdx]={version:v,date:d,text:t};
+  } else {
+    S.changelog.unshift({version:v,date:d,text:t});
+  }
+  saveS();renderCl();hideAddForm();
+  toast('✅ تم الحفظ — اضغط نشر لتفعيله','ok');
+}
+function editEntry(i){
+  S.editIdx=i;
+  document.getElementById('addPanelTitle').textContent='✏️ تعديل تحديث';
+  document.getElementById('nVer').value=S.changelog[i].version;
+  document.getElementById('nDate').value=S.changelog[i].date;
+  document.getElementById('nText').value=S.changelog[i].text;
+  document.getElementById('addPanel').style.display='block';
+  document.getElementById('nVer').focus();
+}
+function delEntry(i){
+  if(!confirm('حذف هذا التحديث؟'))return;
+  S.changelog.splice(i,1);saveS();renderCl();
+  toast('🗑️ تم الحذف','ok');
+}
+
+// ══ GITHUB ══
+function loadGhFields(){
+  document.getElementById('ghToken').value=S.gh.token||'';
+  document.getElementById('ghUser').value=S.gh.user;
+  document.getElementById('ghRepo').value=S.gh.repo;
+  document.getElementById('ghBranch').value=S.gh.branch;
+}
+function saveGh(){
+  S.gh.token=document.getElementById('ghToken').value.trim();
+  S.gh.user=document.getElementById('ghUser').value.trim();
+  S.gh.repo=document.getElementById('ghRepo').value.trim();
+  S.gh.branch=document.getElementById('ghBranch').value.trim();
+  saveGhS();toast('✅ تم حفظ إعدادات GitHub','ok');
+}
+async function testGh(){
+  var el=document.getElementById('ghResult');
+  el.innerHTML='<div class="gh-status gh-warn">⏳ جاري الاختبار...</div>';
+  var tok=document.getElementById('ghToken').value.trim();
+  var usr=document.getElementById('ghUser').value.trim();
+  var rep=document.getElementById('ghRepo').value.trim();
+  if(!tok){el.innerHTML='<div class="gh-status gh-err">❌ أدخل Token أولاً</div>';return;}
+  try{
+    var r=await fetch('https://api.github.com/repos/'+usr+'/'+rep,{headers:{'Authorization':'token '+tok}});
+    if(r.ok){var d=await r.json();el.innerHTML='<div class="gh-status gh-ok">✅ اتصال ناجح — '+d.full_name+'</div>';}
+    else{el.innerHTML='<div class="gh-status gh-err">❌ فشل الاتصال — تحقق من Token والمستودع</div>';}
+  }catch(e){el.innerHTML='<div class="gh-status gh-err">❌ خطأ في الشبكة</div>';}
+}
+
+// ══ PUBLISH — يكتب data.json فقط ولا يلمس index.html ══
+async function publishData(){
+  if(!S.gh.token){toast('⚠️ أدخل GitHub Token في إعدادات GitHub','err');goTab('github');return;}
+
+  var data={version:S.version,status:S.status,desc:S.desc,changelog:S.changelog};
+  var content=JSON.stringify(data,null,2);
+  var encoded=btoa(unescape(encodeURIComponent(content)));
+  var apiBase='https://api.github.com/repos/'+S.gh.user+'/'+S.gh.repo+'/contents/';
+  var headers={'Authorization':'token '+S.gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
+
+  toast('⏳ جاري النشر...','');
+
+  try{
+    // جلب SHA الحالي لـ data.json (إن وُجد)
+    var sha='';
+    try{
+      var getR=await fetch(apiBase+'data.json?ref='+S.gh.branch,{headers:headers});
+      if(getR.ok){var gd=await getR.json();sha=gd.sha||'';}
+    }catch(e){}
+
+    // رفع data.json
+    var body={message:'تحديث data.json — v'+S.version,content:encoded,branch:S.gh.branch};
+    if(sha)body.sha=sha;
+
+    var putR=await fetch(apiBase+'data.json',{method:'PUT',headers:headers,body:JSON.stringify(body)});
+    if(putR.ok){
+      toast('✅ تم النشر! سيظهر على الموقع خلال دقيقة','ok');
+    } else {
+      var err=await putR.json();
+      toast('❌ فشل: '+(err.message||'خطأ'),'err');
+    }
+  }catch(e){
+    toast('❌ خطأ في الاتصال: '+e.message,'err');
+  }
+}
+
+// ══ HELPERS ══
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ══ INIT ══
+function init(){
+  loadS();
+  renderDash();
+  loadGhFields();
+}
+</script>
+</body>
+</html>
