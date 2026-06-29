@@ -651,6 +651,7 @@ async function testGhConnection(){
 
 // ══════════════════════════════════════
 // PUBLISH TO GITHUB
+// يقرأ index.html الحالي ويعدّل فيه فقط
 // ══════════════════════════════════════
 async function publishAll(){
   if(!state.gh.token){
@@ -658,26 +659,31 @@ async function publishAll(){
     showTab('github');
     return;
   }
-  toast('⏳ جاري النشر على GitHub...','');
+  toast('⏳ جاري قراءة الملف الحالي...','');
 
-  // Build new index.html content from template
-  var newContent = buildIndexHTML();
-  var encoded = btoa(unescape(encodeURIComponent(newContent)));
+  var apiBase='https://api.github.com/repos/'+state.gh.user+'/'+state.gh.repo+'/contents/';
+  var headers={'Authorization':'token '+state.gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
 
-  // Get current file SHA
   try{
-    var shaRes=await fetch(
-      'https://api.github.com/repos/'+state.gh.user+'/'+state.gh.repo+'/contents/index.html?ref='+state.gh.branch,
-      {headers:{'Authorization':'token '+state.gh.token,'Accept':'application/vnd.github.v3+json'}}
-    );
-    var shaData=await shaRes.json();
-    var sha=shaData.sha||'';
+    // 1) اقرأ index.html الحالي من GitHub
+    var getRes=await fetch(apiBase+'index.html?ref='+state.gh.branch,{headers:headers});
+    if(!getRes.ok){toast('❌ لم يتم العثور على index.html في المستودع','err');return;}
+    var getData=await getRes.json();
+    var sha=getData.sha;
 
-    // Update file
-    var updateRes=await fetch(
-      'https://api.github.com/repos/'+state.gh.user+'/'+state.gh.repo+'/contents/index.html',
-      {
+    // 2) فكّ تشفير base64 للحصول على محتوى الملف
+    var currentHTML=decodeURIComponent(escape(atob(getData.content.replace(/\n/g,''))));
+
+    // 3) طبّق التعديلات على المحتوى
+    var newHTML=patchIndexHTML(currentHTML);
+
+    // 4) أعد تشفيره وارفعه
+    var encoded=btoa(unescape(encodeURIComponent(newHTML)));
+    toast('⏳ جاري رفع التغييرات...','');
+
+    var updateRes=await fetch(apiBase+'index.html',{
         method:'PUT',
+        headers:headers,
         headers:{'Authorization':'token '+state.gh.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
         body:JSON.stringify({
           message:'تحديث الموقع — v'+state.version+' عبر لوحة التحكم',
@@ -688,7 +694,7 @@ async function publishAll(){
       }
     );
     if(updateRes.ok){
-      toast('✅ تم النشر بنجاح على GitHub!','ok');
+      toast('✅ تم النشر بنجاح! سيظهر التغيير خلال دقيقة على الموقع','ok');
     } else {
       var err=await updateRes.json();
       toast('❌ فشل النشر: '+(err.message||'خطأ غير معروف'),'err');
@@ -699,20 +705,58 @@ async function publishAll(){
 }
 
 // ══════════════════════════════════════
-// BUILD HTML (simplified template)
-// تُنشئ ملف index.html محدّث ببيانات الـ state
+// PATCH INDEX.HTML
+// يعدّل على الملف الحالي دون مسح محتواه
 // ══════════════════════════════════════
-function buildIndexHTML(){
-  var clItems='';
-  state.changelog.forEach(function(cl,i){
-    clItems+='<div class="changelog-item fade-card"><div class="cl-version">'+cl.version+'</div><div><div class="cl-date">'+cl.date+'</div><div class="cl-text">'+cl.text+'</div></div></div>\n';
-  });
+function patchIndexHTML(html){
 
-  // Return minimal marker file that tells the site to reload from state
-  // In real usage: replace with full index.html content
-  return '<!-- waseet-tools v'+state.version+' published:'+new Date().toISOString()+' -->\n'+
-    '<!-- version:'+state.version+' status:'+state.versionStatus+' -->\n'+
-    '<meta http-equiv="refresh" content="0;url=https://ahmed151825.github.io/wasset1.1/">';
+  // 1) تحديث رقم الإصدار في الشارة
+  html=html.replace(
+    /🚀 الإصدار [\d\.]+ — [^<"]+/g,
+    '🚀 الإصدار '+state.version+' — '+state.versionStatus
+  );
+
+  // 2) تحديث رقم الإصدار في version-pill
+  html=html.replace(
+    /(<b>v)[\d\.]+(<\/b>)/g,
+    '$1'+state.version+'$2'
+  );
+
+  // 3) تحديث وصف الـ hero-sub
+  html=html.replace(
+    /(<p class="hero-sub">)[^<]+(<\/p>)/,
+    '$1'+state.versionDesc+'$2'
+  );
+
+  // 4) تحديث إجمالي الميزات في الإحصائيات
+  html=html.replace(
+    /(<div class="stat-num">)\d+(<\/div>\s*<div class="stat-lbl">ميزة متكاملة)/,
+    '$1'+state.statFeatures+'$2'
+  );
+
+  // 5) تحديث الصفحات المدعومة
+  html=html.replace(
+    /(<div class="stat-num">)\d+(<\/div>\s*<div class="stat-lbl">صفحات مدعومة)/,
+    '$1'+state.statPages+'$2'
+  );
+
+  // 6) تحديث سجل التحديثات كاملاً
+  var newChangelog='';
+  state.changelog.forEach(function(cl){
+    newChangelog+='    <div class="changelog-item fade-card"><div class="cl-version">'+cl.version+'</div><div><div class="cl-date">'+cl.date+'</div><div class="cl-text">'+cl.text+'</div></div></div>\n';
+  });
+  html=html.replace(
+    /(<div class="changelog">)([\s\S]*?)(<\/div>\s*<\/section>\s*<div class="sep">)/,
+    '$1\n'+newChangelog+'  $3'
+  );
+
+  // 7) أضف تعليق timestamp
+  html=html.replace(
+    /<\/html>/,
+    '<!-- published:'+new Date().toISOString()+' v'+state.version+' -->\n</html>'
+  );
+
+  return html;
 }
 
 // ══════════════════════════════════════
