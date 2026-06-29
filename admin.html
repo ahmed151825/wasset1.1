@@ -1004,86 +1004,90 @@ function renderLogs(){
 function clearLogs(){if(!confirm('مسح سجل النشاط كاملاً؟'))return;S.logs=[];saveS();renderLogs();toast('🗑️ تم مسح السجل','ok');}
 
 // PUBLISH — يجلب SHA الحالي دائماً قبل الرفع
-// PUBLISH — يحدّث كتلة wsData داخل index.html مباشرة
+// PUBLISH
 async function publishData(){
-  if(!S.gh.token){toast('⚠️ أدخل GitHub Token في إعدادات GitHub','err');goTab('github');return;}
+  var tok=S.gh.token;
+  var usr=S.gh.user;
+  var rep=S.gh.repo;
+  var branch=S.gh.branch;
 
-  var apiBase='https://api.github.com/repos/'+S.gh.user+'/'+S.gh.repo+'/contents/';
-  var headers={
-    'Authorization':'Bearer '+S.gh.token,
-    'Accept':'application/vnd.github+json',
-    'X-GitHub-Api-Version':'2022-11-28',
+  if(!tok){toast('⚠️ أدخل GitHub Token','err');goTab('github');return;}
+
+  var base='https://api.github.com/repos/'+usr+'/'+rep+'/contents/index.html';
+  var hdrs={
+    'Authorization':'token '+tok,
+    'Accept':'application/vnd.github.v3+json',
     'Content-Type':'application/json'
   };
 
-  toast('⏳ جاري قراءة index.html ...','');
+  // بناء البيانات الجديدة
+  var data={
+    version:S.version,status:S.status,desc:S.desc,
+    statFeat:S.statFeat,statPages:S.statPages,stat3:S.stat3,
+    hero:S.hero,changelog:S.changelog,
+    features:S.features.filter(function(f){return f.active;}),
+    notif:S.notif,banner:S.banner
+  };
+
+  toast('⏳ الخطوة 1: قراءة الملف من GitHub...','');
+
+  var sha='', currentHTML='';
+  try{
+    var r1=await fetch(base+'?ref='+branch,{method:'GET',headers:hdrs});
+    var j1=await r1.json();
+    if(!r1.ok){toast('❌ خطأ قراءة: '+j1.message,'err');return;}
+    sha=j1.sha;
+    currentHTML=decodeURIComponent(escape(atob(j1.content.replace(/
+/g,''))));
+  }catch(ex){
+    toast('❌ فشل القراءة: '+ex.message,'err');
+    return;
+  }
+
+  // استبدال كتلة wsData
+  var M1='<script id="wsData" type="application/json">';
+  var M2='<\/script>';
+  var i1=currentHTML.indexOf(M1);
+  var i2=currentHTML.indexOf('</script>',i1+M1.length);
+
+  if(i1===-1||i2===-1){
+    toast('❌ كتلة wsData غير موجودة — ارفع index.html الجديد أولاً','err');
+    return;
+  }
+
+  var newHTML=currentHTML.slice(0,i1+M1.length)+
+    '\n'+JSON.stringify(data)+'\n'+
+    currentHTML.slice(i2);
+
+  toast('⏳ الخطوة 2: رفع التحديث...','');
+
+  var enc='';
+  try{enc=btoa(unescape(encodeURIComponent(newHTML)));}
+  catch(ex){toast('❌ خطأ ترميز: '+ex.message,'err');return;}
 
   try{
-    // 1) اقرأ index.html الحالي
-    var getR=await fetch(apiBase+'index.html?ref='+S.gh.branch+'&_='+Date.now(),{headers:headers});
-    if(!getR.ok){
-      var e1=await getR.json();
-      toast('❌ فشل قراءة index.html: '+(e1.message||getR.status),'err');
-      return;
-    }
-    var getData=await getR.json();
-    var sha=getData.sha;
-    var currentHTML=decodeURIComponent(escape(atob(getData.content.replace(/\n/g,''))));
-
-    // 2) ابنِ كتلة البيانات الجديدة
-    var data={
-      version:S.version, status:S.status, desc:S.desc,
-      statFeat:S.statFeat, statPages:S.statPages, stat3:S.stat3,
-      hero:S.hero,
-      changelog:S.changelog,
-      features:S.features.filter(function(f){return f.active;}),
-      notif:S.notif, banner:S.banner
-    };
-    var newBlock=JSON.stringify(data);
-
-    // 3) استبدل المحتوى بين markers
-    var startMarker='<script id="wsData" type="application/json">\n';
-    var endMarker='\n</script>';
-    var s=currentHTML.indexOf(startMarker);
-    var e=currentHTML.indexOf(endMarker, s);
-
-    if(s===-1||e===-1){
-      toast('❌ لم يتم العثور على كتلة wsData في index.html — ارفع index.html الجديد أولاً','err');
-      return;
-    }
-
-    var newHTML=currentHTML.substring(0, s+startMarker.length)
-      + newBlock
-      + currentHTML.substring(e);
-
-    // 4) ارفع index.html المحدَّث
-    toast('⏳ جاري رفع التغييرات...','');
-    var encoded=btoa(unescape(encodeURIComponent(newHTML)));
-    var putR=await fetch(apiBase+'index.html',{
+    var r2=await fetch(base,{
       method:'PUT',
-      headers:headers,
+      headers:hdrs,
       body:JSON.stringify({
-        message:'تحديث الموقع — v'+S.version+' ['+new Date().toLocaleTimeString('ar-IQ')+']',
-        content:encoded,
+        message:'v'+S.version+' update via admin panel',
+        content:enc,
         sha:sha,
-        branch:S.gh.branch
+        branch:branch
       })
     });
-
-    if(putR.ok){
-      addLog('نشر ناجح — v'+S.version,'ok');
-      toast('✅ تم النشر! افتح الموقع خلال دقيقة','ok');
+    var j2=await r2.json();
+    if(r2.ok){
+      addLog('نشر ناجح v'+S.version,'ok');
+      toast('✅ تم النشر — انتظر دقيقة ثم حدّث الموقع','ok');
     } else {
-      var err=await putR.json();
-      addLog('فشل النشر: '+(err.message||'خطأ'),'warn');
-      toast('❌ فشل: '+(err.message||''),'err');
+      addLog('فشل: '+j2.message,'warn');
+      toast('❌ '+j2.message,'err');
     }
-  } catch(e){
-    addLog('خطأ: '+e.message,'warn');
-    toast('❌ خطأ في الاتصال: '+e.message,'err');
+  }catch(ex){
+    toast('❌ فشل الرفع: '+ex.message,'err');
   }
 }
-
 
 
 // MODAL CLOSE
