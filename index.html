@@ -454,39 +454,141 @@ function cpRep(){var b=document.getElementById('cpRepBtn');if(!b)return;b.textCo
 function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.textContent='⏳ جاري الجمع...';setTimeout(function(){b.textContent='✅ تم النسخ (4 مناديب)';},1200);}
 </script>
 
+
 <script>
-// loader: يقرأ data.json ويحدث الصفحة
 (function(){
   fetch('data.json?t='+Date.now())
     .then(function(r){return r.json();})
     .then(function(d){
-      // شارة الإصدار
-      var badge=document.querySelector('.badge');
-      if(badge&&d.version)badge.textContent='🚀 الإصدار '+d.version+' — '+(d.status||'متاح الآن');
-      // version-pill
-      var pill=document.querySelector('.version-pill b');
-      if(pill&&d.version)pill.textContent='v'+d.version;
-      // hero-sub
-      var sub=document.querySelector('.hero-sub');
-      if(sub&&d.desc)sub.textContent=d.desc;
-      // changelog
+
+      // 1) الإصدار والشارة
+      if(d.version){
+        var badge=document.querySelector('.badge');
+        if(badge)badge.textContent='🚀 الإصدار '+d.version+' — '+(d.status||'متاح الآن');
+        var pill=document.querySelector('.version-pill b');
+        if(pill)pill.textContent='v'+d.version;
+      }
+
+      // 2) وصف الهيرو
+      if(d.desc){var sub=document.querySelector('.hero-sub');if(sub)sub.textContent=d.desc;}
+
+      // 3) الهيرو — العنوان والألوان
+      if(d.hero){
+        var t1=document.querySelector('.hero-title');
+        if(t1&&d.hero.title1&&d.hero.title2)
+          t1.innerHTML=d.hero.title1+'<br><span>'+d.hero.title2+'</span>';
+        if(d.hero.btn1){var b1=document.querySelector('.btn-primary');if(b1)b1.textContent=d.hero.btn1;}
+        if(d.hero.btn2){var b2=document.querySelector('.btn-ghost');if(b2)b2.textContent=d.hero.btn2;}
+        if(d.hero.bg1&&d.hero.bg2){
+          var hero=document.querySelector('.hero');
+          if(hero)hero.style.background='linear-gradient(135deg,'+d.hero.bg1+' 0%,'+d.hero.bg2+' 100%)';
+        }
+      }
+
+      // 4) الإحصائيات
+      var stats=document.querySelectorAll('.stat-num');
+      if(stats[0]&&d.statFeat)stats[0].textContent=d.statFeat;
+      if(stats[1]&&d.statPages)stats[1].textContent=d.statPages;
+      if(stats[2]&&d.stat3)stats[2].textContent=d.stat3;
+
+      // 5) سجل التحديثات
       if(d.changelog&&d.changelog.length){
         var cl=document.querySelector('.changelog');
         if(cl){
           cl.innerHTML='';
-          d.changelog.forEach(function(item,i){
+          d.changelog.forEach(function(item){
             var div=document.createElement('div');
             div.className='changelog-item fade-card';
-            div.innerHTML='<div class="cl-version">'+item.version+'</div><div><div class="cl-date">'+item.date+'</div><div class="cl-text">'+item.text+'</div></div>';
+            div.innerHTML='<div class="cl-version">'+esc(item.version)+'</div>'+
+              '<div><div class="cl-date">'+esc(item.date)+'</div>'+
+              '<div class="cl-text">'+esc(item.text)+'</div></div>';
             cl.appendChild(div);
           });
-          // re-observe
-          var io2=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');io2.unobserve(e.target);}});},{threshold:0.1});
+          var io2=new IntersectionObserver(function(en){en.forEach(function(e){
+            if(e.isIntersecting){e.target.classList.add('visible');io2.unobserve(e.target);}
+          });},{threshold:.1});
           cl.querySelectorAll('.changelog-item').forEach(function(el){io2.observe(el);});
         }
       }
+
+      // 6) الميزات — تحديث البطاقات
+      if(d.features&&d.features.length){
+        var grid=document.querySelector('.features-grid');
+        if(grid){
+          grid.innerHTML='';
+          d.features.forEach(function(f){
+            var card=document.createElement('div');
+            card.className='feature-card '+(f.color||'fc-blue')+' fade-card';
+            card.setAttribute('onclick','openFeat && openFeat("'+(f.id||f.name.replace(/\s+/g,'_'))+'")');
+            card.innerHTML=
+              '<span class="feature-icon">'+esc(f.emoji)+'</span>'+
+              '<div class="feature-title">'+esc(f.name)+'</div>'+
+              '<p class="feature-desc">'+esc(f.desc)+'</p>'+
+              '<span class="feature-tag '+(f.tagColor||'tag-blue')+'">'+esc(f.tag)+'</span>'+
+              '<div class="click-hint">👆 اضغط للشرح</div>';
+            grid.appendChild(card);
+          });
+          var io3=new IntersectionObserver(function(en){en.forEach(function(e){
+            if(e.isIntersecting){setTimeout(function(){e.target.classList.add('visible');},+(e.target.dataset.idx||0)*80);io3.unobserve(e.target);}
+          });},{threshold:.1});
+          grid.querySelectorAll('.feature-card').forEach(function(el,i){el.dataset.idx=i%5;io3.observe(el);});
+        }
+      }
+
+      // 7) الإشعار
+      if(d.notif&&d.notif.active&&d.notif.text){
+        showSiteNotif(d.notif);
+      }
+
+      // 8) شريط الإعلانات
+      if(d.banner&&d.banner.active&&d.banner.text){
+        showSiteBanner(d.banner);
+      }
     })
-    .catch(function(){/* لا data.json — يعمل بالمحتوى الافتراضي */});
+    .catch(function(){/* يعمل بالمحتوى الافتراضي */});
+
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function showSiteNotif(n){
+    if(document.getElementById('siteNotif'))return;
+    var typeMap={
+      info:{bg:'#EFF6FF',color:'#1E40AF',border:'#BFDBFE',icon:'💙'},
+      success:{bg:'#ECFDF5',color:'#065F46',border:'#A7F3D0',icon:'💚'},
+      warning:{bg:'#FFFBEB',color:'#92400E',border:'#FCD34D',icon:'💛'},
+      danger:{bg:'#FEF2F2',color:'#991B1B',border:'#FECACA',icon:'❤️'}
+    };
+    var t=typeMap[n.type]||typeMap.info;
+    var el=document.createElement('div');
+    el.id='siteNotif';
+    var pos=n.pos==='bottom'?'bottom:20px;':'top:80px;';
+    el.style.cssText='position:fixed;'+pos+'left:50%;transform:translateX(-50%);z-index:9997;background:'+t.bg+';color:'+t.color+';border:1.5px solid '+t.border+';border-radius:14px;padding:14px 20px;max-width:500px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,.15);font-family:Cairo,sans-serif;direction:rtl;animation:fadeDown .4s ease;';
+    el.innerHTML=
+      '<div style="display:flex;align-items:flex-start;gap:12px;">'+
+        '<span style="font-size:1.3rem;flex-shrink:0;">'+t.icon+'</span>'+
+        '<div style="flex:1;">'+
+          (n.title?'<div style="font-weight:800;font-size:14px;margin-bottom:4px;">'+esc(n.title)+'</div>':'')+
+          '<div style="font-size:13px;line-height:1.6;">'+esc(n.text)+'</div>'+
+          (n.btn?'<button onclick="document.getElementById('siteNotif').remove()" style="margin-top:10px;background:'+t.color+';color:#fff;border:none;border-radius:8px;padding:6px 16px;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">'+esc(n.btn)+'</button>':'')+
+        '</div>'+
+        '<button onclick="document.getElementById('siteNotif').remove()" style="background:none;border:none;cursor:pointer;font-size:18px;color:'+t.color+';opacity:.6;flex-shrink:0;padding:0;line-height:1;">✕</button>'+
+      '</div>';
+    document.body.appendChild(el);
+    if(n.duration&&n.duration>0)setTimeout(function(){if(el.parentNode)el.remove();},n.duration);
+  }
+
+  function showSiteBanner(b){
+    if(document.getElementById('siteBanner'))return;
+    var el=document.createElement('div');
+    el.id='siteBanner';
+    var isTop=b.pos!=='bottom';
+    el.style.cssText='position:fixed;'+(isTop?'top:0;':'bottom:0;')+'right:0;left:0;z-index:9996;background:'+(b.color||'#1E3A8A')+';color:#fff;padding:10px 20px;text-align:center;font-family:Cairo,sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;';
+    el.innerHTML=
+      '<span style="flex:1;">'+esc(b.text)+'</span>'+
+      (b.link?'<a href="'+esc(b.link)+'" target="_blank" style="color:#FCD34D;font-weight:800;white-space:nowrap;">فتح الرابط ←</a>':'')+
+      '<button onclick="document.getElementById('siteBanner').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;">✕</button>';
+    if(isTop){document.body.insertBefore(el,document.body.firstChild);}
+    else{document.body.appendChild(el);}
+  }
 })();
 </script>
 </body>
