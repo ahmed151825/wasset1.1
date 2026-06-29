@@ -128,8 +128,8 @@
     "btn": ""
   },
   "banner": {
-    "active": false,
-    "text": "للتواصل لاضافة مقترح او فكرة جديدة اضفط هنا",
+    "active": true,
+    "text": "للتواصل لاضافة مقترح او فكرة جديدة اضفط هنا.",
     "color": "#1E3A8A",
     "pos": "top",
     "link": "https://api.whatsapp.com/send/?phone=%2B9647716828568&text&type=phone_number&app_absent=0"
