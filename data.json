@@ -120,11 +120,11 @@
   ],
   "notif": {
     "active": false,
-    "title": "",
-    "text": "",
-    "type": "info",
+    "title": "عاجل",
+    "text": "هلو",
+    "type": "danger",
     "pos": "top",
-    "duration": 0,
+    "duration": 5000,
     "btn": ""
   },
   "banner": {
