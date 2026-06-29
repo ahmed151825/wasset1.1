@@ -705,58 +705,65 @@ async function publishAll(){
 }
 
 // ══════════════════════════════════════
-// PATCH INDEX.HTML
-// يعدّل على الملف الحالي دون مسح محتواه
+// PATCH INDEX.HTML — آمن بدون regex معقد
+// يستخدم markers ثابتة في الملف
 // ══════════════════════════════════════
 function patchIndexHTML(html){
 
-  // 1) تحديث رقم الإصدار في الشارة
-  html=html.replace(
-    /🚀 الإصدار [\d\.]+ — [^<"]+/g,
+  // كل تعديل يعتمد على نص ثابت وفريد في الملف
+
+  // 1) شارة الإصدار
+  html = safeReplace(html,
+    /🚀 الإصدار [\d.]+ — [^<"]{1,30}/,
     '🚀 الإصدار '+state.version+' — '+state.versionStatus
   );
 
-  // 2) تحديث رقم الإصدار في version-pill
-  html=html.replace(
-    /(<b>v)[\d\.]+(<\/b>)/g,
-    '$1'+state.version+'$2'
+  // 2) version-pill — النص داخل <b>v...</b>
+  html = safeReplace(html,
+    /<b>v[\d.]+<\/b>/,
+    '<b>v'+state.version+'</b>'
   );
 
-  // 3) تحديث وصف الـ hero-sub
-  html=html.replace(
-    /(<p class="hero-sub">)[^<]+(<\/p>)/,
-    '$1'+state.versionDesc+'$2'
-  );
+  // 3) سجل التحديثات — ابحث عن القسم بـ id="changelog"
+  // واستبدل كل بطاقات changelog-item بين أول changelog-item وآخرها
+  var clStart = html.indexOf('<div class="changelog">');
+  var clEnd   = html.indexOf('</div>', html.indexOf('</div>', clStart + 100) + 100);
 
-  // 4) تحديث إجمالي الميزات في الإحصائيات
-  html=html.replace(
-    /(<div class="stat-num">)\d+(<\/div>\s*<div class="stat-lbl">ميزة متكاملة)/,
-    '$1'+state.statFeatures+'$2'
-  );
+  if(clStart !== -1 && clEnd !== -1){
+    // أنشئ بطاقات جديدة
+    var newCards = '\n';
+    state.changelog.forEach(function(cl){
+      newCards +=
+        '    <div class="changelog-item fade-card">' +
+        '<div class="cl-version">'+escHtml(cl.version)+'</div>' +
+        '<div><div class="cl-date">'+escHtml(cl.date)+'</div>' +
+        '<div class="cl-text">'+escHtml(cl.text)+'</div></div></div>\n';
+    });
 
-  // 5) تحديث الصفحات المدعومة
-  html=html.replace(
-    /(<div class="stat-num">)\d+(<\/div>\s*<div class="stat-lbl">صفحات مدعومة)/,
-    '$1'+state.statPages+'$2'
-  );
+    // استبدل المحتوى بين فتح وإغلاق div.changelog
+    var before = html.substring(0, clStart + '<div class="changelog">'.length);
+    var after  = html.substring(html.indexOf('</div>', clStart + '<div class="changelog">'.length + 200));
+    html = before + newCards + '  ' + after;
+  }
 
-  // 6) تحديث سجل التحديثات كاملاً
-  var newChangelog='';
-  state.changelog.forEach(function(cl){
-    newChangelog+='    <div class="changelog-item fade-card"><div class="cl-version">'+cl.version+'</div><div><div class="cl-date">'+cl.date+'</div><div class="cl-text">'+cl.text+'</div></div></div>\n';
-  });
-  html=html.replace(
-    /(<div class="changelog">)([\s\S]*?)(<\/div>\s*<\/section>\s*<div class="sep">)/,
-    '$1\n'+newChangelog+'  $3'
-  );
-
-  // 7) أضف تعليق timestamp
-  html=html.replace(
-    /<\/html>/,
-    '<!-- published:'+new Date().toISOString()+' v'+state.version+' -->\n</html>'
-  );
+  // 4) timestamp في آخر الملف
+  html = html.replace(/<!-- published:.*?-->\n?/g, '');
+  html = html.replace('</html>', '<!-- published:'+new Date().toISOString()+' v'+state.version+' -->\n</html>');
 
   return html;
+}
+
+function safeReplace(html, pattern, replacement){
+  try{ return html.replace(pattern, replacement); }
+  catch(e){ return html; }
+}
+
+function escHtml(str){
+  return String(str||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
 }
 
 // ══════════════════════════════════════
