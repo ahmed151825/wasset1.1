@@ -741,7 +741,7 @@ function clogs(){if(!confirm('مسح السجل؟'))return;D.logs=[];sv();rlogs(
 function patchHTML(html){
   var data={
     version:D.version,status:D.status,desc:D.desc,
-    statFeat:D.statFeat,statPages:D.statPages,stat3:D.stat3,
+    statFeat:D.statFeat,statPages:D.statPages,stat3:D.stat3,stat4:D.stat4,
     hero:D.hero,changelog:D.changelog,
     features:D.features.filter(function(f){return f.active;}),
     notif:D.notif,banner:D.banner,owner:D.owner,install:D.install
@@ -776,6 +776,7 @@ function patchHTML(html){
   L+='if(st[0]&&d.statFeat)st[0].textContent=d.statFeat;\n';
   L+='if(st[1]&&d.statPages)st[1].textContent=d.statPages;\n';
   L+='if(st[2]&&d.stat3)st[2].textContent=d.stat3;\n';
+  L+='if(st[3]&&d.stat4)st[3].textContent=d.stat4;\n';
   L+='if(d.changelog&&d.changelog.length){\n';
   L+='  var clog=document.querySelector(".changelog");\n';
   L+='  if(clog){\n';
@@ -896,23 +897,37 @@ function loadAndPatch(input){
   reader.onerror=function(){status.style.color='#DC2626';status.textContent='فشل قراءة الملف';};
   reader.readAsText(file,'utf-8');
 }
+function getFreshBuilt(){
+  // ← دائماً يعيد البناء من الملف المرفوع + أحدث بيانات D
+  if(!LOADED_HTML){return null;}
+  try{
+    var patched=patchHTML(LOADED_HTML);
+    if(patched.indexOf('WS-DATA-START')<0)return null;
+    BUILT_HTML=patched;
+    return patched;
+  }catch(e){return null;}
+}
 function copyBuiltCode(){
-  if(!BUILT_HTML){toast('ارفع الملف اولا','err');return;}
+  if(!LOADED_HTML){toast('ارفع الملف اولا','err');return;}
+  var fresh=getFreshBuilt();
+  if(!fresh){toast('خطأ في إعادة البناء','err');return;}
   var ta=document.createElement('textarea');
-  ta.value=BUILT_HTML;
+  ta.value=fresh;
   ta.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;';
   document.body.appendChild(ta);ta.focus();ta.select();
   try{ta.setSelectionRange(0,ta.value.length);}catch(x){}
   var ok=false;try{ok=document.execCommand('copy');}catch(x){}
   document.body.removeChild(ta);
-  if(ok){toast('تم نسخ الكود ('+Math.round(BUILT_HTML.length/1024)+' KB)','ok');showCopySuccess();lg('نسخ كود v'+D.version);}
+  if(ok){toast('تم نسخ الكود ('+Math.round(fresh.length/1024)+' KB)','ok');showCopySuccess();lg('نسخ كود v'+D.version);}
   else if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(BUILT_HTML).then(function(){toast('تم النسخ','ok');showCopySuccess();}).catch(function(){toast('فشل النسخ','err');});
+    navigator.clipboard.writeText(fresh).then(function(){toast('تم النسخ','ok');showCopySuccess();}).catch(function(){toast('فشل النسخ','err');});
   }else{toast('فشل النسخ — جرب التحميل','err');}
 }
 function downloadBuilt(){
-  if(!BUILT_HTML){toast('ارفع الملف اولا','err');return;}
-  var b=new Blob([BUILT_HTML],{type:'text/html;charset=utf-8'});
+  if(!LOADED_HTML){toast('ارفع الملف اولا','err');return;}
+  var fresh=getFreshBuilt();
+  if(!fresh){toast('خطأ في إعادة البناء','err');return;}
+  var b=new Blob([fresh],{type:'text/html;charset=utf-8'});
   var u=URL.createObjectURL(b);var a=document.createElement('a');
   a.href=u;a.download='index.html';document.body.appendChild(a);a.click();
   document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},1000);
