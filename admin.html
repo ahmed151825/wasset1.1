@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم — waseet-tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cairo',sans-serif;background:#F0F4FF;color:#0F172A;min-height:100vh;}
+#login{position:fixed;inset:0;background:linear-gradient(135deg,#0F2057,#1E3A8A);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.lbox{background:#fff;border-radius:20px;padding:44px 40px;width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.ltitle{font-size:1.4rem;font-weight:900;color:#1E3A8A;margin:16px 0 6px;}
+.lsub{font-size:13px;color:#64748B;margin-bottom:28px;}
+.linput{width:100%;padding:12px;border:2px solid #E2E8F0;border-radius:10px;font-family:'Cairo',sans-serif;font-size:14px;outline:none;text-align:center;margin-bottom:12px;}
+.linput:focus{border-color:#2563EB;}
+.lbtn{width:100%;padding:13px;background:linear-gradient(135deg,#F59E0B,#D97706);border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;color:#000;}
+.lerr{color:#EF4444;font-size:13px;margin-top:10px;display:none;}
+#app{display:none;min-height:100vh;}
+.sidebar{width:250px;background:#0F2057;color:#fff;position:fixed;top:0;bottom:0;overflow-y:auto;display:flex;flex-direction:column;}
+.sbrand{padding:20px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sbrand h2{font-size:14px;font-weight:800;}
+.sbrand p{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;}
+.scat{padding:14px 20px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.08em;}
+.sitem{padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:rgba(255,255,255,.65);border-right:3px solid transparent;display:flex;align-items:center;gap:8px;transition:all .15s;}
+.sitem:hover{background:rgba(255,255,255,.06);color:#fff;}
+.sitem.on{background:rgba(245,158,11,.12);color:#FCD34D;border-right-color:#F59E0B;}
+.sfooter{margin-top:auto;padding:14px 20px;font-size:10px;color:rgba(255,255,255,.2);text-align:center;}
+.main{margin-right:250px;padding:28px;}
+.tbar{background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
+.ttitle{font-size:1.15rem;font-weight:800;color:#1E3A8A;}
+.tsub{font-size:12px;color:#64748B;margin-top:2px;}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:22px;}
+.sc{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;text-align:center;}
+.scv{font-size:1.5rem;font-weight:900;color:#1E3A8A;font-family:'JetBrains Mono',monospace;}
+.scl{font-size:11px;color:#64748B;margin-top:3px;}
+.panel{background:#fff;border:1px solid #E2E8F0;border-radius:14px;margin-bottom:18px;overflow:hidden;}
+.phdr{padding:14px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.ptitle{font-size:14px;font-weight:700;color:#1E3A8A;}
+.pbody{padding:20px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.frow.full{grid-template-columns:1fr;}
+.frow.tri{grid-template-columns:1fr 1fr 1fr;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fl{font-size:12px;font-weight:700;color:#334155;}
+.fi,.fs,.ft{width:100%;padding:9px 12px;border:2px solid #E2E8F0;border-radius:9px;font-family:'Cairo',sans-serif;font-size:13px;outline:none;background:#fff;color:#0F172A;transition:border-color .2s;}
+.fi:focus,.fs:focus,.ft:focus{border-color:#2563EB;}
+.ft{resize:vertical;min-height:80px;line-height:1.6;}
+.fhint{font-size:11px;color:#94A3B8;margin-top:3px;}
+.btn{padding:8px 16px;border:none;border-radius:9px;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s,transform .15s;}
+.btn:hover{opacity:.88;transform:translateY(-1px);}
+.bs{background:#10B981;color:#fff;}
+.bg{background:#F59E0B;color:#000;}
+.bd{background:#EF4444;color:#fff;}
+.bp{background:#2563EB;color:#fff;}
+.bpur{background:#8B5CF6;color:#fff;}
+.bgh{background:#F0F4FF;color:#0F172A;border:1px solid #E2E8F0;}
+.bsm{padding:5px 11px;font-size:12px;}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{background:#F8FAFF;padding:9px 12px;text-align:right;font-size:11px;color:#64748B;font-weight:700;border-bottom:2px solid #E2E8F0;white-space:nowrap;}
+.tbl td{padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:13px;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:#F8FAFF;}
+.vb{background:#EFF6FF;color:#2563EB;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;}
+.tog{position:relative;width:40px;height:22px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tsl{position:absolute;inset:0;background:#CBD5E1;border-radius:22px;cursor:pointer;transition:.25s;}
+.tsl::before{content:"";position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;right:3px;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.tog input:checked+.tsl{background:#10B981;}
+.tog input:checked+.tsl::before{transform:translateX(-18px);}
+.np{border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px;font-size:13px;margin-bottom:6px;}
+.np-i{background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE;}
+.np-s{background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;}
+.np-w{background:#FFFBEB;color:#92400E;border:1px solid #FCD34D;}
+.np-d{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px;}
+.chip{width:26px;height:26px;border-radius:7px;cursor:pointer;border:3px solid transparent;transition:transform .15s;}
+.chip:hover{transform:scale(1.15);}
+.chip.sel{border-color:#0F172A;}
+.mov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .22s;}
+.mov.open{opacity:1;pointer-events:all;}
+.mbox{background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:scale(.94);transition:transform .22s;}
+.mov.open .mbox{transform:scale(1);}
+.mhdr{padding:18px 22px 14px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;}
+.mtitle{font-size:14px;font-weight:800;color:#1E3A8A;}
+.mclose{background:none;border:none;font-size:20px;cursor:pointer;color:#94A3B8;}
+.mbody{padding:20px 22px;}
+.mfoot{padding:14px 22px;border-top:1px solid #E2E8F0;display:flex;gap:8px;justify-content:flex-end;}
+.tab{display:none;}.tab.on{display:block;}
+.warn{background:#FFFBEB;border:1px solid #FCD34D;border-radius:9px;padding:11px 13px;font-size:13px;color:#92400E;line-height:1.6;margin-bottom:14px;}
+.info-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:9px;padding:11px 13px;font-size:13px;color:#1E40AF;line-height:1.6;margin-bottom:14px;}
+.qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;}
+.qab{background:#F8FAFF;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.qab:hover{border-color:#2563EB;background:#EFF6FF;transform:translateY(-2px);}
+.qai{font-size:1.4rem;}
+.qal{font-size:11px;font-weight:700;}
+/* CODE BOX */
+.code-box{background:#0F172A;border-radius:12px;padding:0;overflow:hidden;margin-top:12px;}
+.code-hdr{background:#1E293B;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;}
+.code-hdr-title{color:#94A3B8;font-size:12px;font-family:'JetBrains Mono',monospace;}
+.copy-code-btn{background:#2563EB;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.copy-code-btn:hover{background:#1d4ed8;}
+.code-content{padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#E2E8F0;line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;}
+/* COPY SUCCESS */
+.copy-success{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#059669;color:#fff;padding:12px 24px;border-radius:30px;font-size:14px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:99998;opacity:0;transition:opacity .3s;}
+.copy-success.show{opacity:1;}
+/* LOGITEM */
+.logitem{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #E2E8F0;font-size:12px;}
+.logitem:last-child{border-bottom:none;}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);color:#fff;padding:11px 26px;border-radius:30px;font-size:14px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:transform .3s;z-index:99999;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+@media(max-width:768px){.sidebar{display:none;}.main{margin-right:0;padding:14px;}.frow,.frow.tri{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="lbox">
+    <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+      <rect x="12" y="28" width="40" height="28" rx="6" fill="#1E3A8A"/>
+      <path d="M20 28V20C20 13.373 25.373 8 32 8C38.627 8 44 13.373 44 20V28" stroke="#1E3A8A" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <circle cx="32" cy="42" r="5" fill="#F59E0B"/>
+      <rect x="30" y="42" width="4" height="8" rx="2" fill="#F59E0B"/>
+    </svg>
+    <div class="ltitle">لوحة التحكم</div>
+    <div class="lsub">waseet-tools · أحمد محمد كريم</div>
+    <div style="position:relative;margin-bottom:12px;">
+      <input class="linput" type="password" id="pw" placeholder="كلمة المرور" style="margin-bottom:0;" onkeydown="if(event.key==='Enter')login()">
+      <button onclick="var i=document.getElementById('pw');i.type=i.type==='password'?'text':'password';" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;">👁</button>
+    </div>
+    <button class="lbtn" onclick="login()">دخول</button>
+    <div class="lerr" id="lerr">كلمة المرور غير صحيحة</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sbrand"><h2>لوحة التحكم</h2><p>waseet-tools Admin</p></div>
+    <div class="scat">الرئيسية</div>
+    <div class="sitem on" data-t="dash">📊 لوحة المعلومات</div>
+    <div class="scat">محتوى الموقع</div>
+    <div class="sitem" data-t="ver">🚀 الإصدار والوصف</div>
+    <div class="sitem" data-t="cl">📜 سجل التحديثات</div>
+    <div class="sitem" data-t="feat">✨ الميزات والبطاقات</div>
+    <div class="sitem" data-t="hero">🖼️ قسم الهيرو</div>
+    <div class="sitem" data-t="stats">📊 الإحصائيات</div>
+    <div class="sitem" data-t="owner">👤 بيانات المالك</div>
+    <div class="scat">التواصل</div>
+    <div class="sitem" data-t="notif">🔔 الإشعارات</div>
+    <div class="sitem" data-t="banner">📢 شريط الإعلانات</div>
+    <div class="sitem" data-t="install">⬇️ صفحة التثبيت</div>
+    <div class="scat">النشر</div>
+    <div class="sitem" data-t="publish">🚀 نسخ الكود للنشر</div>
+    <div class="sitem" data-t="logs">📋 سجل النشاط</div>
+    <div class="sfooter">v3.20.4 © أحمد محمد كريم 2026</div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="tab on" id="tab-dash">
+      <div class="tbar">
+        <div><div class="ttitle">📊 لوحة المعلومات</div><div class="tsub">مرحباً أحمد — ملخص الحالة</div></div>
+        <button class="btn bg" onclick="gt('publish')">🚀 نسخ الكود للنشر</button>
+      </div>
+      <div class="stats">
+        <div class="sc"><div class="scv" id="dv">—</div><div class="scl">الإصدار</div></div>
+        <div class="sc"><div class="scv" id="dc">—</div><div class="scl">تحديثات</div></div>
+        <div class="sc"><div class="scv" id="df">—</div><div class="scl">ميزات</div></div>
+        <div class="sc"><div class="scv" id="dn">—</div><div class="scl">إشعار</div></div>
+        <div class="sc"><div class="scv" id="db">—</div><div class="scl">شريط</div></div>
+      </div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">⚡ إجراءات سريعة</div></div>
+        <div class="pbody">
+          <div class="qa">
+            <div class="qab" onclick="gt('ver')"><div class="qai">🚀</div><div class="qal">تحديث الإصدار</div></div>
+            <div class="qab" onclick="gt('cl');setTimeout(sadd,100)"><div class="qai">➕</div><div class="qal">إضافة تحديث</div></div>
+            <div class="qab" onclick="gt('notif')"><div class="qai">🔔</div><div class="qal">إرسال إشعار</div></div>
+            <div class="qab" onclick="gt('banner')"><div class="qai">📢</div><div class="qal">تعديل الشريط</div></div>
+            <div class="qab" onclick="gt('feat')"><div class="qai">✨</div><div class="qal">الميزات</div></div>
+            <div class="qab" onclick="gt('hero')"><div class="qai">🖼️</div><div class="qal">الهيرو</div></div>
+            <div class="qab" onclick="gt('owner')"><div class="qai">👤</div><div class="qal">بيانات المالك</div></div>
+            <div class="qab" onclick="gt('install')"><div class="qai">⬇️</div><div class="qal">صفحة التثبيت</div></div>
+            <div class="qab" onclick="gt('stats')"><div class="qai">📊</div><div class="qal">الإحصائيات</div></div>
+            <div class="qab" onclick="gt('publish')"><div class="qai">📋</div><div class="qal">نسخ الكود</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">📋 آخر التحديثات</div></div>
+        <div class="pbody" id="dclp"></div>
+      </div>
+    </div>
+
+    <!-- VERSION -->
+    <div class="tab" id="tab-ver">
+      <div class="tbar"><div><div class="ttitle">🚀 الإصدار والوصف</div></div><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">📝 بيانات الإصدار</div></div>
+        <div class="pbody">
+          <div class="frow">
+            <div class="fg"><label class="fl">رقم الإصدار</label><input class="fi" id="fver" oninput="upbadge()"></div>
+            <div class="fg"><label class="fl">الحالة</label>
+              <select class="fs" id="fst" onchange="upbadge()">
+                <option>متاح الآن</option><option>تحديث جديد</option><option>إصلاح عاجل</option><option>إصدار تجريبي</option><option>قريباً</option>
+              </select>
+            </div>
+          </div>
+          <div class="frow full"><div class="fg"><label class="fl">وصف الموقع (يظهر في الهيرو)</label><input class="fi" id="fdesc" oninput="upbadge()"></div></div>
+          <button class="btn bs" onclick="sver()">💾 حفظ</button>
+          <div style="margin-top:14px;background:linear-gradient(135deg,#0F2057,#1E3A8A);border-radius:10px;padding:20px;text-align:center;">
+            <div style="display:inline-block;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:#FCD34D;font-size:13px;font-weight:600;padding:5px 16px;border-radius:20px;" id="bprev"></div>
+            <div style="color:rgba(255,255,255,.7);font-size:13px;margin-top:10px;max-width:500px;margin-right:auto;margin-left:auto;" id="dprev"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHANGELOG -->
+    <div class="tab" id="tab-cl">
+      <div class="tbar">
+        <div><div class="ttitle">📜 سجل التحديثات</div></div>
+        <div style="display:flex;gap:8px;"><button class="btn bs" onclick="sadd()">➕ إضافة</button><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      </div>
+      <div class="panel" id="addp" style="display:none;">
+        <div class="phdr"><div class="ptitle" id="addpt">➕ تحديث جديد</div><button class="btn bgh bsm" onclick="hadp()">✕</button></div>
+        <div class="pbody">
+          <div class="frow">
+            <div class="fg"><label class="fl">رقم الإصدار</label><input class="fi" id="nver" placeholder="v3.20.5"></div>
+            <div class="fg"><label class="fl">التاريخ / الحالة</label><input class="fi" id="ndt" placeholder="الأحدث"></div>
+          </div>
+          <div class="frow full"><div class="fg"><label class="fl">نص التحديث</label><textarea class="ft" id="ntxt" placeholder="وصف التحديث أو الإصلاح..."></textarea></div></div>
+          <div style="display:flex;gap:8px;"><button class="btn bs" onclick="sent()">💾 حفظ</button><button class="btn bgh" onclick="hadp()">إلغاء</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">📋 قائمة التحديثات</div><span id="clcnt" style="font-size:12px;color:#64748B;"></span></div>
+        <div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>الإصدار</th><th>التاريخ</th><th>الوصف</th><th></th></tr></thead><tbody id="clb"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- FEATURES -->
+    <div class="tab" id="tab-feat">
+      <div class="tbar">
+        <div><div class="ttitle">✨ الميزات والبطاقات</div></div>
+        <div style="display:flex;gap:8px;"><button class="btn bs" onclick="oafm()">➕ إضافة ميزة</button><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      </div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">قائمة الميزات</div><span id="fcnt" style="font-size:12px;color:#64748B;"></span></div>
+        <div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>الأيقونة</th><th>الاسم</th><th>الوصف</th><th>الوسم</th><th>الحالة</th><th></th></tr></thead><tbody id="fb"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- HERO -->
+    <div class="tab" id="tab-hero">
+      <div class="tbar"><div><div class="ttitle">🖼️ قسم الهيرو</div></div><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">📝 نصوص وألوان الهيرو</div></div>
+        <div class="pbody">
+          <div class="frow full"><div class="fg"><label class="fl">السطر الأول من العنوان</label><input class="fi" id="ht1" oninput="phero()"></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">السطر الثاني (ذهبي)</label><input class="fi" id="ht2" oninput="phero()"></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">زر التثبيت الرئيسي</label><input class="fi" id="hb1"></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">الزر الثانوي</label><input class="fi" id="hb2"></div></div>
+          <div class="frow">
+            <div class="fg"><label class="fl">لون الخلفية (بداية)</label><input type="color" class="fi" id="hbg1" style="height:42px;padding:4px;cursor:pointer;" oninput="phero()"></div>
+            <div class="fg"><label class="fl">لون الخلفية (نهاية)</label><input type="color" class="fi" id="hbg2" style="height:42px;padding:4px;cursor:pointer;" oninput="phero()"></div>
+          </div>
+          <button class="btn bs" onclick="shero()">💾 حفظ</button>
+          <div style="margin-top:14px;border-radius:12px;padding:30px;text-align:center;transition:background .3s;" id="heroprev">
+            <div style="font-size:1.5rem;font-weight:900;color:#fff;line-height:1.2;" id="hptext"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="tab" id="tab-stats">
+      <div class="tbar"><div><div class="ttitle">📊 الإحصائيات</div></div><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">أرقام الإحصائيات في أعلى الموقع</div></div>
+        <div class="pbody">
+          <div class="frow tri">
+            <div class="fg"><label class="fl">عدد الميزات</label><input class="fi" type="number" id="fsf"><span class="fhint">يظهر: "ميزة متكاملة"</span></div>
+            <div class="fg"><label class="fl">الصفحات المدعومة</label><input class="fi" type="number" id="fsp"><span class="fhint">يظهر: "صفحات مدعومة"</span></div>
+            <div class="fg"><label class="fl">النسبة المئوية</label><input class="fi" id="fst3" placeholder="100%"><span class="fhint">يظهر: "مجاني وآمن"</span></div>
+          </div>
+          <div class="frow full">
+            <div class="fg"><label class="fl">النص الرابع (اختياري)</label><input class="fi" id="fst4" placeholder="مثال: ∞"><span class="fhint">يظهر: "تحديثات تلقائية"</span></div>
+          </div>
+          <button class="btn bs" onclick="sstats()">💾 حفظ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OWNER -->
+    <div class="tab" id="tab-owner">
+      <div class="tbar"><div><div class="ttitle">👤 بيانات المالك</div></div><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">معلومات تظهر في قسم الحقوق</div></div>
+        <div class="pbody">
+          <div class="frow full"><div class="fg"><label class="fl">الاسم الكامل</label><input class="fi" id="oname"></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">المسمى الوظيفي</label><input class="fi" id="orole"></div></div>
+          <div class="frow">
+            <div class="fg"><label class="fl">سنة الحقوق</label><input class="fi" id="oyear" placeholder="2026"></div>
+            <div class="fg"><label class="fl">نص الحقوق</label><input class="fi" id="oip" placeholder="جميع الحقوق محفوظة"></div>
+          </div>
+          <div class="frow full"><div class="fg"><label class="fl">نص تحذير الاستخدام</label><textarea class="ft" id="owarning" placeholder="يُمنع إعادة توزيع هذه الأداة..."></textarea></div></div>
+          <button class="btn bs" onclick="sowner()">💾 حفظ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIF -->
+    <div class="tab" id="tab-notif">
+      <div class="tbar"><div><div class="ttitle">🔔 الإشعارات</div></div><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      <div class="panel">
+        <div class="phdr">
+          <div class="ptitle">إعداد الإشعار</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;">تفعيل <label class="tog"><input type="checkbox" id="na"><span class="tsl"></span></label></div>
+        </div>
+        <div class="pbody">
+          <div class="frow full"><div class="fg"><label class="fl">العنوان</label><input class="fi" id="nt" oninput="unp()"></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">النص</label><textarea class="ft" id="ntx" oninput="unp()"></textarea></div></div>
+          <div class="frow tri">
+            <div class="fg"><label class="fl">النوع</label>
+              <select class="fs" id="ntp" onchange="unp()">
+                <option value="info">معلومة</option><option value="success">نجاح</option>
+                <option value="warning">تحذير</option><option value="danger">تنبيه عاجل</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">الموضع</label><select class="fs" id="npos"><option value="top">أعلى الصفحة</option><option value="bottom">أسفل الصفحة</option></select></div>
+            <div class="fg"><label class="fl">المدة</label><select class="fs" id="ndur"><option value="0">دائم</option><option value="5000">5 ثوانٍ</option><option value="10000">10 ثوانٍ</option><option value="30000">30 ثانية</option></select></div>
+          </div>
+          <div class="frow full"><div class="fg"><label class="fl">نص زر الإجراء (اختياري)</label><input class="fi" id="nb" placeholder="مثال: تحديث الآن"></div></div>
+          <button class="btn bs" onclick="snotif()">💾 حفظ</button>
+        </div>
+      </div>
+      <div class="panel"><div class="phdr"><div class="ptitle">👁️ معاينة</div></div><div class="pbody" id="npbox"><div class="np np-i">معاينة الإشعار...</div></div></div>
+    </div>
+
+    <!-- BANNER -->
+    <div class="tab" id="tab-banner">
+      <div class="tbar"><div><div class="ttitle">📢 شريط الإعلانات</div></div><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      <div class="panel">
+        <div class="phdr">
+          <div class="ptitle">إعداد الشريط</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;">تفعيل <label class="tog"><input type="checkbox" id="ba"><span class="tsl"></span></label></div>
+        </div>
+        <div class="pbody">
+          <div class="frow full"><div class="fg"><label class="fl">نص الشريط</label><input class="fi" id="bt" oninput="ubp()"></div></div>
+          <div class="frow">
+            <div class="fg"><label class="fl">اللون</label>
+              <div class="chips">
+                <div class="chip sel" style="background:#1E3A8A;" data-c="#1E3A8A" onclick="pbc(this)"></div>
+                <div class="chip" style="background:#059669;" data-c="#059669" onclick="pbc(this)"></div>
+                <div class="chip" style="background:#DC2626;" data-c="#DC2626" onclick="pbc(this)"></div>
+                <div class="chip" style="background:#D97706;" data-c="#D97706" onclick="pbc(this)"></div>
+                <div class="chip" style="background:#7C3AED;" data-c="#7C3AED" onclick="pbc(this)"></div>
+                <div class="chip" style="background:#0F172A;" data-c="#0F172A" onclick="pbc(this)"></div>
+                <input type="color" style="width:26px;height:26px;border:none;border-radius:7px;cursor:pointer;padding:0;" onchange="BC=this.value;ubp()">
+              </div>
+            </div>
+            <div class="fg"><label class="fl">الموضع</label><select class="fs" id="bpos"><option value="top">أعلى</option><option value="bottom">أسفل</option></select></div>
+          </div>
+          <div class="frow full"><div class="fg"><label class="fl">رابط (اختياري)</label><input class="fi" id="bl" placeholder="https://..."></div></div>
+          <button class="btn bs" onclick="sban()">💾 حفظ</button>
+        </div>
+      </div>
+      <div class="panel"><div class="phdr"><div class="ptitle">👁️ معاينة</div></div><div class="pbody"><div id="bprev2" style="border-radius:8px;padding:10px 20px;text-align:center;font-size:13px;font-weight:600;color:#fff;background:#1E3A8A;">شريط الإعلانات</div></div></div>
+    </div>
+
+    <!-- INSTALL PAGE -->
+    <div class="tab" id="tab-install">
+      <div class="tbar"><div><div class="ttitle">⬇️ صفحة التثبيت</div></div><button class="btn bg" onclick="gt('publish')">📋 نسخ للنشر</button></div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">تخصيص نافذة التثبيت</div></div>
+        <div class="pbody">
+          <div class="frow full"><div class="fg"><label class="fl">رابط التثبيت (Tampermonkey)</label><input class="fi" id="iurl" placeholder="https://raw.githubusercontent.com/..."></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">عنوان نافذة التثبيت</label><input class="fi" id="ititle" placeholder="تثبيت waseet-tools"></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">نص الوصف</label><textarea class="ft" id="idesc" placeholder="وصف مختصر لطريقة التثبيت..."></textarea></div></div>
+          <div class="frow full"><div class="fg"><label class="fl">نص زر التثبيت</label><input class="fi" id="ibtn" placeholder="تثبيت waseet-tools الآن"></div></div>
+          <button class="btn bs" onclick="sinstall()">💾 حفظ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUBLISH -->
+    <div class="tab" id="tab-publish">
+      <div class="tbar">
+        <div><div class="ttitle">🚀 تحديث ونسخ الكود</div><div class="tsub">ارفع index.html ← تحديث تلقائي ← انسخ والصق في GitHub</div></div>
+      </div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">الخطوة 1 — ارفع ملف index.html</div></div>
+        <div class="pbody">
+          <div class="info-box">ارفع ملف <b>index.html</b> الحالي — سيتم حذف البيانات القديمة وحقن الجديدة تلقائياً.</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <input type="file" id="uploadIdx" accept=".html" style="display:none;" onchange="loadAndPatch(this)">
+            <button class="btn bp" style="font-size:15px;padding:14px 28px;" onclick="document.getElementById('uploadIdx').click()">📂 ارفع index.html</button>
+          </div>
+          <div id="uploadStatus" style="margin-top:12px;font-size:13px;color:#64748B;display:none;"></div>
+        </div>
+      </div>
+      <div class="panel" id="copyPanel" style="display:none;">
+        <div class="phdr"><div class="ptitle">الخطوة 2 — انسخ الكود المحدث</div></div>
+        <div class="pbody">
+          <div id="patchInfo" class="info-box" style="margin-bottom:14px;"></div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button class="btn bs" style="font-size:16px;padding:16px 36px;" onclick="copyBuiltCode()">📋 نسخ الكود الكامل</button>
+            <button class="btn bgh" style="font-size:14px;padding:12px 20px;" onclick="downloadBuilt()">💾 تحميل كملف</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">الخطوة 3 — الصق في GitHub</div></div>
+        <div class="pbody">
+          <div style="background:#0F172A;border-radius:10px;padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:13px;color:#E2E8F0;line-height:2.2;">
+            <span style="color:#4ADE80;">①</span> اذهب لـ <span style="color:#FCD34D;">github.com/ahmed151825/wasset1.1</span><br>
+            <span style="color:#4ADE80;">②</span> اضغط على <span style="color:#FCD34D;">index.html</span> ← <span style="color:#FCD34D;">Edit</span><br>
+            <span style="color:#4ADE80;">③</span> <span style="color:#FCD34D;">Ctrl+A</span> ← <span style="color:#FCD34D;">Delete</span> ← <span style="color:#FCD34D;">Ctrl+V</span><br>
+            <span style="color:#4ADE80;">④</span> <span style="color:#FCD34D;">Commit changes</span> ✅
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGS -->
+    <div class="tab" id="tab-logs">
+      <div class="tbar"><div><div class="ttitle">📋 سجل النشاط</div></div><button class="btn bd" onclick="clogs()">🗑️ مسح</button></div>
+      <div class="panel">
+        <div class="phdr"><div class="ptitle">العمليات</div><span id="lcnt" style="font-size:12px;color:#64748B;"></span></div>
+        <div class="pbody" id="lb"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FEAT MODAL -->
+<div class="mov" id="fm">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtitle" id="fmt">إضافة ميزة</div><button class="mclose" onclick="cfm()">✕</button></div>
+    <div class="mbody">
+      <div class="frow">
+        <div class="fg"><label class="fl">الأيقونة (إيموجي)</label><input class="fi" id="mico" style="font-size:1.4rem;text-align:center;"></div>
+        <div class="fg"><label class="fl">لون البطاقة</label>
+          <select class="fs" id="mcol">
+            <option value="fc-blue">أزرق</option><option value="fc-green">أخضر</option><option value="fc-gold">ذهبي</option>
+            <option value="fc-purple">بنفسجي</option><option value="fc-red">أحمر</option><option value="fc-navy">كحلي</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow full"><div class="fg"><label class="fl">الاسم</label><input class="fi" id="mnam"></div></div>
+      <div class="frow full"><div class="fg"><label class="fl">الوصف</label><textarea class="ft" id="mdesc"></textarea></div></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">نص الوسم</label><input class="fi" id="mtag"></div>
+        <div class="fg"><label class="fl">لون الوسم</label>
+          <select class="fs" id="mtcol">
+            <option value="tag-blue">أزرق</option><option value="tag-green">أخضر</option>
+            <option value="tag-gold">ذهبي</option><option value="tag-purple">بنفسجي</option><option value="tag-red">أحمر</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot"><button class="btn bgh" onclick="cfm()">إلغاء</button><button class="btn bs" onclick="sfeat()">💾 حفظ</button></div>
+  </div>
+</div>
+
+<div class="copy-success" id="copySuccess">✅ تم النسخ!</div>
+<div id="toast"></div>
+
+<script>
+var PASS='waseet2026';
+var D={
+  version:'3.20.4',status:'متاح الآن',
+  desc:'إضافة متصفح احترافية على بوابة الوسيط — واتساب بلحظة، محفظة شهرية، فحص تأخير تلقائي، وتقييم للمناديب.',
+  statFeat:11,statPages:4,stat3:'100%',stat4:'تحديثات',
+  hero:{title1:'أدوات مركز',title2:'خدمة العملاء',btn1:'تثبيت الإضافة الآن',btn2:'تعرف على المزايا',bg1:'#0F2057',bg2:'#1E40AF'},
+  changelog:[
+    {version:'v3.20.4',date:'الأحدث',text:'اصلاح حاسم: المحفظة تقرأ طلبات اليوم الحالي فقط.'},
+    {version:'v3.20.3',date:'إصدار سابق',text:'اصلاح جوهري: buildCountsForDate تفلتر بتاريخ صحيح.'},
+    {version:'v3.20.x',date:'سلسلة إصلاحات',text:'اصلاح MutationObserver اللانهائي.'},
+    {version:'v3.x',date:'نسخ سابقة',text:'اضافة المحفظة والتقييم وفحص التأخير.'}
+  ],
+  features:[
+    {emoji:'💬',name:'واتساب بضغطة واحدة',desc:'رسائل للتاجر والزبون',tag:'call_center',tagColor:'tag-blue',color:'fc-blue',active:true},
+    {emoji:'💰',name:'المحفظة الشهرية',desc:'تتبع الأجور اليومية',tag:'حفظ تلقائي',tagColor:'tag-green',color:'fc-green',active:true},
+    {emoji:'🔴',name:'فحص التأخير',desc:'رصد الطلبات المتأخرة',tag:'كل 90 ث',tagColor:'tag-red',color:'fc-red',active:true},
+    {emoji:'⭐',name:'تقييم المناديب',desc:'احصائية أسبوعية',tag:'تقرير',tagColor:'tag-purple',color:'fc-purple',active:true},
+    {emoji:'📱',name:'رسالة SMS',desc:'رسالة نصية',tag:'SMS',tagColor:'tag-gold',color:'fc-gold',active:true},
+    {emoji:'🔎',name:'بحث برقم الهاتف',desc:'سجل الزبون',tag:'ربط مباشر',tagColor:'tag-blue',color:'fc-navy',active:true},
+    {emoji:'🔍',name:'قصة الطلب',desc:'تاريخ الطلب',tag:'نافذة منفصلة',tagColor:'tag-blue',color:'fc-blue',active:true},
+    {emoji:'📋',name:'تقرير الأجور',desc:'نسخ تقرير منسّق',tag:'قالب مخصص',tagColor:'tag-green',color:'fc-green',active:true},
+    {emoji:'🌐',name:'تغيير العنوان',desc:'تعديل مباشر',tag:'تعديل',tagColor:'tag-purple',color:'fc-purple',active:true},
+    {emoji:'📊',name:'نسخ قائمة المناديب',desc:'جمع من كل الصفحات',tag:'جميع الصفحات',tagColor:'tag-gold',color:'fc-gold',active:true},
+    {emoji:'⚙️',name:'إعدادات كاملة',desc:'تخصيص كامل',tag:'حفظ دائم',tagColor:'tag-red',color:'fc-red',active:true}
+  ],
+  notif:{active:false,title:'',text:'',type:'info',pos:'top',duration:0,btn:''},
+  banner:{active:false,text:'',color:'#1E3A8A',pos:'top',link:''},
+  owner:{name:'أحمد محمد كريم',role:'مطوّر الأداة — مركز خدمة العملاء · الوسيط للنقل العام',year:'2026',ip:'جميع الحقوق محفوظة',warning:'يُمنع إعادة توزيع هذه الأداة أو استخدامها لأغراض تجارية بدون إذن صريح من المطوّر.'},
+  install:{url:'https://raw.githubusercontent.com/ahmed151825/wasset1.1/main/waseet-tools.user.js',title:'تثبيت waseet-tools',desc:'خطوتان بسيطتان — الإضافة تعمل فوراً',btn:'تثبيت waseet-tools الآن'},
+  logs:[]
+};
+var EI=-1,FI=-1,BC='#1E3A8A';
+
+function ld(){try{var s=localStorage.getItem('wsa5');if(s){var p=JSON.parse(s);Object.keys(p).forEach(function(k){if(k!=='logs')D[k]=p[k];else D.logs=p[k]||[];});}}catch(e){}}
+function sv(){try{localStorage.setItem('wsa5',JSON.stringify(D));}catch(e){}}
+function lg(t){D.logs.unshift({text:t,time:new Date().toLocaleString('ar-IQ')});if(D.logs.length>100)D.logs.pop();sv();}
+function esc(s){return String(s||'');}
+
+function login(){
+  if(document.getElementById('pw').value===PASS){
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').style.display='block';
+    ld();rdash();
+  }else{
+    document.getElementById('lerr').style.display='block';
+    document.getElementById('pw').value='';
+  }
+}
+
+function gt(id){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  document.querySelectorAll('.sitem').forEach(function(s){s.classList.remove('on');});
+  var tab=document.getElementById('tab-'+id);if(tab)tab.classList.add('on');
+  var si=document.querySelector('[data-t="'+id+'"]');if(si)si.classList.add('on');
+  var fns={dash:rdash,cl:rcl,feat:rfeat,ver:lver,notif:lnotif,banner:lban,logs:rlogs,hero:lhero,stats:lstats,owner:lowner,install:linstall};
+  if(fns[id])fns[id]();
+}
+document.querySelectorAll('.sitem[data-t]').forEach(function(el){el.addEventListener('click',function(){gt(this.dataset.t);});});
+
+function toast(m,tp){var el=document.getElementById('toast');el.textContent=m;el.style.background=tp==='err'?'#DC2626':tp==='ok'?'#059669':'#1E3A8A';el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('show');},3000);}
+
+function showCopySuccess(){var el=document.getElementById('copySuccess');el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
+
+// DASHBOARD
+function rdash(){
+  document.getElementById('dv').textContent=D.version;
+  document.getElementById('dc').textContent=D.changelog.length;
+  document.getElementById('df').textContent=D.features.filter(function(f){return f.active;}).length;
+  document.getElementById('dn').textContent=D.notif.active?'✅':'❌';
+  document.getElementById('db').textContent=D.banner.active?'✅':'❌';
+  var el=document.getElementById('dclp');el.innerHTML='';
+  D.changelog.slice(0,3).forEach(function(cl){
+    el.innerHTML+='<div style="padding:7px 0;border-bottom:1px solid #E2E8F0;display:flex;gap:10px;align-items:center;font-size:13px;"><span class="vb">'+esc(cl.version)+'</span><span style="color:#64748B;flex:1;">'+esc(cl.text).slice(0,80)+'</span></div>';
+  });
+}
+
+// VERSION
+function lver(){document.getElementById('fver').value=D.version;document.getElementById('fst').value=D.status;document.getElementById('fdesc').value=D.desc;upbadge();}
+function upbadge(){
+  var v=document.getElementById('fver').value||D.version;
+  var s=document.getElementById('fst').value||D.status;
+  var d=document.getElementById('fdesc').value||D.desc;
+  document.getElementById('bprev').textContent='الإصدار '+v+' — '+s;
+  document.getElementById('dprev').textContent=d;
+}
+function sver(){
+  D.version=document.getElementById('fver').value.trim()||D.version;
+  D.status=document.getElementById('fst').value;
+  D.desc=document.getElementById('fdesc').value.trim()||D.desc;
+  sv();lg('حفظ الإصدار v'+D.version);toast('تم الحفظ','ok');upbadge();rdash();
+}
+
+// CHANGELOG
+function rcl(){
+  var tb=document.getElementById('clb');tb.innerHTML='';
+  document.getElementById('clcnt').textContent=D.changelog.length+' تحديث';
+  D.changelog.forEach(function(cl,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span class="vb">'+esc(cl.version)+'</span></td>'+
+      '<td style="font-size:12px;color:#64748B;white-space:nowrap;">'+esc(cl.date)+'</td>'+
+      '<td style="max-width:280px;color:#64748B;font-size:12px;">'+esc(cl.text).slice(0,80)+'</td>'+
+      '<td style="white-space:nowrap;">'+
+        '<button class="btn bgh bsm" onclick="eent('+i+')" style="margin-left:4px;">✏️</button>'+
+        '<button class="btn bd bsm" onclick="dent('+i+')">🗑️</button></td>';
+    tb.appendChild(tr);
+  });
+}
+function sadd(){EI=-1;document.getElementById('addpt').textContent='تحديث جديد';document.getElementById('nver').value='';document.getElementById('ndt').value='الأحدث';document.getElementById('ntxt').value='';document.getElementById('addp').style.display='block';document.getElementById('nver').focus();}
+function hadp(){document.getElementById('addp').style.display='none';EI=-1;}
+function sent(){
+  var v=document.getElementById('nver').value.trim();
+  var dt=document.getElementById('ndt').value.trim()||'إضافة';
+  var t=document.getElementById('ntxt').value.trim();
+  if(!v||!t){toast('أدخل الإصدار والوصف','err');return;}
+  if(EI>=0){D.changelog[EI]={version:v,date:dt,text:t};}
+  else{D.changelog.unshift({version:v,date:dt,text:t});}
+  sv();rcl();hadp();lg((EI>=0?'تعديل':'إضافة')+' '+v);toast('تم الحفظ','ok');
+}
+function eent(i){EI=i;document.getElementById('addpt').textContent='تعديل';document.getElementById('nver').value=D.changelog[i].version;document.getElementById('ndt').value=D.changelog[i].date;document.getElementById('ntxt').value=D.changelog[i].text;document.getElementById('addp').style.display='block';}
+function dent(i){if(!confirm('حذف؟'))return;D.changelog.splice(i,1);sv();rcl();toast('تم الحذف','ok');}
+
+// FEATURES
+function rfeat(){
+  var tb=document.getElementById('fb');tb.innerHTML='';
+  document.getElementById('fcnt').textContent=D.features.filter(function(f){return f.active;}).length+' نشطة / '+D.features.length+' إجمالي';
+  D.features.forEach(function(f,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td style="font-size:1.3rem;text-align:center;">'+esc(f.emoji)+'</td>'+
+      '<td style="font-weight:700;">'+esc(f.name)+'</td>'+
+      '<td style="color:#64748B;font-size:12px;max-width:180px;">'+esc(f.desc)+'</td>'+
+      '<td><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:#EFF6FF;color:#2563EB;">'+esc(f.tag)+'</span></td>'+
+      '<td><label class="tog"><input type="checkbox" '+(f.active?'checked':'')+' onchange="D.features['+i+'].active=this.checked;sv();rfeat();"><span class="tsl"></span></label></td>'+
+      '<td style="white-space:nowrap;"><button class="btn bgh bsm" onclick="efeat('+i+')" style="margin-left:4px;">✏️</button><button class="btn bd bsm" onclick="dfeat('+i+')">🗑️</button></td>';
+    tb.appendChild(tr);
+  });
+}
+function oafm(){FI=-1;document.getElementById('fmt').textContent='إضافة ميزة';['mico','mnam','mdesc','mtag'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('mcol').value='fc-blue';document.getElementById('mtcol').value='tag-blue';document.getElementById('fm').classList.add('open');}
+function efeat(i){FI=i;var f=D.features[i];document.getElementById('fmt').textContent='تعديل ميزة';document.getElementById('mico').value=f.emoji;document.getElementById('mnam').value=f.name;document.getElementById('mdesc').value=f.desc;document.getElementById('mtag').value=f.tag;document.getElementById('mcol').value=f.color||'fc-blue';document.getElementById('mtcol').value=f.tagColor||'tag-blue';document.getElementById('fm').classList.add('open');}
+function cfm(){document.getElementById('fm').classList.remove('open');FI=-1;}
+function sfeat(){
+  var nm=document.getElementById('mnam').value.trim();
+  if(!nm){toast('أدخل الاسم','err');return;}
+  var obj={emoji:document.getElementById('mico').value.trim()||'⭐',name:nm,desc:document.getElementById('mdesc').value.trim(),tag:document.getElementById('mtag').value.trim(),tagColor:document.getElementById('mtcol').value,color:document.getElementById('mcol').value,active:true};
+  if(FI>=0){D.features[FI]=obj;}else{D.features.push(obj);}
+  sv();rfeat();cfm();lg((FI>=0?'تعديل':'إضافة')+' ميزة: '+nm);toast('تم الحفظ','ok');
+}
+function dfeat(i){if(!confirm('حذف؟'))return;D.features.splice(i,1);sv();rfeat();toast('تم الحذف','ok');}
+document.getElementById('fm').addEventListener('click',function(e){if(e.target===this)cfm();});
+
+// HERO
+function lhero(){
+  document.getElementById('ht1').value=D.hero.title1;
+  document.getElementById('ht2').value=D.hero.title2;
+  document.getElementById('hb1').value=D.hero.btn1;
+  document.getElementById('hb2').value=D.hero.btn2;
+  document.getElementById('hbg1').value=D.hero.bg1;
+  document.getElementById('hbg2').value=D.hero.bg2;
+  phero();
+}
+function phero(){
+  var t1=document.getElementById('ht1').value||D.hero.title1;
+  var t2=document.getElementById('ht2').value||D.hero.title2;
+  var bg1=document.getElementById('hbg1').value||D.hero.bg1;
+  var bg2=document.getElementById('hbg2').value||D.hero.bg2;
+  var prev=document.getElementById('heroprev');
+  prev.style.background='linear-gradient(135deg,'+bg1+' 0%,'+bg2+' 100%)';
+  document.getElementById('hptext').innerHTML=t1+'<br><span style="background:linear-gradient(90deg,#F59E0B,#FCD34D);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">'+t2+'</span>';
+}
+function shero(){
+  D.hero={title1:document.getElementById('ht1').value.trim(),title2:document.getElementById('ht2').value.trim(),btn1:document.getElementById('hb1').value.trim(),btn2:document.getElementById('hb2').value.trim(),bg1:document.getElementById('hbg1').value,bg2:document.getElementById('hbg2').value};
+  sv();lg('تعديل الهيرو');toast('تم الحفظ','ok');
+}
+
+// STATS
+function lstats(){
+  document.getElementById('fsf').value=D.statFeat;
+  document.getElementById('fsp').value=D.statPages;
+  document.getElementById('fst3').value=D.stat3;
+  document.getElementById('fst4').value=D.stat4||'';
+}
+function sstats(){
+  D.statFeat=parseInt(document.getElementById('fsf').value)||D.statFeat;
+  D.statPages=parseInt(document.getElementById('fsp').value)||D.statPages;
+  D.stat3=document.getElementById('fst3').value.trim()||D.stat3;
+  D.stat4=document.getElementById('fst4').value.trim();
+  sv();toast('تم الحفظ','ok');lg('تعديل الإحصائيات');
+}
+
+// OWNER
+function lowner(){
+  document.getElementById('oname').value=D.owner.name;
+  document.getElementById('orole').value=D.owner.role;
+  document.getElementById('oyear').value=D.owner.year;
+  document.getElementById('oip').value=D.owner.ip;
+  document.getElementById('owarning').value=D.owner.warning;
+}
+function sowner(){
+  D.owner={name:document.getElementById('oname').value.trim(),role:document.getElementById('orole').value.trim(),year:document.getElementById('oyear').value.trim(),ip:document.getElementById('oip').value.trim(),warning:document.getElementById('owarning').value.trim()};
+  sv();toast('تم الحفظ','ok');lg('تعديل بيانات المالك');
+}
+
+// NOTIF
+function lnotif(){
+  document.getElementById('na').checked=D.notif.active||false;
+  document.getElementById('nt').value=D.notif.title||'';
+  document.getElementById('ntx').value=D.notif.text||'';
+  document.getElementById('ntp').value=D.notif.type||'info';
+  document.getElementById('npos').value=D.notif.pos||'top';
+  document.getElementById('ndur').value=D.notif.duration||0;
+  document.getElementById('nb').value=D.notif.btn||'';
+  unp();
+}
+function unp(){
+  var tp=document.getElementById('ntp').value;
+  var ti=document.getElementById('nt').value||'عنوان الإشعار';
+  var tx=document.getElementById('ntx').value||'نص الإشعار...';
+  var cls={info:'np-i',success:'np-s',warning:'np-w',danger:'np-d'}[tp]||'np-i';
+  document.getElementById('npbox').innerHTML='<div class="np '+cls+'"><div><b style="display:block;margin-bottom:3px;">'+esc(ti)+'</b>'+esc(tx)+'</div></div>';
+}
+function snotif(){
+  D.notif={active:document.getElementById('na').checked,title:document.getElementById('nt').value.trim(),text:document.getElementById('ntx').value.trim(),type:document.getElementById('ntp').value,pos:document.getElementById('npos').value,duration:parseInt(document.getElementById('ndur').value)||0,btn:document.getElementById('nb').value.trim()};
+  sv();lg((D.notif.active?'تفعيل':'إيقاف')+' إشعار');toast('تم الحفظ','ok');
+}
+
+// BANNER
+function lban(){
+  document.getElementById('ba').checked=D.banner.active||false;
+  document.getElementById('bt').value=D.banner.text||'';
+  document.getElementById('bpos').value=D.banner.pos||'top';
+  document.getElementById('bl').value=D.banner.link||'';
+  BC=D.banner.color||'#1E3A8A';ubp();
+}
+function pbc(el){document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel');});el.classList.add('sel');BC=el.dataset.c;ubp();}
+function ubp(){var t=document.getElementById('bt').value||'نص الشريط...';var el=document.getElementById('bprev2');el.style.background=BC;el.textContent=t;}
+function sban(){D.banner={active:document.getElementById('ba').checked,text:document.getElementById('bt').value.trim(),color:BC,pos:document.getElementById('bpos').value,link:document.getElementById('bl').value.trim()};sv();ubp();lg((D.banner.active?'تفعيل':'إيقاف')+' شريط');toast('تم الحفظ','ok');}
+
+// INSTALL
+function linstall(){
+  document.getElementById('iurl').value=D.install.url;
+  document.getElementById('ititle').value=D.install.title;
+  document.getElementById('idesc').value=D.install.desc;
+  document.getElementById('ibtn').value=D.install.btn;
+}
+function sinstall(){
+  D.install={url:document.getElementById('iurl').value.trim(),title:document.getElementById('ititle').value.trim(),desc:document.getElementById('idesc').value.trim(),btn:document.getElementById('ibtn').value.trim()};
+  sv();toast('تم الحفظ','ok');lg('تعديل صفحة التثبيت');
+}
+
+// LOGS
+function rlogs(){
+  var el=document.getElementById('lb');
+  document.getElementById('lcnt').textContent=D.logs.length+' عملية';
+  if(!D.logs.length){el.innerHTML='<div style="color:#64748B;font-size:13px;text-align:center;padding:20px;">لا توجد عمليات</div>';return;}
+  el.innerHTML='';
+  D.logs.forEach(function(l){
+    var d=document.createElement('div');d.className='logitem';
+    d.innerHTML='<span style="flex:1;color:#334155;">'+esc(l.text)+'</span><span style="color:#94A3B8;font-size:11px;white-space:nowrap;">'+esc(l.time)+'</span>';
+    el.appendChild(d);
+  });
+}
+function clogs(){if(!confirm('مسح السجل؟'))return;D.logs=[];sv();rlogs();toast('تم المسح','ok');}
+
+// ═══════════════════════════════════════════════════
+// FULL HTML BUILD — يبني index.html الكامل
+// ═══════════════════════════════════════════════════
+
+function patchHTML(html){
+  var data={
+    version:D.version,status:D.status,desc:D.desc,
+    statFeat:D.statFeat,statPages:D.statPages,stat3:D.stat3,
+    hero:D.hero,changelog:D.changelog,
+    features:D.features.filter(function(f){return f.active;}),
+    notif:D.notif,banner:D.banner,owner:D.owner,install:D.install
+  };
+  var json=JSON.stringify(data,null,2);
+
+  var L='';
+  L+='(function(){\n';
+  L+='var el=document.getElementById("wsData");\n';
+  L+='if(!el)return;\n';
+  L+='var d;try{d=JSON.parse(el.textContent);}catch(x){return;}\n';
+  L+='if(!d)return;\n';
+  L+='function e(s){return String(s||"");}\n';
+  L+='if(d.version){\n';
+  L+='  var b=document.querySelector(".badge");\n';
+  L+='  if(b)b.textContent="الإصدار "+d.version+" — "+(d.status||"");\n';
+  L+='  var p=document.querySelector(".version-pill b");\n';
+  L+='  if(p)p.textContent="v"+d.version;\n';
+  L+='}\n';
+  L+='if(d.desc){var s=document.querySelector(".hero-sub");if(s)s.textContent=d.desc;}\n';
+  L+='if(d.hero){\n';
+  L+='  if(d.hero.title1&&d.hero.title2){\n';
+  L+='    var ht=document.querySelector(".hero-title");\n';
+  L+='    if(ht)ht.innerHTML=e(d.hero.title1)+"<br><span>"+e(d.hero.title2)+"<\/span>";\n';
+  L+='  }\n';
+  L+='  if(d.hero.bg1&&d.hero.bg2){\n';
+  L+='    var hr=document.querySelector(".hero");\n';
+  L+='    if(hr)hr.style.background="linear-gradient(135deg,"+d.hero.bg1+" 0%,"+d.hero.bg2+" 100%)";\n';
+  L+='  }\n';
+  L+='}\n';
+  L+='var st=document.querySelectorAll(".stat-num");\n';
+  L+='if(st[0]&&d.statFeat)st[0].textContent=d.statFeat;\n';
+  L+='if(st[1]&&d.statPages)st[1].textContent=d.statPages;\n';
+  L+='if(st[2]&&d.stat3)st[2].textContent=d.stat3;\n';
+  L+='if(d.changelog&&d.changelog.length){\n';
+  L+='  var clog=document.querySelector(".changelog");\n';
+  L+='  if(clog){\n';
+  L+='    clog.innerHTML="";\n';
+  L+='    for(var i=0;i<d.changelog.length;i++){\n';
+  L+='      var cv=d.changelog[i];\n';
+  L+='      var dv=document.createElement("div");\n';
+  L+='      dv.className="changelog-item fade-card";\n';
+  L+='      var inner="<div class=\\"cl-version\\">"+e(cv.version)+"<\\/div>";\n';
+  L+='      inner+="<div><div class=\\"cl-date\\">"+e(cv.date)+"<\\/div>";\n';
+  L+='      inner+="<div class=\\"cl-text\\">"+e(cv.text)+"<\\/div><\\/div>";\n';
+  L+='      dv.innerHTML=inner;\n';
+  L+='      clog.appendChild(dv);\n';
+  L+='    }\n';
+  L+='    var ob=new IntersectionObserver(function(en){\n';
+  L+='      for(var j=0;j<en.length;j++){\n';
+  L+='        if(en[j].isIntersecting){\n';
+  L+='          en[j].target.classList.add("visible");\n';
+  L+='          ob.unobserve(en[j].target);\n';
+  L+='        }\n';
+  L+='      }\n';
+  L+='    },{threshold:0.1});\n';
+  L+='    clog.querySelectorAll(".changelog-item").forEach(function(x){ob.observe(x);});\n';
+  L+='  }\n';
+  L+='}\n';
+  L+='if(d.owner){\n';
+  L+='  var on2=document.querySelector(".owner-name");if(on2)on2.textContent=e(d.owner.name);\n';
+  L+='  var or2=document.querySelector(".owner-role");if(or2)or2.textContent=e(d.owner.role);\n';
+  L+='  var oi=document.querySelector(".owner-ip");if(oi)oi.textContent=e(d.owner.ip)+" © "+e(d.owner.year);\n';
+  L+='}\n';
+  L+='if(d.install){\n';
+  L+='  var ia=document.querySelector(".install-big-btn");if(ia){ia.href=d.install.url;ia.textContent=d.install.btn;}\n';
+  L+='  var iu=document.querySelector(".copy-box-url");if(iu)iu.textContent=d.install.url;\n';
+  L+='}\n';
+  L+='if(d.notif&&d.notif.active&&d.notif.text){\n';
+  L+='  var ni=document.createElement("div");\n';
+  L+='  var bgMap={"info":"#EFF6FF","success":"#ECFDF5","warning":"#FFFBEB","danger":"#FEF2F2"};\n';
+  L+='  var coMap={"info":"#1E40AF","success":"#065F46","warning":"#92400E","danger":"#991B1B"};\n';
+  L+='  var nbg=bgMap[d.notif.type]||"#EFF6FF";\n';
+  L+='  var nco=coMap[d.notif.type]||"#1E40AF";\n';
+  L+='  var npos=d.notif.pos==="bottom"?"bottom:20px;":"top:80px;";\n';
+  L+='  ni.style.cssText="position:fixed;"+npos+"left:50%;transform:translateX(-50%);z-index:9997;background:"+nbg+";color:"+nco+";border:1px solid #ccc;border-radius:14px;padding:14px 20px;max-width:500px;width:90%;font-family:Cairo,sans-serif;direction:rtl;font-size:13px;";\n';
+  L+='  var ntxt=d.notif.title?"<b style=\\"display:block;margin-bottom:4px;\\">"+e(d.notif.title)+"<\\/b>":"";\n';
+  L+='  ni.innerHTML=ntxt+e(d.notif.text);\n';
+  L+='  document.body.appendChild(ni);\n';
+  L+='  if(d.notif.duration>0)setTimeout(function(){ni.remove();},d.notif.duration);\n';
+  L+='}\n';
+  L+='if(d.banner&&d.banner.active&&d.banner.text){\n';
+  L+='  var bn=document.createElement("div");\n';
+  L+='  var bpos=d.banner.pos==="bottom"?"bottom:0;":"top:0;";\n';
+  L+='  bn.style.cssText="position:fixed;"+bpos+"right:0;left:0;z-index:9996;background:"+(d.banner.color||"#1E3A8A")+";color:#fff;padding:10px 20px;text-align:center;font-family:Cairo,sans-serif;font-size:13px;font-weight:600;";\n';
+  L+='  bn.textContent=d.banner.text;\n';
+  L+='  if(d.banner.pos==="bottom")document.body.appendChild(bn);\n';
+  L+='  else document.body.insertBefore(bn,document.body.firstChild);\n';
+  L+='}\n';
+  L+='})();';
+
+  var OPEN='<'+'script id="wsData" type="application/json">';
+  var CLOSE='<'+'/script>';
+  var SOPEN='<'+'script>';
+  var newBlock='<!--WS-DATA-START-->\n'+OPEN+'\n'+json+'\n'+CLOSE+'\n'+SOPEN+'\n'+L+'\n'+CLOSE+'\n'+'<!--WS-DATA-END-->';
+
+  // حذف البيانات القديمة بثلاث طرق
+  html=html.replace(/<!--\s*WS-DATA-START\s*-->[\s\S]*?<!--\s*WS-DATA-END\s*-->/gi,'');
+  var CL='<'+'/scr'+'ipt>';
+  var p1=html.indexOf('<'+'script id');
+  while(p1>-1&&html.indexOf('wsData',p1)<p1+60){
+    var p2=html.indexOf(CL,p1);
+    if(p2>-1){html=html.slice(0,p1)+html.slice(p2+CL.length);}
+    else{break;}
+    p1=html.indexOf('<'+'script id');
+  }
+  var p3=html.indexOf('getElementById("wsData")');
+  if(p3>-1){
+    var s3=html.lastIndexOf('<'+'script>',p3);
+    var e3=html.indexOf(CL,p3);
+    if(s3>-1&&e3>-1){html=html.slice(0,s3)+html.slice(e3+CL.length);}
+  }
+  var bci=html.lastIndexOf('<'+'/body>');
+  if(bci>-1){html=html.slice(0,bci)+'\n'+newBlock+'\n'+html.slice(bci);}
+  else{html+='\n'+newBlock;}
+  return html;
+}
+
+var LOADED_HTML = null;
+var BUILT_HTML = null;
+
+function loadAndPatch(input){
+  var file=input.files[0];if(!file)return;
+  var status=document.getElementById('uploadStatus');
+  var cp=document.getElementById('copyPanel');
+  var pi=document.getElementById('patchInfo');
+  status.style.display='block';status.style.color='#D97706';
+  status.textContent='جاري قراءة الملف...';
+  cp.style.display='none';
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    LOADED_HTML=ev.target.result;
+    status.textContent='جاري تطبيق التعديلات...';
+    setTimeout(function(){
+      try{
+        var patched=patchHTML(LOADED_HTML);
+        BUILT_HTML=patched;
+        if(patched.indexOf('WS-DATA-START')<0)throw new Error('فشل حقن البيانات');
+        status.style.color='#059669';
+        status.textContent='تم التحديث — انسخ الكود من الخطوة 2';
+        pi.innerHTML='<b>جاهز</b> — v'+esc(D.version)+' | '+D.changelog.length+' تحديث | '+D.features.filter(function(f){return f.active;}).length+' ميزة | '+Math.round(patched.length/1024)+' KB';
+        cp.style.display='block';
+        lg('تحديث v'+D.version);
+        toast('تم التحديث — انسخ الكود','ok');
+        input.value='';
+      }catch(err){
+        status.style.color='#DC2626';status.textContent='خطأ: '+err.message;
+        toast('خطأ: '+err.message,'err');cp.style.display='none';
+      }
+    },100);
+  };
+  reader.onerror=function(){status.style.color='#DC2626';status.textContent='فشل قراءة الملف';};
+  reader.readAsText(file,'utf-8');
+}
+function copyBuiltCode(){
+  if(!BUILT_HTML){toast('ارفع الملف اولا','err');return;}
+  var ta=document.createElement('textarea');
+  ta.value=BUILT_HTML;
+  ta.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{ta.setSelectionRange(0,ta.value.length);}catch(x){}
+  var ok=false;try{ok=document.execCommand('copy');}catch(x){}
+  document.body.removeChild(ta);
+  if(ok){toast('تم نسخ الكود ('+Math.round(BUILT_HTML.length/1024)+' KB)','ok');showCopySuccess();lg('نسخ كود v'+D.version);}
+  else if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(BUILT_HTML).then(function(){toast('تم النسخ','ok');showCopySuccess();}).catch(function(){toast('فشل النسخ','err');});
+  }else{toast('فشل النسخ — جرب التحميل','err');}
+}
+function downloadBuilt(){
+  if(!BUILT_HTML){toast('ارفع الملف اولا','err');return;}
+  var b=new Blob([BUILT_HTML],{type:'text/html;charset=utf-8'});
+  var u=URL.createObjectURL(b);var a=document.createElement('a');
+  a.href=u;a.download='index.html';document.body.appendChild(a);a.click();
+  document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},1000);
+  toast('تم التحميل','ok');
+}
+function loadAndDownload(input){loadAndPatch(input);}
+function loadIdx(input){loadAndPatch(input);}
+function rebuildCode(){}
+function buildCode(){}
+function copyMainCode(){if(BUILT_HTML){copyBuiltCode();}else{toast('ارفع الملف اولا','err');}}
+
+
+document.addEventListener('keydown',function(e){if(e.key==='Escape')cfm();});
+</script>
+</body>
+</html>
