@@ -460,56 +460,240 @@ function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.tex
 
 
 
+
+
 <!--WS-DATA-START-->
-<script id="wsData" type="application/json">{"version":"3.20.4","status":"متاح الآن","desc":"إضافة متصفح احترافية على بوابة الوسيط","statFeat":11,"statPages":4,"stat3":"100%","hero":{"title1":"أدوات مركز","title2":"خدمة العملاء","bg1":"#0F2057","bg2":"#1E40AF"},"changelog":[{"version":"v3.20.4","date":"الأحدث","text":"اصلاح حاسم: المحفظة تقرأ طلبات اليوم الحالي فقط."},{"version":"v3.20.3","date":"إصدار سابق","text":"اصلاح جوهري: buildCountsForDate تفلتر بتاريخ صحيح."},{"version":"v3.20.x","date":"سلسلة إصلاحات","text":"اصلاح MutationObserver اللانهائي."},{"version":"v3.x","date":"نسخ سابقة","text":"اضافة المحفظة والتقييم وفحص التأخير."}],"features":[],"notif":{"active":false,"title":"","text":"","type":"info","pos":"top","duration":0},"banner":{"active":false,"text":"","color":"#1E3A8A","pos":"top","link":""}}</script>
+<script id="wsData" type="application/json">
+{
+  "version": "1.1",
+  "status": "متاح الآن",
+  "desc": "إضافة متصفح احترافية على بوابة الوسيط — واتساب بلحظة،فحص تأخير تلقائي، وتقييم للمندوبين.",
+  "statFeat": 9,
+  "statPages": 4,
+  "stat3": "100%",
+  "hero": {
+    "title1": "أدوات قسم",
+    "title2": "التبليغات",
+    "btn1": "تثبيت الإضافة الآن",
+    "btn2": "تعرف على المزايا",
+    "bg1": "#0f2057",
+    "bg2": "#1e40af"
+  },
+  "changelog": [
+    {
+      "version": "v3.20.4",
+      "date": "الأحدث",
+      "text": "اصلاح حاسم: المحفظة تقرأ طلبات اليوم الحالي فقط."
+    },
+    {
+      "version": "v3.20.3",
+      "date": "إصدار سابق",
+      "text": "اصلاح جوهري: buildCountsForDate تفلتر بتاريخ صحيح."
+    },
+    {
+      "version": "v3.20.x",
+      "date": "سلسلة إصلاحات",
+      "text": "اصلاح MutationObserver اللانهائي."
+    },
+    {
+      "version": "v3.x",
+      "date": "نسخ سابقة",
+      "text": "اضافة المحفظة والتقييم وفحص التأخير."
+    }
+  ],
+  "features": [
+    {
+      "emoji": "💬",
+      "name": "واتساب بضغطة واحدة",
+      "desc": "رسائل للتاجر والزبون",
+      "tag": "call_center",
+      "tagColor": "tag-blue",
+      "color": "fc-blue",
+      "active": true
+    },
+    {
+      "emoji": "🔴",
+      "name": "فحص التأخير",
+      "desc": "رصد الطلبات المتأخرة",
+      "tag": "كل 90 ث",
+      "tagColor": "tag-red",
+      "color": "fc-red",
+      "active": true
+    },
+    {
+      "emoji": "📱",
+      "name": "رسالة SMS",
+      "desc": "رسالة نصية",
+      "tag": "SMS",
+      "tagColor": "tag-gold",
+      "color": "fc-gold",
+      "active": true
+    },
+    {
+      "emoji": "🔎",
+      "name": "بحث برقم الهاتف",
+      "desc": "سجل الزبون",
+      "tag": "ربط مباشر",
+      "tagColor": "tag-blue",
+      "color": "fc-navy",
+      "active": true
+    },
+    {
+      "emoji": "🔍",
+      "name": "قصة الطلب",
+      "desc": "تاريخ الطلب",
+      "tag": "نافذة منفصلة",
+      "tagColor": "tag-blue",
+      "color": "fc-blue",
+      "active": true
+    },
+    {
+      "emoji": "📋",
+      "name": "تقرير الأجور",
+      "desc": "نسخ تقرير منسّق",
+      "tag": "قالب مخصص",
+      "tagColor": "tag-green",
+      "color": "fc-green",
+      "active": true
+    },
+    {
+      "emoji": "🌐",
+      "name": "تغيير العنوان",
+      "desc": "تعديل مباشر",
+      "tag": "تعديل",
+      "tagColor": "tag-purple",
+      "color": "fc-purple",
+      "active": true
+    },
+    {
+      "emoji": "📊",
+      "name": "نسخ قائمة المناديب",
+      "desc": "جمع من كل الصفحات",
+      "tag": "جميع الصفحات",
+      "tagColor": "tag-gold",
+      "color": "fc-gold",
+      "active": true
+    },
+    {
+      "emoji": "⚙️",
+      "name": "إعدادات كاملة",
+      "desc": "تخصيص كامل",
+      "tag": "حفظ دائم",
+      "tagColor": "tag-red",
+      "color": "fc-red",
+      "active": true
+    }
+  ],
+  "notif": {
+    "active": false,
+    "title": "قريبا تحديث 2.1",
+    "text": "محفظة شهرية خاصة لاجور التوصيل \nتقييم اسبوعي للمندوب",
+    "type": "info",
+    "pos": "top",
+    "duration": 10000,
+    "btn": ""
+  },
+  "banner": {
+    "active": false,
+    "text": "",
+    "color": "#1E3A8A",
+    "pos": "top",
+    "link": ""
+  },
+  "owner": {
+    "name": "أحمد محمد كريم",
+    "role": "مطوّر الأداة — مركز خدمة العملاء · الوسيط للنقل العام",
+    "year": "2026",
+    "ip": "جميع الحقوق محفوظة",
+    "warning": "يُمنع إعادة توزيع هذه الأداة أو استخدامها لأغراض تجارية بدون إذن صريح من المطوّر."
+  },
+  "install": {
+    "url": "https://raw.githubusercontent.com/ahmed151825/wasset1.1/main/waseet-tools.user.js",
+    "title": "تثبيت waseet-tools",
+    "desc": "خطوتان بسيطتان — الإضافة تعمل فوراً",
+    "btn": "تثبيت waseet-tools الآن"
+  }
+}
+</script>
 <script>
 (function(){
 var el=document.getElementById("wsData");
 if(!el)return;
-var d;
-try{d=JSON.parse(el.textContent);}catch(x){return;}
+var d;try{d=JSON.parse(el.textContent);}catch(x){return;}
 if(!d)return;
 function e(s){return String(s||"");}
 if(d.version){
   var b=document.querySelector(".badge");
-  if(b)b.textContent="الإصدار "+d.version+" - "+(d.status||"متاح الآن");
+  if(b)b.textContent="الإصدار "+d.version+" — "+(d.status||"");
   var p=document.querySelector(".version-pill b");
   if(p)p.textContent="v"+d.version;
 }
 if(d.desc){var s=document.querySelector(".hero-sub");if(s)s.textContent=d.desc;}
 if(d.hero){
-  if(d.hero.title1&&d.hero.title2){var t=document.querySelector(".hero-title");if(t)t.innerHTML=e(d.hero.title1)+"<br><span>"+e(d.hero.title2)+"</span>";}
-  if(d.hero.bg1&&d.hero.bg2){var hr=document.querySelector(".hero");if(hr)hr.style.background="linear-gradient(135deg,"+d.hero.bg1+" 0%,"+d.hero.bg2+" 100%)";}
+  if(d.hero.title1&&d.hero.title2){
+    var ht=document.querySelector(".hero-title");
+    if(ht)ht.innerHTML=e(d.hero.title1)+"<br><span>"+e(d.hero.title2)+"</span>";
+  }
+  if(d.hero.bg1&&d.hero.bg2){
+    var hr=document.querySelector(".hero");
+    if(hr)hr.style.background="linear-gradient(135deg,"+d.hero.bg1+" 0%,"+d.hero.bg2+" 100%)";
+  }
 }
 var st=document.querySelectorAll(".stat-num");
 if(st[0]&&d.statFeat)st[0].textContent=d.statFeat;
 if(st[1]&&d.statPages)st[1].textContent=d.statPages;
 if(st[2]&&d.stat3)st[2].textContent=d.stat3;
 if(d.changelog&&d.changelog.length){
-  var cl=document.querySelector(".changelog");
-  if(cl){
-    cl.innerHTML="";
+  var clog=document.querySelector(".changelog");
+  if(clog){
+    clog.innerHTML="";
     for(var i=0;i<d.changelog.length;i++){
-      var c=d.changelog[i];
-      var div=document.createElement("div");
-      div.className="changelog-item fade-card";
-      div.innerHTML="<div class='cl-version'>"+e(c.version)+"</div><div><div class='cl-date'>"+e(c.date)+"</div><div class='cl-text'>"+e(c.text)+"</div></div>";
-      cl.appendChild(div);
+      var cv=d.changelog[i];
+      var dv=document.createElement("div");
+      dv.className="changelog-item fade-card";
+      var inner="<div class="cl-version">"+e(cv.version)+"</div>";
+      inner+="<div><div class="cl-date">"+e(cv.date)+"</div>";
+      inner+="<div class="cl-text">"+e(cv.text)+"</div></div>";
+      dv.innerHTML=inner;
+      clog.appendChild(dv);
     }
-    var ob=new IntersectionObserver(function(en){for(var j=0;j<en.length;j++){if(en[j].isIntersecting){en[j].target.classList.add("visible");ob.unobserve(en[j].target);}}},{threshold:0.1});
-    cl.querySelectorAll(".changelog-item").forEach(function(x){ob.observe(x);});
+    var ob=new IntersectionObserver(function(en){
+      for(var j=0;j<en.length;j++){
+        if(en[j].isIntersecting){
+          en[j].target.classList.add("visible");
+          ob.unobserve(en[j].target);
+        }
+      }
+    },{threshold:0.1});
+    clog.querySelectorAll(".changelog-item").forEach(function(x){ob.observe(x);});
   }
+}
+if(d.owner){
+  var on2=document.querySelector(".owner-name");if(on2)on2.textContent=e(d.owner.name);
+  var or2=document.querySelector(".owner-role");if(or2)or2.textContent=e(d.owner.role);
+  var oi=document.querySelector(".owner-ip");if(oi)oi.textContent=e(d.owner.ip)+" © "+e(d.owner.year);
+}
+if(d.install){
+  var ia=document.querySelector(".install-big-btn");if(ia){ia.href=d.install.url;ia.textContent=d.install.btn;}
+  var iu=document.querySelector(".copy-box-url");if(iu)iu.textContent=d.install.url;
 }
 if(d.notif&&d.notif.active&&d.notif.text){
   var ni=document.createElement("div");
-  ni.style.cssText="position:fixed;"+(d.notif.pos==="bottom"?"bottom:20px;":"top:80px;")+"left:50%;transform:translateX(-50%);z-index:9997;background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE;border-radius:14px;padding:14px 20px;max-width:500px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,.15);font-family:Cairo,sans-serif;direction:rtl;font-size:13px;";
-  ni.innerHTML=(d.notif.title?"<b style='display:block;margin-bottom:4px;'>"+e(d.notif.title)+"</b>":"")+e(d.notif.text);
+  var bgMap={"info":"#EFF6FF","success":"#ECFDF5","warning":"#FFFBEB","danger":"#FEF2F2"};
+  var coMap={"info":"#1E40AF","success":"#065F46","warning":"#92400E","danger":"#991B1B"};
+  var nbg=bgMap[d.notif.type]||"#EFF6FF";
+  var nco=coMap[d.notif.type]||"#1E40AF";
+  var npos=d.notif.pos==="bottom"?"bottom:20px;":"top:80px;";
+  ni.style.cssText="position:fixed;"+npos+"left:50%;transform:translateX(-50%);z-index:9997;background:"+nbg+";color:"+nco+";border:1px solid #ccc;border-radius:14px;padding:14px 20px;max-width:500px;width:90%;font-family:Cairo,sans-serif;direction:rtl;font-size:13px;";
+  var ntxt=d.notif.title?"<b style="display:block;margin-bottom:4px;">"+e(d.notif.title)+"</b>":"";
+  ni.innerHTML=ntxt+e(d.notif.text);
   document.body.appendChild(ni);
   if(d.notif.duration>0)setTimeout(function(){ni.remove();},d.notif.duration);
 }
 if(d.banner&&d.banner.active&&d.banner.text){
   var bn=document.createElement("div");
-  bn.style.cssText="position:fixed;"+(d.banner.pos==="bottom"?"bottom:0;":"top:0;")+"right:0;left:0;z-index:9996;background:"+(d.banner.color||"#1E3A8A")+";color:#fff;padding:10px 20px;text-align:center;font-family:Cairo,sans-serif;font-size:13px;font-weight:600;";
+  var bpos=d.banner.pos==="bottom"?"bottom:0;":"top:0;";
+  bn.style.cssText="position:fixed;"+bpos+"right:0;left:0;z-index:9996;background:"+(d.banner.color||"#1E3A8A")+";color:#fff;padding:10px 20px;text-align:center;font-family:Cairo,sans-serif;font-size:13px;font-weight:600;";
   bn.textContent=d.banner.text;
   if(d.banner.pos==="bottom")document.body.appendChild(bn);
   else document.body.insertBefore(bn,document.body.firstChild);
