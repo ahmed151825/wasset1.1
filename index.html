@@ -464,22 +464,24 @@ function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.tex
 
 
 
+
+
 <!--WS-DATA-START-->
 <script id="wsData" type="application/json">
 {
-  "version": "3.20.4",
+  "version": "1.1",
   "status": "متاح الآن",
-  "desc": "إضافة متصفح احترافية على بوابة الوسيط — واتساب بلحظة، محفظة شهرية، فحص تأخير تلقائي، وتقييم للمناديب.",
-  "statFeat": 11,
+  "desc": "إضافة متصفح احترافية على بوابة الوسيط — واتساب بلحظة،فحص تأخير تلقائي، وتقييم للمندوبين.",
+  "statFeat": 9,
   "statPages": 4,
   "stat3": "100%",
   "hero": {
-    "title1": "أدوات مركز",
-    "title2": "خدمة العملاء",
+    "title1": "أدوات قسم",
+    "title2": "التبليغات",
     "btn1": "تثبيت الإضافة الآن",
     "btn2": "تعرف على المزايا",
-    "bg1": "#0F2057",
-    "bg2": "#1E40AF"
+    "bg1": "#0f2057",
+    "bg2": "#1e40af"
   },
   "changelog": [
     {
@@ -514,30 +516,12 @@ function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.tex
       "active": true
     },
     {
-      "emoji": "💰",
-      "name": "المحفظة الشهرية",
-      "desc": "تتبع الأجور اليومية",
-      "tag": "حفظ تلقائي",
-      "tagColor": "tag-green",
-      "color": "fc-green",
-      "active": true
-    },
-    {
       "emoji": "🔴",
       "name": "فحص التأخير",
       "desc": "رصد الطلبات المتأخرة",
       "tag": "كل 90 ث",
       "tagColor": "tag-red",
       "color": "fc-red",
-      "active": true
-    },
-    {
-      "emoji": "⭐",
-      "name": "تقييم المناديب",
-      "desc": "احصائية أسبوعية",
-      "tag": "تقرير",
-      "tagColor": "tag-purple",
-      "color": "fc-purple",
       "active": true
     },
     {
@@ -605,12 +589,12 @@ function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.tex
     }
   ],
   "notif": {
-    "active": false,
-    "title": "",
-    "text": "",
+    "active": true,
+    "title": "قريبا تحديث 2.1",
+    "text": "محفظة شهرية خاصة لاجور التوصيل \nتقييم اسبوعي للمندوب",
     "type": "info",
     "pos": "top",
-    "duration": 0,
+    "duration": 10000,
     "btn": ""
   },
   "banner": {
@@ -671,9 +655,9 @@ if(d.changelog&&d.changelog.length){
       var cv=d.changelog[i];
       var dv=document.createElement("div");
       dv.className="changelog-item fade-card";
-      var inner="<div class=\"cl-version\">"+e(cv.version)+"<\/div>";
-      inner+="<div><div class=\"cl-date\">"+e(cv.date)+"<\/div>";
-      inner+="<div class=\"cl-text\">"+e(cv.text)+"<\/div><\/div>";
+      var inner="<div class="cl-version">"+e(cv.version)+"</div>";
+      inner+="<div><div class="cl-date">"+e(cv.date)+"</div>";
+      inner+="<div class="cl-text">"+e(cv.text)+"</div></div>";
       dv.innerHTML=inner;
       clog.appendChild(dv);
     }
@@ -705,7 +689,7 @@ if(d.notif&&d.notif.active&&d.notif.text){
   var nco=coMap[d.notif.type]||"#1E40AF";
   var npos=d.notif.pos==="bottom"?"bottom:20px;":"top:80px;";
   ni.style.cssText="position:fixed;"+npos+"left:50%;transform:translateX(-50%);z-index:9997;background:"+nbg+";color:"+nco+";border:1px solid #ccc;border-radius:14px;padding:14px 20px;max-width:500px;width:90%;font-family:Cairo,sans-serif;direction:rtl;font-size:13px;";
-  var ntxt=d.notif.title?"<b style=\"display:block;margin-bottom:4px;\">"+e(d.notif.title)+"<\/b>":"";
+  var ntxt=d.notif.title?"<b style="display:block;margin-bottom:4px;">"+e(d.notif.title)+"</b>":"";
   ni.innerHTML=ntxt+e(d.notif.text);
   document.body.appendChild(ni);
   if(d.notif.duration>0)setTimeout(function(){ni.remove();},d.notif.duration);
