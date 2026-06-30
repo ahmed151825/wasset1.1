@@ -655,9 +655,9 @@ if(d.changelog&&d.changelog.length){
       var cv=d.changelog[i];
       var dv=document.createElement("div");
       dv.className="changelog-item fade-card";
-      var inner="<div class="cl-version">"+e(cv.version)+"</div>";
-      inner+="<div><div class="cl-date">"+e(cv.date)+"</div>";
-      inner+="<div class="cl-text">"+e(cv.text)+"</div></div>";
+      var inner="<div class=\"cl-version\">"+e(cv.version)+"<\/div>";
+      inner+="<div><div class=\"cl-date\">"+e(cv.date)+"<\/div>";
+      inner+="<div class=\"cl-text\">"+e(cv.text)+"<\/div><\/div>";
       dv.innerHTML=inner;
       clog.appendChild(dv);
     }
@@ -689,7 +689,7 @@ if(d.notif&&d.notif.active&&d.notif.text){
   var nco=coMap[d.notif.type]||"#1E40AF";
   var npos=d.notif.pos==="bottom"?"bottom:20px;":"top:80px;";
   ni.style.cssText="position:fixed;"+npos+"left:50%;transform:translateX(-50%);z-index:9997;background:"+nbg+";color:"+nco+";border:1px solid #ccc;border-radius:14px;padding:14px 20px;max-width:500px;width:90%;font-family:Cairo,sans-serif;direction:rtl;font-size:13px;";
-  var ntxt=d.notif.title?"<b style="display:block;margin-bottom:4px;">"+e(d.notif.title)+"</b>":"";
+  var ntxt=d.notif.title?"<b style=\"display:block;margin-bottom:4px;\">"+e(d.notif.title)+"<\/b>":"";
   ni.innerHTML=ntxt+e(d.notif.text);
   document.body.appendChild(ni);
   if(d.notif.duration>0)setTimeout(function(){ni.remove();},d.notif.duration);
