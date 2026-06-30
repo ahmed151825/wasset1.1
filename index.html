@@ -475,6 +475,7 @@ function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.tex
   "statFeat": 9,
   "statPages": 4,
   "stat3": "100%",
+  "stat4": "تحديثات",
   "hero": {
     "title1": "أدوات قسم",
     "title2": "التبليغات",
@@ -516,12 +517,30 @@ function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.tex
       "active": true
     },
     {
+      "emoji": "💰",
+      "name": "المحفظة الشهرية قريبا",
+      "desc": "تتبع الأجور اليومية",
+      "tag": "حفظ تلقائي",
+      "tagColor": "tag-green",
+      "color": "fc-green",
+      "active": true
+    },
+    {
       "emoji": "🔴",
       "name": "فحص التأخير",
       "desc": "رصد الطلبات المتأخرة",
       "tag": "كل 90 ث",
       "tagColor": "tag-red",
       "color": "fc-red",
+      "active": true
+    },
+    {
+      "emoji": "⭐",
+      "name": "تقييم المناديب قريبا",
+      "desc": "احصائية أسبوعية",
+      "tag": "تقرير",
+      "tagColor": "tag-purple",
+      "color": "fc-purple",
       "active": true
     },
     {
@@ -598,11 +617,11 @@ function repsAnim(){var b=document.getElementById('repsBtn2');if(!b)return;b.tex
     "btn": ""
   },
   "banner": {
-    "active": false,
-    "text": "",
+    "active": true,
+    "text": "لاقتراح فكرة او ميزة جديدة لاضافتها اضفط هنا",
     "color": "#1E3A8A",
     "pos": "top",
-    "link": ""
+    "link": "https://api.whatsapp.com/send/?phone=%2B9647716828568&text&type=phone_number&app_absent=0"
   },
   "owner": {
     "name": "أحمد محمد كريم",
@@ -647,6 +666,7 @@ var st=document.querySelectorAll(".stat-num");
 if(st[0]&&d.statFeat)st[0].textContent=d.statFeat;
 if(st[1]&&d.statPages)st[1].textContent=d.statPages;
 if(st[2]&&d.stat3)st[2].textContent=d.stat3;
+if(st[3]&&d.stat4)st[3].textContent=d.stat4;
 if(d.changelog&&d.changelog.length){
   var clog=document.querySelector(".changelog");
   if(clog){
