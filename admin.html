@@ -855,11 +855,11 @@ function patchHTML(html){
   // الطريقة 1: حذف كتلة WS-DATA-START...WS-DATA-END
   html=html.replace(/<!--\s*WS-DATA-START\s*-->[\s\S]*?<!--\s*WS-DATA-END\s*-->/gi,'');
 
-  // الطريقة 2: حذف أي <script id="wsData"...>...</script> متبقية
+  // الطريقة 2: حذف أي wsData script متبقية
   var rx2=new RegExp('<script[^>]*id\\s*=\\s*["\']wsData["\'][^>]*>[\\s\\S]*?<\\/scr'+'ipt>','gi');
   html=html.replace(rx2,'');
 
-  // الطريقة 3: حذف أي <script> يحتوي على getElementById("wsData")
+  // الطريقة 3: حذف أي سكربت يحتوي على getElementById wsData
   var rx3=new RegExp('<script>\\s*\\(function\\(\\)\\{\\s*var el=document\\.getElementById\\("wsData"\\)[\\s\\S]*?<\\/scr'+'ipt>','gi');
   html=html.replace(rx3,'');
 
