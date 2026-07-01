@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      3.20.4
+// @version      3.20.5
 // @description  أدوات مركز خدمة العملاء - الوسيط للنقل العام
 // @match        https://alwaseet-iq.net/*
 // @grant        GM_setValue
@@ -13,6 +13,12 @@
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v3.20.5):
+  ───────────────────────────────────────────────────────────
+  • تحسين بسيط: عند نسخ قائمة المناديب، يظهر ❌ باللون الأحمر
+    بجانب عبارة "القيد عالي" لتمييز المناديب أصحاب القيد المرتفع
+    بشكل أوضح بصرياً عند لصق النص.
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v3.20.4):
   ───────────────────────────────────────────────────────────
   • إصلاح حاسم: المحفظة تقرأ طلبات اليوم الحالي فقط
@@ -845,7 +851,8 @@
     function lastPage2(){var max=1;document.querySelectorAll('.pagination a,.pagination button,.page-item a,.page-link').forEach(function(el){var n=parseInt(el.textContent.trim(),10);if(!isNaN(n)&&n>max){max=n;}});return max;}
     function currentPage2(){var active=document.querySelector('.pagination .active a,.pagination .active button,.page-item.active .page-link');if(active){return parseInt(active.textContent.trim(),10)||1;}var cur=Array.from(document.querySelectorAll('.pagination a,.pagination button')).find(function(el){return el.getAttribute('aria-current')==='page';});return cur?parseInt(cur.textContent.trim(),10)||1:1;}
     function nextBtn2(){return Array.from(document.querySelectorAll('a,button')).find(function(el){return el.textContent.trim()==='التالي'&&!el.disabled&&!el.classList.contains('disabled')&&!el.parentElement.classList.contains('disabled');});}
-    function formatReps(data){return Object.keys(data).map(function(name){var n=data[name];return name+' ('+n+')'+(n>10?' - القيد عالي':'');}).join('\n');}
+    // ✅ تعديل بسيط: إضافة ❌ أحمر بجانب "القيد عالي" عند نسخ قائمة المناديب لتمييزها بصرياً
+    function formatReps(data){return Object.keys(data).map(function(name){var n=data[name];return name+' ('+n+')'+(n>10?' - ❌ القيد عالي':'');}).join('\n');}
     async function collectAll(btn){var orig=btn.textContent;btn.textContent='⏳ جاري الجمع...';btn.disabled=true;var all={};function merge(d){Object.keys(d).forEach(function(k){all[k]=(all[k]||0)+d[k];});}merge(collectPage());var last=lastPage2(),cur=currentPage2(),safe=0;while(safe++<100){if(cur>=last){break;}var nb=nextBtn2();if(!nb){break;}nb.click();await new Promise(function(resolve){var tries=0,prev=cur,check=setInterval(function(){tries++;var now=currentPage2();if(now!==prev&&document.querySelector('td[colspan]')){clearInterval(check);cur=now;resolve();}if(tries>40){clearInterval(check);resolve();}},300);});merge(collectPage());btn.textContent='⏳ صفحة '+cur+' / '+last;}copyText(formatReps(all));btn.textContent='✅ تم النسخ ('+Object.keys(all).length+' مندوب)';btn.disabled=false;setTimeout(function(){btn.textContent=orig;},3000);}
     function addRepsBtn(){if(document.getElementById('ws-reps-btn')){return;}if(!document.querySelector('td[colspan]')){return;}var btn=document.createElement('button');btn.id='ws-reps-btn';btn.type='button';btn.textContent='📋 نسخ قائمة المناديب';btn.setAttribute('data-ws-btn','copy-reps');btn.style.cssText='background:#2e5bff;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:13px;margin:0 6px;white-space:nowrap;';btn.addEventListener('click',function(){collectAll(btn);});var inp=Array.from(document.querySelectorAll('input')).find(function(i){var p=i.parentElement,d=0;while(p&&d<3){if(p.textContent.indexOf('بحث')!==-1){return true;}p=p.parentElement;d++;}});if(inp&&inp.parentElement){inp.parentElement.insertBefore(btn,inp);}else{btn.style.cssText+='position:fixed;top:10px;left:10px;z-index:99999;';document.body.appendChild(btn);}}
     onReady(function(){setTimeout(function(){observeAndRun(addRepsBtn,400);},900);});
