@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name           احمد محمد كريم
+// @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      4.0.0
+// @version      4.0.1
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -17,12 +17,18 @@
 // @connect      raw.githubusercontent.com
 // @icon         data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🚚</text></svg>
 // @run-at       document-start
-// @noframes
 // @updateURL    https://raw.githubusercontent.com/ahmed151825/wasset1.1/main/waseet-tools.user.js
 // @downloadURL  https://raw.githubusercontent.com/ahmed151825/wasset1.1/main/waseet-tools.user.js
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v4.0.1):
+  ───────────────────────────────────────────────────────────
+  • إصلاح حاسم: استعادة الاسم الأصلي للسكربت حتى يستبدل
+    Tampermonkey النسخة القديمة بدل تثبيت نسخة مكررة بجانبها.
+    (النسختان معاً كانتا تضاعفان طلبات فحص التأخير فيوقفها السيرفر)
+  • إزالة noframes لمطابقة سلوك النسخة الأصلية تماماً.
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v4.0.0):
   ───────────────────────────────────────────────────────────
   • دمج كامل: أدوات الوسيط (v3.20.5) + مراقب التوصيل (v6.4.0)
@@ -53,7 +59,7 @@
   }
   function curVer() {
     try { if (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) { return GM_info.script.version; } } catch (e) {}
-    return '4.0.0';
+    return '4.0.1';
   }
   function cmpVer(a, b) {
     var pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
