@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      4.0.1
+// @version      4.0.5
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -22,6 +22,36 @@
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v4.0.5):
+  ───────────────────────────────────────────────────────────
+  • واجهة المراقب: استبدال خانة "مُنجزة" بخانة "القيد" — تُقرأ
+    من شريط معلومات الجدول أسفل الصفحة (dataTables_info):
+    "عرض 1 إلى 511 من اصل 511 مدخل" ← القيد = 511.
+    تتحدث مع كل دورة فحص، وتعرض "—" إن لم يوجد الشريط.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.0.4):
+  ───────────────────────────────────────────────────────────
+  • تغيير سلوك مفتاح المراقب بالإعدادات الرئيسية ⚙️ حسب الطلب:
+    عند الإيقاف تختفي لوحة المراقب من الشاشة كلياً ويتوقف كل
+    الفحص والتحديث التلقائي — وعند التشغيل تظهر وتعمل فوراً.
+    التغيير يسري خلال ~3 ثوانٍ بدون إعادة تحميل الصفحة.
+  • إزالة المفتاح المكرر من تبويب إعدادات اللوحة — مفتاح واحد
+    فقط بالإعدادات الرئيسية يتحكم بكل شيء.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.0.3):
+  ───────────────────────────────────────────────────────────
+  • نقل مفتاح "فحص المندوب المتوقف" إلى لوحة الإعدادات الرئيسية ⚙️
+    (قسم 🚚 مراقب التوصيل) — التغيير يسري على صفحة قيد التوصيل
+    خلال ~20 ثانية بدون إعادة تحميل، عبر مفتاح تخزين مشترك.
+  • مفتاح تبويب المراقب بقي موجوداً ويتزامن تلقائياً مع الرئيسي.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.0.2):
+  ───────────────────────────────────────────────────────────
+  • جديد: مفتاح في إعدادات مراقب التوصيل لتشغيل/إيقاف فحص
+    المندوب المتوقف. عند الإيقاف: لا تنبيهات ولا صوت ولا حالة
+    "🔴 متوقف" بالجدول ولا احتساب لعداد التوقفات — وباقي
+    الميزات (التختيم، الموعد النهائي، المُنجزة) تعمل طبيعياً.
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v4.0.1):
   ───────────────────────────────────────────────────────────
   • إصلاح حاسم: استعادة الاسم الأصلي للسكربت حتى يستبدل
@@ -59,7 +89,7 @@
   }
   function curVer() {
     try { if (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) { return GM_info.script.version; } } catch (e) {}
-    return '4.0.1';
+    return '4.0.5';
   }
   function cmpVer(a, b) {
     var pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -265,6 +295,30 @@
   }
   function saveSettings(s) { storeSet(SETTINGS_KEY, JSON.stringify(s)); }
   var wsSettings = loadSettings();
+
+  // ══════════════════════════════════════════════════════════════
+  //  🔔 جسر مشترك (4.0.3): إعداد "فحص المندوب المتوقف" الخاص بمراقب
+  //  التوصيل — يُكتب هنا من الإعدادات الرئيسية على نفس مفتاح تخزين
+  //  المراقب (dm_stop_check_on) بنفس صيغته تماماً: GM أولاً، ومرآة
+  //  localStorage باسم dm_fallback_ للأجهزة بلا صلاحيات GM.
+  //  المراقب يعيد قراءة المفتاح كل دورة فحص فيسري التغيير خلال ~20 ثانية.
+  // ══════════════════════════════════════════════════════════════
+  var DM_STOP_CHECK_KEY = 'dm_stop_check_on';
+  function dmGetStopCheck() {
+    var v = null;
+    try { if (typeof GM_getValue !== 'undefined') { v = GM_getValue(DM_STOP_CHECK_KEY, null); } } catch (e) {}
+    if (v === null || v === undefined) {
+      try { v = localStorage.getItem('dm_fallback_' + DM_STOP_CHECK_KEY); } catch (e) {}
+    }
+    if (v === null || v === undefined) { return true; } // الافتراضي: مفعّل
+    if (typeof v === 'boolean') { return v; }
+    return String(v) === 'true';
+  }
+  function dmSetStopCheck(on) {
+    var s = on ? 'true' : 'false';
+    try { if (typeof GM_setValue !== 'undefined') { GM_setValue(DM_STOP_CHECK_KEY, s); } } catch (e) {}
+    try { localStorage.setItem('dm_fallback_' + DM_STOP_CHECK_KEY, s); } catch (e) {}
+  }
 
   var VISIBILITY_MAP = {
     'story':'showStory','fees':'showFees','edit':'showEdit','ws-merchant':'showWsMerchant',
@@ -709,6 +763,19 @@
     var delaySection=document.createElement('div');delaySection.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';var delayTitle=document.createElement('div');delayTitle.textContent='🔎 وضع فحص الطلبات المتأخرة';delayTitle.style.cssText='font-size:13px;color:#333;margin-bottom:6px;font-weight:bold;';delaySection.appendChild(delayTitle);var modeDesc=document.createElement('div');modeDesc.style.cssText='font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;';modeDesc.textContent='تلقائي: كل 90 ثانية.\nيدوي: عند الضغط فقط.';delaySection.appendChild(modeDesc);
     var currentMode=wsSettings.delayCheckMode||'auto';[{val:'auto',label:'🔄 تلقائي كل 90 ثانية'},{val:'manual',label:'👆 يدوي (عند الضغط فقط)'}].forEach(function(opt){var lbl=document.createElement('label');lbl.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:13px;color:#333;cursor:pointer;';var rb=document.createElement('input');rb.type='radio';rb.name='ws-delay-mode';rb.value=opt.val;rb.checked=(currentMode===opt.val);rb.addEventListener('change',function(){if(rb.checked){wsSettings.delayCheckMode=opt.val;saveSettings(wsSettings);if(typeof applyDelayMode==='function'){applyDelayMode();}if(typeof updateCheckBtnLabel==='function'){updateCheckBtnLabel();}}});lbl.appendChild(rb);lbl.appendChild(document.createTextNode(opt.label));delaySection.appendChild(lbl);});panel.appendChild(delaySection);
 
+    // ✅ (4.0.4): قسم مراقب التوصيل — تشغيل/إيقاف المراقب كاملاً من اللوحة الرئيسية
+    // عند الإيقاف: لوحة المراقب تختفي من صفحة "قيد التوصيل" كلياً ويتوقف كل الفحص
+    var dmSection=document.createElement('div');dmSection.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';
+    var dmTitle=document.createElement('div');dmTitle.textContent='🚚 مراقب التوصيل';dmTitle.style.cssText='font-size:13px;color:#333;margin-bottom:6px;font-weight:bold;';dmSection.appendChild(dmTitle);
+    var dmRow=document.createElement('label');dmRow.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:13px;color:#333;cursor:pointer;';
+    var dmCb=document.createElement('input');dmCb.type='checkbox';dmCb.checked=dmGetStopCheck();
+    var dmStateLbl=document.createElement('span');dmStateLbl.textContent='إظهار وتشغيل لوحة المراقب';
+    dmCb.addEventListener('change',function(){dmSetStopCheck(dmCb.checked);dmHint.textContent=dmCb.checked?'✅ مفعّل — اللوحة تظهر وتعمل بصفحة "قيد التوصيل" خلال ~3 ثوانٍ.':'🔕 موقوف — اللوحة تختفي من الشاشة كلياً ويتوقف كل الفحص خلال ~3 ثوانٍ.';});
+    dmRow.appendChild(dmCb);dmRow.appendChild(dmStateLbl);dmSection.appendChild(dmRow);
+    var dmHint=document.createElement('div');dmHint.style.cssText='font-size:11px;color:#666;line-height:1.5;';
+    dmHint.textContent=dmCb.checked?'مفعّل — اللوحة تظهر وتعمل بصفحة "قيد التوصيل". التغيير يسري خلال ~3 ثوانٍ بدون إعادة تحميل.':'🔕 موقوف حالياً — لوحة المراقب مخفية ولا يعمل أي فحص.';
+    dmSection.appendChild(dmHint);panel.appendChild(dmSection);
+
     var ratingSep=document.createElement('div');ratingSep.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';panel.appendChild(ratingSep);var ratingBtn=document.createElement('button');ratingBtn.type='button';ratingBtn.textContent='⭐ التقييم — الإعدادات والإحصائية';ratingBtn.style.cssText='width:100%;background:#8e44ad;color:#fff;border:none;border-radius:6px;padding:10px;cursor:pointer;font-size:13px;font-weight:bold;';ratingBtn.addEventListener('click',function(){overlay.remove();openRatingSettingsPanel();});ratingSep.appendChild(ratingBtn);
 
     var walletSep=document.createElement('div');walletSep.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';panel.appendChild(walletSep);
@@ -1036,6 +1103,7 @@
         SOUND_ON:            'dm_sound_on',
         HIDE_DONE:           'dm_hide_done',
         PRE_DEADLINE_WARN:   'dm_pre_deadline_warn',
+        STOP_CHECK_ON:       'dm_stop_check_on',
         PANEL_SIZE:          'dm_panel_scale',
         PANEL_POS:           'dm_panel_pos',
         DAILY_ARCHIVE_PREFIX:'dm_archive_'
@@ -1097,6 +1165,8 @@
             this.soundOn            = gmGetBool(STORAGE_KEYS.SOUND_ON, true);
             this.hideDone           = gmGetBool(STORAGE_KEYS.HIDE_DONE, false);
             this.preDeadlineWarn    = gmGetBool(STORAGE_KEYS.PRE_DEADLINE_WARN, true);
+            // ✅ (4.0.4): مفتاح تشغيل/إيقاف المراقب كاملاً — عند الإيقاف تختفي اللوحة من الشاشة
+            this.monitorOn          = gmGetBool(STORAGE_KEYS.STOP_CHECK_ON, true);
             this.panelScale         = parseInt(gmGet(STORAGE_KEYS.PANEL_SIZE, '100')) || 100;
 
             this.isRunning         = false;
@@ -1117,8 +1187,14 @@
             this.updateStatsUI();
             this.addLog('✅ السكربت جاهز — تم تحميل البيانات المحفوظة');
 
-            this.start();
-            if (this.autoRefreshOn) this.scheduleAutoRefresh();
+            if (this.monitorOn) {
+                this.start();
+                if (this.autoRefreshOn) this.scheduleAutoRefresh();
+            } else {
+                this.applyMonitorState(); // إخفاء اللوحة فوراً إن كان المفتاح موقوفاً
+            }
+            // ✅ (4.0.4): مراقب خفيف يلتقط تغيير المفتاح من الإعدادات الرئيسية خلال ~3 ثوانٍ
+            setInterval(() => this.applyMonitorState(), 3000);
         }
 
         loadOrInitState() {
@@ -1439,6 +1515,28 @@
             this.isRunning ? this.stop() : this.start();
             this.addLog(this.isRunning ? '▶️ تم بدء المراقبة' : '⏹️ تم إيقاف المراقبة');
         }
+
+        // ✅ (4.0.4): تطبيق حالة مفتاح المراقب القادم من الإعدادات الرئيسية ⚙️
+        // إيقاف = اللوحة تختفي من الشاشة كلياً + يتوقف كل الفحص والتحديث التلقائي
+        // تشغيل = اللوحة تظهر ويستأنف الفحص فوراً
+        applyMonitorState() {
+            const on = gmGetBool(STORAGE_KEYS.STOP_CHECK_ON, true);
+            const panel = document.getElementById('dm-panel');
+            if (panel) { panel.style.display = on ? '' : 'none'; }
+            if (on === this.monitorOn) { return; } // لا تغيير بالحالة
+            this.monitorOn = on;
+            if (on) {
+                this.start(); // يفحص فوراً ثم كل 20 ثانية
+                if (this.autoRefreshOn) { this.scheduleAutoRefresh(); }
+                this.addLog('▶️ تم تشغيل المراقب (من الإعدادات الرئيسية)');
+            } else {
+                this.stop();
+                if (this.refreshTimer)   { clearTimeout(this.refreshTimer); }
+                if (this.countdownTimer) { clearInterval(this.countdownTimer); }
+                this.refreshAt = null;
+                this.addLog('⏹️ تم إيقاف المراقب وإخفاء اللوحة (من الإعدادات الرئيسية)');
+            }
+        }
         resetToday() {
             this.state = { dateKey: todayKey(), mandoubs: {} };
             this.persistState();
@@ -1518,8 +1616,8 @@
                             <span class="dm-sum-label">تم التختيم</span>
                         </div>
                         <div class="dm-sum-item">
-                            <span id="dm-sum-delivered" class="dm-sum-num dm-c-green">0</span>
-                            <span class="dm-sum-label">مُنجزة</span>
+                            <span id="dm-sum-qaid" class="dm-sum-num dm-c-green">—</span>
+                            <span class="dm-sum-label">القيد</span>
                         </div>
                     </div>
 
@@ -1827,6 +1925,28 @@
             return 'active';
         }
 
+        // ✅ (4.0.5): قراءة "القيد" = إجمالي المدخلات من شريط معلومات الجدول
+        // أسفل الصفحة: <div class="dataTables_info" id="example_info">عرض 1 إلى 511 من اصل 511 مدخل</div>
+        readTotalEntries() {
+            let el = document.querySelector('#example_info');
+            if (!el) {
+                // احتياط: أي شريط معلومات DataTables خارج لوحة المراقب
+                const all = document.querySelectorAll('.dataTables_info');
+                for (let i = 0; i < all.length; i++) {
+                    if (!all[i].closest('#dm-panel')) { el = all[i]; break; }
+                }
+            }
+            if (!el) return null;
+            // تحويل الأرقام العربية الشرقية إن وُجدت، ثم التقاط الرقم بعد "من اصل/أصل"
+            const text = el.textContent.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+            const m = text.match(/من\s*[اأ]صل\s*([\d,]+)/);
+            if (m) return parseInt(m[1].replace(/,/g, ''), 10);
+            // احتياط أخير: آخر رقم بالنص (صيغة الشريط قد تتغير)
+            const nums = text.match(/[\d,]+/g);
+            if (nums && nums.length) return parseInt(nums[nums.length - 1].replace(/,/g, ''), 10);
+            return null;
+        }
+
         renderTable() {
             const tbody = document.getElementById('dm-live-tbody');
             if (!tbody) return;
@@ -1924,12 +2044,13 @@
             const total      = entries.length;
             const stopped    = entries.filter(m => this.computeStatus(m, now, thresholdMs) === 'stopped').length;
             const done       = entries.filter(m => this.computeStatus(m, now, thresholdMs) === 'done').length;
-            const delivered  = entries.reduce((s, m) => s + Math.max(0, m.first - m.current), 0);
+            // ✅ (4.0.5): القيد من شريط معلومات الجدول بدل عداد المُنجزة
+            const qaid       = this.readTotalEntries();
 
             document.getElementById('dm-sum-total').textContent     = total;
             document.getElementById('dm-sum-stopped').textContent   = stopped;
             document.getElementById('dm-sum-done').textContent      = done;
-            document.getElementById('dm-sum-delivered').textContent = delivered;
+            document.getElementById('dm-sum-qaid').textContent      = (qaid !== null) ? qaid : '—';
             this.updateRunButton();
         }
 
