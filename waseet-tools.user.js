@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      4.0.5
+// @version      4.0.9
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -22,6 +22,47 @@
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v4.0.9):
+  ───────────────────────────────────────────────────────────
+  • تراجع: حُذف الثيم الداكن للوحة الإعدادات وحُذفت خاصية الوضع
+    الليلي لكامل الموقع بالكامل (رجعت اللوحة لشكلها الأبيض الأصلي).
+  • جديد: زر ☎️ عائم أسفل يسار الشاشة (بكل صفحات الموقع) يفتح
+    "دليل الأرقام" — بحث فوري + 3 تبويبات: المحافظات (كول سنتر
+    عام + استفسار + تبليغات كل محافظة)، بغداد-كرخ، بغداد-رصافة.
+    كل منطقة/محافظة بخانة (بطاقة) مستقلة بأرقامها الخاصة، والنقر
+    على أي رقم ينسخه للحافظة مباشرة.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.0.8):
+  ───────────────────────────────────────────────────────────
+  • جديد: ثيم داكن (بنفسجي/إندجو) للوحة الإعدادات الرئيسية ⚙️
+    بالكامل — مفاتيح تبديل بدل مربعات الاختيار، وأزرار وضع فحص
+    التأخير أصبحت كبسولات مقسّمة. الثيم عبر ورقة أنماط واحدة
+    بدون أي تغيير ببنية اللوحة أو منطقها.
+  • جديد: مفتاح "🌙 تفعيل الوضع الليلي لكامل الموقع" بقسم "مظهر
+    الموقع" — يعكس ألوان صفحة alwaseet-iq.net بالكامل (نفس تقنية
+    إضافات مثل Dark Reader: عكس لوني + دوران صبغة 180° على
+    <html>)، مع استثناء الصور والفيديو (تبقى بألوانها الطبيعية)
+    واستثناء كل عناصر أدواتنا الخاصة (تبقى بثيمها المصمم لها ولا
+    تتأثر). يسري فوراً بدون إعادة تحميل، ويبقى محفوظاً عبر كل
+    الصفحات والتنقل.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.0.7):
+  ───────────────────────────────────────────────────────────
+  • جديد: مفتاح "📦 عداد الطلبات المستلمة اليوم" بالإعدادات
+    الرئيسية ⚙️ — يشغّل/يطفئ ظهور الخانة أسفل الشاشة فوراً بدون
+    إعادة تحميل الصفحة. العدّ بالخلفية يستمر بكل الأحوال (لا
+    يُفقد أي رقم طلب) — المفتاح يتحكم فقط بظهور الخانة.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.0.6):
+  ───────────────────────────────────────────────────────────
+  • جديد: عدّاد "📦 اليوم: N طلب" ثابت أسفل شاشة صفحة الكول
+    سنتر — يحسب كل رقم طلب فريد ظهر لك مرة واحدة فقط باليوم
+    (لا يتكرر حتى لو تكرر الطلب بالجدول أو أعدت تحميل الصفحة)،
+    ويُصفَّر تلقائياً مع بداية يوم جديد.
+  • جديد: زر "🔄 فحص التحديث الآن" بالإعدادات الرئيسية ⚙️ —
+    يفحص GitHub فوراً متجاوزاً مؤقت الـ6 ساعات، ويُعلمك إن كنت
+    على آخر إصدار أو يعرض بانر التحديث مباشرة إن وُجد أحدث.
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v4.0.5):
   ───────────────────────────────────────────────────────────
   • واجهة المراقب: استبدال خانة "مُنجزة" بخانة "القيد" — تُقرأ
@@ -89,7 +130,7 @@
   }
   function curVer() {
     try { if (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) { return GM_info.script.version; } } catch (e) {}
-    return '4.0.5';
+    return '4.0.9';
   }
   function cmpVer(a, b) {
     var pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -146,6 +187,26 @@
       try { fetch(url).then(function (r) { return r.text(); }).then(handleRemoteText).catch(function () {}); } catch (e) {}
     }
   }
+  function forceCheckForUpdate(cb) {
+    sSet(CHECK_KEY, String(Date.now())); // يعيد ضبط المؤقت أيضاً حتى لا يفحص الفحص التلقائي فوراً بعده
+    var url = RAW_URL + '?t=' + Date.now(); // كسر الكاش
+    function handle(text) {
+      var m = String(text || '').match(/@version\s+([\d.]+)/);
+      var remote = m ? m[1] : null;
+      if (remote && cmpVer(remote, curVer()) > 0) {
+        sSet(DISMISS_KEY, ''); // امسح كتم "لاحقاً" حتى يظهر البانر فوراً حتى لو كان مكتوماً سابقاً
+        showUpdateBanner(remote);
+        if (cb) { cb(true, remote); }
+      } else if (cb) { cb(false, remote); }
+    }
+    if (typeof GM_xmlhttpRequest !== 'undefined') {
+      GM_xmlhttpRequest({ method: 'GET', url: url, onload: function (res) { handle(res.responseText); }, onerror: function () { if (cb) { cb(null); } } });
+    } else {
+      try { fetch(url).then(function (r) { return r.text(); }).then(handle).catch(function () { if (cb) { cb(null); } }); } catch (e) { if (cb) { cb(null); } }
+    }
+  }
+  try { unsafeWindow.wsForceCheckUpdate = forceCheckForUpdate; } catch (e) { window.wsForceCheckUpdate = forceCheckForUpdate; }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { setTimeout(checkForUpdate, 4000); });
   } else {
@@ -169,6 +230,18 @@
     try { if (typeof GM_getValue !== 'undefined') { var v = GM_getValue(key, null); if (v !== null && v !== undefined) { return v; } } } catch (e) {}
     try { return localStorage.getItem(key); } catch (e) { return null; }
   }
+  function injectCss(css) {
+    try { if (typeof GM_addStyle === 'function') { GM_addStyle(css); return; } } catch (e) {}
+    try { var st = document.createElement('style'); st.textContent = css; (document.head || document.documentElement).appendChild(st); } catch (e) {}
+  }
+  function copyToClipboard(text, el) {
+    function done() { if (el) { var orig = el.textContent; el.textContent = '✅ تم النسخ'; setTimeout(function () { el.textContent = orig; }, 900); } }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text); done(); }); return; }
+    } catch (e) {}
+    fallbackCopy(text); done();
+  }
+
   function onReady(fn) {
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', fn); } else { fn(); }
   }
@@ -286,7 +359,8 @@
     customerTemplateId:'default', customerCustomTemplate:'', delayCheckMode:'auto',
     ratingAutoReport:true, ratingScoreExcellent:3, ratingScoreGood:1, ratingScoreBad:-2,
     walletFee5000:300, walletFee4000:200, walletFee3000:150, walletFee2000:100,
-    walletOffDay:5   // 0=أحد 1=اثنين 2=ثلاثاء 3=أربعاء 4=خميس 5=جمعة 6=سبت
+    walletOffDay:5,   // 0=أحد 1=اثنين 2=ثلاثاء 3=أربعاء 4=خميس 5=جمعة 6=سبت
+    showReceivedCounter:true
   };
   function loadSettings() {
     var raw = storeGet(SETTINGS_KEY);
@@ -295,6 +369,41 @@
   }
   function saveSettings(s) { storeSet(SETTINGS_KEY, JSON.stringify(s)); }
   var wsSettings = loadSettings();
+
+  // ══════════════════════════════════════════════════════════════
+  //  📦 عدّاد الطلبات المستلمة اليوم (صفحة الكول سنتر) — لا يتكرر،
+  //  يُحسب حسب رقم الطلب، ويُصفَّر تلقائياً كل يوم جديد.
+  //  بنطاق مشترك حتى تتحكم به لوحة الإعدادات من أي صفحة.
+  // ══════════════════════════════════════════════════════════════
+  var RECEIVED_STORE_KEY = 'waseet_received_today_v1';
+  function todayDateStr() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function loadReceivedToday() {
+    var today = todayDateStr(), raw = storeGet(RECEIVED_STORE_KEY);
+    if (raw) { try { var obj = JSON.parse(raw); if (obj && obj.date === today && Array.isArray(obj.ids)) { return obj; } } catch (e) {} }
+    return { date: today, ids: [] };
+  }
+  var wsReceivedData = loadReceivedToday();
+  function saveReceivedToday() { try { storeSet(RECEIVED_STORE_KEY, JSON.stringify(wsReceivedData)); } catch (e) {} }
+  function refreshReceivedBadge() {
+    var el = document.getElementById('ws-received-badge');
+    if (!wsSettings.showReceivedCounter) { if (el) { el.remove(); } return; }
+    if (!el) {
+      el = document.createElement('div'); el.id = 'ws-received-badge';
+      el.title = 'عدد الطلبات الفريدة التي ظهرت لك اليوم بصفحة الكول سنتر — يُحسب مرة واحدة فقط لكل رقم طلب';
+      el.style.cssText = 'position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:99998;background:#1a1a2e;color:#fff;border-radius:20px;padding:7px 16px;font-family:Tahoma,Arial,sans-serif;font-size:12.5px;font-weight:bold;box-shadow:0 3px 10px rgba(0,0,0,.35);direction:rtl;cursor:default;user-select:none;';
+      document.body.appendChild(el);
+    }
+    el.textContent = '📦 اليوم: ' + wsReceivedData.ids.length + ' طلب';
+  }
+  function recordReceivedOrder(orderId) {
+    var today = todayDateStr();
+    if (wsReceivedData.date !== today) { wsReceivedData = { date: today, ids: [] }; }
+    if (wsReceivedData.ids.indexOf(orderId) !== -1) { return; }
+    wsReceivedData.ids.push(orderId);
+    saveReceivedToday();
+    refreshReceivedBadge();
+  }
+  function addReceivedBadge() { refreshReceivedBadge(); }
 
   // ══════════════════════════════════════════════════════════════
   //  🔔 جسر مشترك (4.0.3): إعداد "فحص المندوب المتوقف" الخاص بمراقب
@@ -760,6 +869,8 @@
       var row=document.createElement('label');row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:13px;color:#333;cursor:pointer;border-bottom:1px solid #eee;';var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!wsSettings[item.key];cb.addEventListener('change',function(){wsSettings[item.key]=cb.checked;saveSettings(wsSettings);applyVisibility();});var span=document.createElement('span');span.textContent=item.label;row.appendChild(cb);row.appendChild(span);panel.appendChild(row);
     });
 
+    var recvRow=document.createElement('label');recvRow.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:13px;color:#333;cursor:pointer;border-bottom:1px solid #eee;';var recvCb=document.createElement('input');recvCb.type='checkbox';recvCb.checked=!!wsSettings.showReceivedCounter;recvCb.addEventListener('change',function(){wsSettings.showReceivedCounter=recvCb.checked;saveSettings(wsSettings);if(typeof refreshReceivedBadge==='function'){refreshReceivedBadge();}});var recvSpan=document.createElement('span');recvSpan.textContent='📦 عداد الطلبات المستلمة اليوم (أسفل الشاشة)';recvRow.appendChild(recvCb);recvRow.appendChild(recvSpan);panel.appendChild(recvRow);
+
     var delaySection=document.createElement('div');delaySection.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';var delayTitle=document.createElement('div');delayTitle.textContent='🔎 وضع فحص الطلبات المتأخرة';delayTitle.style.cssText='font-size:13px;color:#333;margin-bottom:6px;font-weight:bold;';delaySection.appendChild(delayTitle);var modeDesc=document.createElement('div');modeDesc.style.cssText='font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;';modeDesc.textContent='تلقائي: كل 90 ثانية.\nيدوي: عند الضغط فقط.';delaySection.appendChild(modeDesc);
     var currentMode=wsSettings.delayCheckMode||'auto';[{val:'auto',label:'🔄 تلقائي كل 90 ثانية'},{val:'manual',label:'👆 يدوي (عند الضغط فقط)'}].forEach(function(opt){var lbl=document.createElement('label');lbl.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:13px;color:#333;cursor:pointer;';var rb=document.createElement('input');rb.type='radio';rb.name='ws-delay-mode';rb.value=opt.val;rb.checked=(currentMode===opt.val);rb.addEventListener('change',function(){if(rb.checked){wsSettings.delayCheckMode=opt.val;saveSettings(wsSettings);if(typeof applyDelayMode==='function'){applyDelayMode();}if(typeof updateCheckBtnLabel==='function'){updateCheckBtnLabel();}}});lbl.appendChild(rb);lbl.appendChild(document.createTextNode(opt.label));delaySection.appendChild(lbl);});panel.appendChild(delaySection);
 
@@ -795,6 +906,8 @@
 
     var repSection=document.createElement('div');repSection.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';var repTitle=document.createElement('div');repTitle.textContent='📋 قالب تقرير الأجور';repTitle.style.cssText='font-size:13px;color:#333;margin-bottom:6px;font-weight:bold;';repSection.appendChild(repTitle);var stationLabel=document.createElement('div');stationLabel.textContent='اسم المحطة:';stationLabel.style.cssText='font-size:12px;color:#555;margin-bottom:3px;';repSection.appendChild(stationLabel);var stationInput=document.createElement('input');stationInput.type='text';stationInput.value=wsSettings.stationName||'المنصور';stationInput.style.cssText='width:100%;box-sizing:border-box;padding:6px;border:1px solid #ccc;border-radius:5px;font-size:12px;margin-bottom:8px;';stationInput.addEventListener('change',function(){wsSettings.stationName=stationInput.value.trim()||'المنصور';saveSettings(wsSettings);});repSection.appendChild(stationInput);var repEditBtn=document.createElement('button');repEditBtn.type='button';repEditBtn.textContent='✏️ تحرير نص التقرير';repEditBtn.style.cssText='width:100%;background:#e67e22;color:#fff;border:none;border-radius:5px;padding:7px;cursor:pointer;font-size:12px;';repEditBtn.addEventListener('click',function(){openTemplateEditor({title:'تحرير قالب تقرير الأجور',help:'المتغيرات:\n{station} {employee} {date} {day}\n{normal5000..2000} {vip5000..2000} {total5000..2000}',value:(wsSettings.reportTemplate&&wsSettings.reportTemplate.trim())?wsSettings.reportTemplate:DEFAULT_REPORT_TEMPLATE,defaultValue:DEFAULT_REPORT_TEMPLATE,onSave:function(val){wsSettings.reportTemplate=val;saveSettings(wsSettings);}});});repSection.appendChild(repEditBtn);panel.appendChild(repSection);
 
+    var updateCheckBtn=document.createElement('button');updateCheckBtn.type='button';updateCheckBtn.textContent='🔄 فحص التحديث الآن';updateCheckBtn.style.cssText='margin-top:14px;width:100%;background:#1a8a3a;color:#fff;border:none;border-radius:5px;padding:7px;cursor:pointer;font-size:12px;';updateCheckBtn.addEventListener('click',function(){var fn=(typeof unsafeWindow!=='undefined'&&unsafeWindow.wsForceCheckUpdate)?unsafeWindow.wsForceCheckUpdate:(window.wsForceCheckUpdate||null);if(!fn){alert('تعذّر تشغيل الفحص.');return;}var orig=updateCheckBtn.textContent;updateCheckBtn.textContent='⏳ يفحص...';updateCheckBtn.disabled=true;fn(function(found,remote){updateCheckBtn.textContent=orig;updateCheckBtn.disabled=false;if(found===null){alert('تعذّر الاتصال بالسيرفر. حاول لاحقاً.');}else if(found){/* البانر سيظهر تلقائياً بالأسفل */}else{alert('أنت تستخدم آخر إصدار (v'+(remote||'?')+' أو أقدم — لا يوجد أحدث).');}});});panel.appendChild(updateCheckBtn);
+
     var resetBtn=document.createElement('button');resetBtn.type='button';resetBtn.textContent='إعادة الكل للوضع الافتراضي';resetBtn.style.cssText='margin-top:14px;width:100%;background:#888;color:#fff;border:none;border-radius:5px;padding:7px;cursor:pointer;font-size:12px;';resetBtn.addEventListener('click',function(){wsSettings=Object.assign({},DEFAULT_SETTINGS);saveSettings(wsSettings);applyVisibility();if(typeof applyDelayMode==='function'){applyDelayMode();}if(typeof updateCheckBtnLabel==='function'){updateCheckBtnLabel();}overlay.remove();buildSettingsPanel();});panel.appendChild(resetBtn);
     var closeBtn=document.createElement('button');closeBtn.type='button';closeBtn.textContent='إغلاق';closeBtn.style.cssText='margin-top:8px;width:100%;background:#2e5bff;color:#fff;border:none;border-radius:5px;padding:8px;cursor:pointer;font-size:13px;';closeBtn.addEventListener('click',function(){overlay.remove();});panel.appendChild(closeBtn);
     overlay.appendChild(panel);overlay.addEventListener('click',function(e){if(e.target===overlay){overlay.remove();}});document.body.appendChild(overlay);
@@ -805,6 +918,189 @@
     var btn=document.createElement('button');btn.id='ws-settings-btn';btn.type='button';btn.textContent='⚙️ الإعدادات';btn.style.cssText='position:fixed;top:10px;left:10px;z-index:99999;background:#555;color:#fff;border:none;border-radius:4px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,.3);';
     btn.addEventListener('click',buildSettingsPanel);document.body.appendChild(btn);
   }
+
+  // ══════════════════════════════════════════════════════════════
+  //  ☎️ دليل الأرقام: الكول سنتر + المحافظات + بغداد (كرخ/رصافة)
+  // ══════════════════════════════════════════════════════════════
+  var CONTACTS_CALLCENTER = [
+    ['07744441010', 'الخط الأول'],
+    ['07744441414', 'الخط الثاني']
+  ];
+  var CONTACTS_INQUIRY = [ // أرقام الاستفسار العامة لكل محافظة
+    ['بغداد', '07744441010'], ['المسيب', '07744442929'], ['كركوك', '07744440707'],
+    ['خانقين', '07744441717'], ['النجف', '07744442323'], ['الديوانية', '07744440505'],
+    ['البصرة', '07744444040'], ['الرمادي', '07744449898'], ['سامراء', '07744447373'],
+    ['الناصرية', '07744446868'], ['الكوت', '07744447676'], ['ديالى', '07744441515'],
+    ['الحلة', '07744442929'], ['كربلاء', '07744446464'], ['أربيل', '07744443434'],
+    ['الفلوجة', '07744449292'], ['السليمانية', '07744445757'], ['السماوة', '07744440808'],
+    ['الموصل', '07744447878'], ['دهوك', '07504444353']
+  ];
+  var CONTACTS_REPORTS = [ // أرقام التبليغات لكل محافظة
+    ['البصرة', ['07719492104', '07710756532', '07731637648']],
+    ['الحلة', ['07723320914', '07728759376']],
+    ['الناصرية', ['07723320915', '07732882784']],
+    ['الأنبار', ['07736479262', '07715767033']],
+    ['النجف', ['07704180484', '07728759372']],
+    ['كربلاء', ['07710759893', '07731336954']],
+    ['ديالى', ['07732882647']],
+    ['الموصل', ['07704182042', '07704372546', '07736478716']],
+    ['أربيل', ['07728759380']],
+    ['السليمانية', ['07736478724']],
+    ['دهوك', ['07707402819']],
+    ['صلاح الدين', ['07725378835']],
+    ['السماوة', ['07723320878']],
+    ['الديوانية', ['07736479263']],
+    ['العمارة', ['07736479241']],
+    ['كركوك', ['07736479178']],
+    ['الكوت', ['07736479212']]
+  ];
+  var CONTACTS_KARKH = [ // [قطاع, اسم المتابعة, اسم الموظف, الرقم]
+    ['كرخ1', 'متابعة البياع', 'سلام معين عبدالامير', '07705964361'],
+    ['كرخ2', 'متابعة المنصور', 'احمد محمد كريم', '07734721170'],
+    ['كرخ3', 'متابعة منصور2 / بياع2 اعلام', 'علي وسام عبدالامير', '07779397566'],
+    ['كرخ4', 'متابعة الكاظمية', 'عبدالرزاق عصام عبدالرزاق', '07704127792'],
+    ['كرخ5', 'متابعة علاوي / الطارمية', 'محمد حسن نجم', '07779397609'],
+    ['كرخ6', 'متابعة اسكان / اليوسفية', 'عبدالرحمن خالد قاسم', '07779397574'],
+    ['كرخ7', 'محطة التاجي', 'محمدالامين ميثم محمد', '07734087361'],
+    ['كرخ8', 'محطة المحمودية', 'عباس قاسم موجد', '07727921867'],
+    ['كرخ9', 'متابعة ابو غريب 1', 'حمزه محمد حسن', '07779324967'],
+    ['كرخ10', 'متابعة العامرية', 'مصطفى كريم خضير', '07744442471'],
+    ['كرخ11', 'متابعة حي الجهاد 1', 'احمد ليث مجيد', '07735571353'],
+    ['كرخ12', 'متابعة حي الجهاد 2', 'باقر صلاح علي', '07779397573'],
+    ['كرخ13', 'متابعة الغزالية', 'مصطفى عبدالكريم ابراهيم', '07705964309'],
+    ['كرخ14', 'متابعة الحرية', 'منير عبدالرحمن محمد', '07747249406'],
+    ['كرخ15', 'متابعة دورة 1', 'مصطفى محمد عبدالحسن', '07715767027'],
+    ['كرخ16', 'متابعة الدورة 2', 'مصطفى مأرب محمد علي', '07751143382'],
+    ['كرخ17', 'متابعة دورة 3', 'عبدالله فارس جعفر', '07735571724'],
+    ['كرخ18', 'متابعة دورة 4', 'مهدي مالك عبدالوهاب', '07779324989'],
+    ['كرخ19', 'متابعة السيدية', 'مؤمل ستار حسين', '07744442436'],
+    ['كرخ20', 'متابعة الشعلة', 'عبدالله عبدالعظيم حاتم', '07744443619'],
+    ['كرخ21', 'متابعة حي الجامعة', 'مصطفى علي محمد', '07747249398'],
+    ['كرخ22', 'متابعة ابو غريب 2 / عامرية2 ايرموك', 'حيدر عدن عبدالحسن', '07779324969']
+  ];
+  var CONTACTS_RUSAFA = [ // [المنطقة, اسم الموظف, الرقم]
+    ['مدينة الصدر 1', 'مرتضى احمد حسين', '07732882659'],
+    ['شعب', 'علي هادي احمد', '07714096299'],
+    ['زيونة', 'مصطفى كريم حسين', '07779397552'],
+    ['البلديات 1', 'الحسن علي نعمة', '07734721123'],
+    ['كرادة 1', 'صدام عادل حامد', '07727921842'],
+    ['زعفرانية', 'عبدالله فراس عبد القادر', '07734088235'],
+    ['الاعظمية 1', 'حسين علي صباح', '07707244126'],
+    ['شارع فلسطين', 'علي ماجد عبد', '07704363068'],
+    ['بنوك 1', 'حسن فلاح عزيز', '07734088230'],
+    ['حسينية', 'مهند رحيم صاحب', '07744442832'],
+    ['بغداد جديدة 1', 'سيف الدين عبد حميد', '07744442468'],
+    ['مدينة الصدر 2', 'مصطفى كريم عبد انصيف', '07744443104'],
+    ['اعظمية 2', 'احمد عبد الكريم', '07735571105'],
+    ['جسر ديالى - مدائن', 'حسين ستار عباس', '07735571608'],
+    ['بنوك 2 - كرادة 2', 'احمد جمعة الشيخ', '07735572037'],
+    ['بسماية + نهروان', 'احمد خالد فيصل', '07779397537'],
+    ['معامل + زعفرانية 2', 'علي كريم خضير', '07779397610'],
+    ['بلديات 2', 'همام عويد صالح', '07779397578'],
+    ['شعب 2', 'حسين محمد علي مطر', '07779397592'],
+    ['بغداد جديدة 2', 'عمار عادل عبد الكريم', '07779397591'],
+    ['اعظمية 3', 'موسى راشد وني', '07707347481'],
+    ['مدينة 3', 'محمد فائز كاظم', '07744442438']
+  ];
+
+  function buildContactsPanel() {
+    if (document.getElementById('ws-contacts-overlay')) { return; }
+    var overlay = document.createElement('div'); overlay.id = 'ws-contacts-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;';
+    var panel = document.createElement('div');
+    panel.style.cssText = 'background:#fff;border-radius:8px;padding:16px 18px;width:340px;max-height:82vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Tahoma,Arial,sans-serif;';
+    var title = document.createElement('h3'); title.textContent = '☎️ دليل الأرقام'; title.style.cssText = 'margin:0 0 10px;font-size:15px;color:#222;'; panel.appendChild(title);
+
+    var searchInp = document.createElement('input'); searchInp.type = 'text'; searchInp.placeholder = '🔍 ابحث بالاسم / المنطقة / الرقم...';
+    searchInp.style.cssText = 'width:100%;box-sizing:border-box;padding:7px 8px;border:1px solid #ccc;border-radius:6px;font-size:12.5px;margin-bottom:10px;';
+    panel.appendChild(searchInp);
+
+    var tabsWrap = document.createElement('div'); tabsWrap.style.cssText = 'display:flex;gap:4px;margin-bottom:10px;';
+    var tabs = [{ key: 'gov', label: '🗺️ المحافظات' }, { key: 'karkh', label: '🏙️ كرخ' }, { key: 'rusafa', label: '🏙️ رصافة' }];
+    var tabBtns = {};
+    tabs.forEach(function (t) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
+      b.style.cssText = 'flex:1;padding:6px 4px;border:1px solid #ccc;background:#f2f2f2;color:#333;border-radius:6px;font-size:12px;cursor:pointer;';
+      b.addEventListener('click', function () { setActiveTab(t.key); });
+      tabBtns[t.key] = b; tabsWrap.appendChild(b);
+    });
+    panel.appendChild(tabsWrap);
+
+    var listWrap = document.createElement('div'); panel.appendChild(listWrap);
+    var emptyMsg = document.createElement('div'); emptyMsg.textContent = 'لا توجد نتائج مطابقة.'; emptyMsg.style.cssText = 'display:none;text-align:center;color:#999;font-size:12.5px;padding:16px 0;';
+    listWrap.appendChild(emptyMsg);
+
+    var activeTab = 'gov';
+    function setActiveTab(key) {
+      activeTab = key;
+      Object.keys(tabBtns).forEach(function (k) { tabBtns[k].style.background = (k === key) ? '#2e5bff' : '#f2f2f2'; tabBtns[k].style.color = (k === key) ? '#fff' : '#333'; });
+      render();
+    }
+    function makePhoneChip(phone) {
+      var chip = document.createElement('span'); chip.textContent = '📋 ' + phone;
+      chip.style.cssText = 'display:inline-block;background:#eef2ff;color:#2e42c9;border-radius:14px;padding:4px 10px;font-size:12px;margin:2px 3px 0 0;cursor:pointer;';
+      chip.addEventListener('click', function () { copyToClipboard(phone, chip); });
+      return chip;
+    }
+    // كل منطقة/محافظة تُعرض كخانة (بطاقة) مستقلة تضم اسمها وأرقامها الخاصة بها
+    function makeCard(mainTitle, sub, phones) {
+      var card = document.createElement('div'); card.className = 'ws-contact-row';
+      card.style.cssText = 'background:#f8f9fc;border:1px solid #e8e9f2;border-radius:8px;padding:8px 10px;margin-bottom:7px;';
+      card.setAttribute('data-search', (mainTitle + ' ' + (sub || '') + ' ' + phones.join(' ')).toLowerCase());
+      var t = document.createElement('div'); t.textContent = mainTitle; t.style.cssText = 'font-size:13px;color:#222;font-weight:bold;'; card.appendChild(t);
+      if (sub) { var s = document.createElement('div'); s.textContent = sub; s.style.cssText = 'font-size:11.5px;color:#777;margin-bottom:3px;'; card.appendChild(s); }
+      var chipsWrap = document.createElement('div'); chipsWrap.style.cssText = 'margin-top:3px;'; phones.forEach(function (p) { chipsWrap.appendChild(makePhoneChip(p)); }); card.appendChild(chipsWrap);
+      return card;
+    }
+    function sectionTitle(txt) {
+      var h = document.createElement('div'); h.textContent = txt; h.style.cssText = 'font-size:12.5px;color:#8e44ad;font-weight:bold;margin:10px 0 6px;'; return h;
+    }
+    function render() {
+      Array.prototype.slice.call(listWrap.querySelectorAll('.ws-contact-row,.ws-contact-head')).forEach(function (n) { n.remove(); });
+      if (activeTab === 'gov') {
+        var h1 = sectionTitle('☎️ الكول سنتر العام'); h1.className = 'ws-contact-head'; listWrap.appendChild(h1);
+        CONTACTS_CALLCENTER.forEach(function (e) { listWrap.appendChild(makeCard(e[1], null, [e[0]])); });
+        var h2 = sectionTitle('📞 أرقام الاستفسار حسب المحافظة'); h2.className = 'ws-contact-head'; listWrap.appendChild(h2);
+        CONTACTS_INQUIRY.forEach(function (e) { listWrap.appendChild(makeCard(e[0], null, [e[1]])); });
+        var h3 = sectionTitle('🚨 أرقام التبليغات حسب المحافظة'); h3.className = 'ws-contact-head'; listWrap.appendChild(h3);
+        CONTACTS_REPORTS.forEach(function (e) { listWrap.appendChild(makeCard(e[0], 'تبليغات', e[1])); });
+      } else if (activeTab === 'karkh') {
+        CONTACTS_KARKH.forEach(function (e) { listWrap.appendChild(makeCard(e[1] + ' — ' + e[0], e[2], [e[3]])); });
+      } else if (activeTab === 'rusafa') {
+        CONTACTS_RUSAFA.forEach(function (e) { listWrap.appendChild(makeCard(e[0], e[1], [e[2]])); });
+      }
+      applySearch();
+    }
+    function applySearch() {
+      var q = searchInp.value.trim().toLowerCase(), visible = 0, lastHead = null;
+      Array.prototype.slice.call(listWrap.children).forEach(function (n) {
+        if (n === emptyMsg) { return; }
+        if (n.classList.contains('ws-contact-head')) { lastHead = n; n.style.display = 'none'; return; }
+        var match = (!q || n.getAttribute('data-search').indexOf(q) !== -1);
+        n.style.display = match ? '' : 'none';
+        if (match) { visible++; if (lastHead) { lastHead.style.display = ''; } }
+      });
+      emptyMsg.style.display = visible ? 'none' : '';
+    }
+    searchInp.addEventListener('input', applySearch);
+
+    var closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.textContent = 'إغلاق';
+    closeBtn.style.cssText = 'margin-top:12px;width:100%;background:#2e5bff;color:#fff;border:none;border-radius:5px;padding:8px;cursor:pointer;font-size:13px;';
+    closeBtn.addEventListener('click', function () { overlay.remove(); }); panel.appendChild(closeBtn);
+
+    overlay.appendChild(panel); overlay.addEventListener('click', function (e) { if (e.target === overlay) { overlay.remove(); } }); document.body.appendChild(overlay);
+    setActiveTab('gov');
+  }
+
+  function addContactsBtn() {
+    if (document.getElementById('ws-contacts-btn')) { return; }
+    var btn = document.createElement('button'); btn.id = 'ws-contacts-btn'; btn.type = 'button'; btn.textContent = '☎️';
+    btn.title = 'دليل أرقام المحافظات والكول سنتر وبغداد (كرخ / رصافة)';
+    btn.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:99999;background:#1a8a3a;color:#fff;border:none;border-radius:50%;width:44px;height:44px;cursor:pointer;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;';
+    btn.addEventListener('click', buildContactsPanel);
+    document.body.appendChild(btn);
+  }
+  onReady(function () { setTimeout(addContactsBtn, 800); });
 
   var PAGE = location.href;
 
@@ -827,9 +1123,9 @@
     }
     function addIcons(){
       document.querySelectorAll('tr').forEach(function(tr){var name=extractRepNameFromHeaderRow(tr);if(name){wsLastRepName=name;}});
-      document.querySelectorAll('td.dtr-control').forEach(function(cell){var txt=directText(cell);if(cell.dataset.wsAdded){var row0=cell.closest('tr');if(row0&&txt){addWhatsappBtns(row0,txt);}return;}if(!RE_ORDER.test(txt)||RE_PHONE.test(txt)){return;}cell.dataset.wsAdded='1';var capturedTxt=txt,row=cell.closest('tr');if(row){var repNameNow=findRepNameForRow(row);if(!repNameNow&&wsLastRepName){repNameNow=wsLastRepName;}if(repNameNow){row.setAttribute('data-ws-rep',repNameNow);wsLastRepName=repNameNow;}}var wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:4px;';wrap.appendChild(makeBtn('🔍','قصة الطلب: '+capturedTxt,'#2e5bff',function(){openTab(BASE_URL+'/order-story?ws_order='+encodeURIComponent(capturedTxt),'ws_story');},'story'));wrap.appendChild(makeBtn('➕','أجور التوصيل: '+capturedTxt,'#28a745',function(){openTab(BASE_URL+'/cs/delivery-fees-differences?ws_order='+encodeURIComponent(capturedTxt),'ws_fees');},'fees'));wrap.appendChild(makeBtn('🌐','تغيير العنوان: '+capturedTxt,'#e67e22',function(){openTab(BASE_URL+'/cs/editOrder?ws_order='+encodeURIComponent(capturedTxt),'ws_edit');},'edit'));wrap.appendChild(makeBtn('⭐','تقييم المندوب: '+capturedTxt,'#8e44ad',function(){var liveRow=cell.closest('tr'),repName='';if(liveRow){repName=liveRow.getAttribute('data-ws-rep')||'';}if(!repName&&liveRow){repName=findRepNameForRow(liveRow);}if(!repName){repName=wsLastRepName;}openRatingDialog(capturedTxt,repName);},'rep-rating'));cell.appendChild(wrap);if(row){addWhatsappBtns(row,capturedTxt);}});
+      document.querySelectorAll('td.dtr-control').forEach(function(cell){var txt=directText(cell);if(cell.dataset.wsAdded){var row0=cell.closest('tr');if(row0&&txt){addWhatsappBtns(row0,txt);}return;}if(!RE_ORDER.test(txt)||RE_PHONE.test(txt)){return;}cell.dataset.wsAdded='1';recordReceivedOrder(txt);var capturedTxt=txt,row=cell.closest('tr');if(row){var repNameNow=findRepNameForRow(row);if(!repNameNow&&wsLastRepName){repNameNow=wsLastRepName;}if(repNameNow){row.setAttribute('data-ws-rep',repNameNow);wsLastRepName=repNameNow;}}var wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:4px;';wrap.appendChild(makeBtn('🔍','قصة الطلب: '+capturedTxt,'#2e5bff',function(){openTab(BASE_URL+'/order-story?ws_order='+encodeURIComponent(capturedTxt),'ws_story');},'story'));wrap.appendChild(makeBtn('➕','أجور التوصيل: '+capturedTxt,'#28a745',function(){openTab(BASE_URL+'/cs/delivery-fees-differences?ws_order='+encodeURIComponent(capturedTxt),'ws_fees');},'fees'));wrap.appendChild(makeBtn('🌐','تغيير العنوان: '+capturedTxt,'#e67e22',function(){openTab(BASE_URL+'/cs/editOrder?ws_order='+encodeURIComponent(capturedTxt),'ws_edit');},'edit'));wrap.appendChild(makeBtn('⭐','تقييم المندوب: '+capturedTxt,'#8e44ad',function(){var liveRow=cell.closest('tr'),repName='';if(liveRow){repName=liveRow.getAttribute('data-ws-rep')||'';}if(!repName&&liveRow){repName=findRepNameForRow(liveRow);}if(!repName){repName=wsLastRepName;}openRatingDialog(capturedTxt,repName);},'rep-rating'));cell.appendChild(wrap);if(row){addWhatsappBtns(row,capturedTxt);}});
     }
-    onReady(function(){setTimeout(function(){observeAndRun(addIcons,400);renderAndSync(addSettingsBtn);checkWeeklyAutoReport();},800);});
+    onReady(function(){setTimeout(function(){observeAndRun(addIcons,400);renderAndSync(addSettingsBtn);addReceivedBadge();checkWeeklyAutoReport();},800);});
   }
 
   // ── order-story ──
