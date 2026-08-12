@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      4.0.9
+// @version      4.1.2
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -22,6 +22,31 @@
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v4.1.2):
+  ───────────────────────────────────────────────────────────
+  • تحسين: سلايدر "مستوى شفافية الأزرار" بالإعدادات أصبح يشمل
+    عداد "📦 الطلبات المستلمة اليوم" أيضاً — يتحدّث فوراً لحظة
+    تحريك السلايدر، وكذلك عند إنشاء العداد أو تحديثه بأي وقت.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.1):
+  ───────────────────────────────────────────────────────────
+  • إصلاح خطأ: عداد "📦 اليوم: N طلب" كان يحسب غلط عند فتح أكثر
+    من تبويب لصفحة الكول سنتر بنفس الوقت — كل تبويب كان يحمّل
+    عدد الطلبات من التخزين مرة واحدة فقط عند فتح الصفحة، فإذا
+    سجّل تبويب ثاني طلبات جديدة، أول تبويب يجي يسجّل طلب جديد
+    يكتب فوق التخزين بنسخته القديمة ويمسح طلبات التبويب الثاني.
+    الآن كل عملية تسجيل تقرأ أحدث نسخة من التخزين مباشرة قبل
+    الإضافة، ومع مزامنة تلقائية كل 15 ثانية تحدّث الرقم المعروض
+    حتى لو الإضافة صارت من تبويب ثاني.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.0):
+  ───────────────────────────────────────────────────────────
+  • تجديد شامل لثيم "دليل الأرقام" ☎️ — نافذة كبيرة بخلفية زرقاء
+    متدرجة، بحث ملتصق بالهيدر، 4 تبويبات (كول سنتر / محافظات /
+    كرخ / رصافة)، شبكة بطاقات عريضة بزر "نسخ" واضح، وتنبيه توست
+    عائم أسفل الشاشة عند النسخ. البيانات نفسها لم تتغير (تحقّقت
+    من تطابقها بالكامل).
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v4.0.9):
   ───────────────────────────────────────────────────────────
   • تراجع: حُذف الثيم الداكن للوحة الإعدادات وحُذفت خاصية الوضع
@@ -130,7 +155,7 @@
   }
   function curVer() {
     try { if (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) { return GM_info.script.version; } } catch (e) {}
-    return '4.0.9';
+    return '4.1.2';
   }
   function cmpVer(a, b) {
     var pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -387,23 +412,41 @@
   function refreshReceivedBadge() {
     var el = document.getElementById('ws-received-badge');
     if (!wsSettings.showReceivedCounter) { if (el) { el.remove(); } return; }
+    var op = (wsSettings.opacity != null ? wsSettings.opacity : 100) / 100;
     if (!el) {
       el = document.createElement('div'); el.id = 'ws-received-badge';
       el.title = 'عدد الطلبات الفريدة التي ظهرت لك اليوم بصفحة الكول سنتر — يُحسب مرة واحدة فقط لكل رقم طلب';
       el.style.cssText = 'position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:99998;background:#1a1a2e;color:#fff;border-radius:20px;padding:7px 16px;font-family:Tahoma,Arial,sans-serif;font-size:12.5px;font-weight:bold;box-shadow:0 3px 10px rgba(0,0,0,.35);direction:rtl;cursor:default;user-select:none;';
       document.body.appendChild(el);
     }
+    el.style.opacity = op;
     el.textContent = '📦 اليوم: ' + wsReceivedData.ids.length + ' طلب';
   }
   function recordReceivedOrder(orderId) {
-    var today = todayDateStr();
-    if (wsReceivedData.date !== today) { wsReceivedData = { date: today, ids: [] }; }
-    if (wsReceivedData.ids.indexOf(orderId) !== -1) { return; }
-    wsReceivedData.ids.push(orderId);
+    // نقرأ أحدث نسخة من التخزين مباشرة قبل الإضافة (بدل الاعتماد على
+    // نسخة الذاكرة المحمّلة عند فتح الصفحة) — هذا يمنع مشكلة تعارض
+    // التبويبات المتعددة: لو فاتح أكثر من تبويب لصفحة الكول سنتر
+    // بنفس الوقت، كل تبويب كان يكتب فوق تخزين التبويب الآخر ويصفّر
+    // طلباته بالغلط. الآن كل عملية تقرأ وتكتب على أحدث نسخة فعلية.
+    var fresh = loadReceivedToday();
+    if (fresh.ids.indexOf(orderId) !== -1) { wsReceivedData = fresh; refreshReceivedBadge(); return; }
+    fresh.ids.push(orderId);
+    wsReceivedData = fresh;
     saveReceivedToday();
     refreshReceivedBadge();
   }
-  function addReceivedBadge() { refreshReceivedBadge(); }
+  function addReceivedBadge() {
+    refreshReceivedBadge();
+    // مزامنة دورية: تحدّث الرقم المعروض من التخزين كل 15 ثانية حتى لو
+    // ما ظهر طلب جديد بهذا التبويب تحديداً (لو إضافته صارت من تبويب ثاني)
+    if (!window.__wsReceivedSyncTimer) {
+      window.__wsReceivedSyncTimer = setInterval(function () {
+        var fresh = loadReceivedToday();
+        wsReceivedData = fresh;
+        refreshReceivedBadge();
+      }, 15000);
+    }
+  }
 
   // ══════════════════════════════════════════════════════════════
   //  🔔 جسر مشترك (4.0.3): إعداد "فحص المندوب المتوقف" الخاص بمراقب
@@ -442,6 +485,8 @@
         el.style.display = visible ? '' : 'none'; el.style.opacity = op;
       });
     });
+    var receivedBadge = document.getElementById('ws-received-badge');
+    if (receivedBadge) { receivedBadge.style.opacity = op; }
   }
 
   function openTemplateEditor(opts) {
@@ -900,7 +945,7 @@
       var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;';var lbl=document.createElement('label');lbl.textContent=item.label;lbl.style.cssText='font-size:12px;color:#555;min-width:70px;';var inp=document.createElement('input');inp.type='number';inp.value=wsSettings[item.key]!=null?wsSettings[item.key]:DEFAULT_SETTINGS[item.key];inp.style.cssText='width:90px;padding:5px;border:1px solid #ccc;border-radius:5px;font-size:12px;text-align:center;';inp.addEventListener('change',function(){wsSettings[item.key]=parseInt(inp.value,10)||0;saveSettings(wsSettings);});row.appendChild(lbl);row.appendChild(inp);walletSep.appendChild(row);
     });
 
-    var opacitySection=document.createElement('div');opacitySection.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';var opacityLabel=document.createElement('div');opacityLabel.textContent='مستوى شفافية الأزرار: '+wsSettings.opacity+'%';opacityLabel.style.cssText='font-size:13px;color:#333;margin-bottom:6px;';var opacitySlider=document.createElement('input');opacitySlider.type='range';opacitySlider.min='20';opacitySlider.max='100';opacitySlider.step='5';opacitySlider.value=wsSettings.opacity;opacitySlider.style.cssText='width:100%;cursor:pointer;';opacitySlider.addEventListener('input',function(){wsSettings.opacity=parseInt(opacitySlider.value,10);opacityLabel.textContent='مستوى شفافية الأزرار: '+wsSettings.opacity+'%';saveSettings(wsSettings);applyVisibility();});opacitySection.appendChild(opacityLabel);opacitySection.appendChild(opacitySlider);panel.appendChild(opacitySection);
+    var opacitySection=document.createElement('div');opacitySection.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';var opacityLabel=document.createElement('div');opacityLabel.textContent='مستوى شفافية الأزرار وعداد الطلبات: '+wsSettings.opacity+'%';opacityLabel.style.cssText='font-size:13px;color:#333;margin-bottom:6px;';var opacitySlider=document.createElement('input');opacitySlider.type='range';opacitySlider.min='20';opacitySlider.max='100';opacitySlider.step='5';opacitySlider.value=wsSettings.opacity;opacitySlider.style.cssText='width:100%;cursor:pointer;';opacitySlider.addEventListener('input',function(){wsSettings.opacity=parseInt(opacitySlider.value,10);opacityLabel.textContent='مستوى شفافية الأزرار وعداد الطلبات: '+wsSettings.opacity+'%';saveSettings(wsSettings);applyVisibility();});opacitySection.appendChild(opacityLabel);opacitySection.appendChild(opacitySlider);panel.appendChild(opacitySection);
 
     var custSection=document.createElement('div');custSection.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';var custTitle=document.createElement('div');custTitle.textContent='✉️ قالب رسالة الزبون';custTitle.style.cssText='font-size:13px;color:#333;margin-bottom:6px;font-weight:bold;';custSection.appendChild(custTitle);var custSelect=document.createElement('select');custSelect.style.cssText='width:100%;padding:6px;border:1px solid #ccc;border-radius:5px;font-size:12px;margin-bottom:6px;';Object.keys(PRESET_CUSTOMER_TEMPLATES).forEach(function(id){var opt=document.createElement('option');opt.value=id;opt.textContent=PRESET_CUSTOMER_TEMPLATES[id].label;if(id===(wsSettings.customerTemplateId||'default')){opt.selected=true;}custSelect.appendChild(opt);});var custEditBtn=document.createElement('button');custEditBtn.type='button';custEditBtn.textContent='✏️ تحرير القالب المخصص';custEditBtn.style.cssText='width:100%;background:#e67e22;color:#fff;border:none;border-radius:5px;padding:7px;cursor:pointer;font-size:12px;display:'+(custSelect.value==='custom'?'block':'none')+';';custSelect.addEventListener('change',function(){wsSettings.customerTemplateId=custSelect.value;saveSettings(wsSettings);custEditBtn.style.display=(custSelect.value==='custom')?'block':'none';});custEditBtn.addEventListener('click',function(){openTemplateEditor({title:'تحرير قالب رسالة الزبون',help:'المتغيرات:\n{merchant} اسم المتجر\n{price} السعر\n{order} رقم الطلب',value:(wsSettings.customerCustomTemplate&&wsSettings.customerCustomTemplate.trim())?wsSettings.customerCustomTemplate:PRESET_CUSTOMER_TEMPLATES.default.text,defaultValue:PRESET_CUSTOMER_TEMPLATES.default.text,onSave:function(val){wsSettings.customerCustomTemplate=val;saveSettings(wsSettings);}});});custSection.appendChild(custSelect);custSection.appendChild(custEditBtn);panel.appendChild(custSection);
 
@@ -1003,104 +1048,168 @@
     ['مدينة 3', 'محمد فائز كاظم', '07744442438']
   ];
 
+  // ══════════════════════════════════════════════════════════════
+  //  ☎️ ثيم لوحة دليل الأرقام (مأخوذ من تصميم مرجعي قدّمه أحمد) —
+  //  التصميم فقط؛ البيانات تبقى من مصادرنا الأصلية بالأعلى.
+  // ══════════════════════════════════════════════════════════════
+  injectCss(
+    '#ws-contacts-btn{position:fixed;left:18px;bottom:20px;z-index:2147483646;border:0;cursor:pointer;width:62px;height:62px;border-radius:18px;background:linear-gradient(145deg,#17499d,#0b2d70);color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:28px;transition:.2s;}' +
+    '#ws-contacts-btn:hover{transform:translateY(-3px) scale(1.04);}' +
+    '#ws-contacts-overlay{position:fixed;inset:0;z-index:2147483647;background:rgba(7,20,43,.70);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:25px;direction:rtl;font-family:Tahoma,Arial,sans-serif;}' +
+    '.ws-cd-modal{width:min(1200px,96vw);height:min(800px,92vh);background:#f7f9fd;border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.40);display:flex;flex-direction:column;animation:wsCdOpen .22s ease;}' +
+    '@keyframes wsCdOpen{from{opacity:0;transform:scale(.94) translateY(15px);}to{opacity:1;transform:scale(1) translateY(0);}}' +
+    '.ws-cd-header{background:linear-gradient(135deg,#123d87,#0b2d68);color:#fff;padding:22px 28px;position:relative;flex-shrink:0;}' +
+    '.ws-cd-title{display:flex;align-items:center;justify-content:center;gap:12px;font-size:28px;font-weight:900;}' +
+    '.ws-cd-subtitle{text-align:center;margin-top:6px;font-size:14px;opacity:.9;}' +
+    '.ws-cd-close{position:absolute;right:20px;top:18px;width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.10);color:#fff;font-size:24px;cursor:pointer;line-height:1;}' +
+    '.ws-cd-search{position:absolute;left:24px;top:24px;width:260px;height:42px;border:0;outline:0;border-radius:12px;padding:0 16px;font-size:13.5px;background:#fff;color:#16376d;box-sizing:border-box;}' +
+    '.ws-cd-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 22px;background:#fff;border-bottom:1px solid #e2e8f2;flex-shrink:0;}' +
+    '.ws-cd-tab{height:50px;border-radius:12px;border:1px solid #dce4f0;background:#fff;color:#173b78;font-size:14.5px;font-weight:800;cursor:pointer;transition:.2s;font-family:inherit;}' +
+    '.ws-cd-tab:hover{background:#f2f6fd;}' +
+    '.ws-cd-tab.active{background:linear-gradient(135deg,#17499d,#0d357c);color:#fff;box-shadow:0 8px 20px rgba(19,64,140,.20);border-color:transparent;}' +
+    '.ws-cd-content{flex:1;overflow:auto;padding:18px 22px 22px;}' +
+    '.ws-cd-section-title{font-size:19px;font-weight:900;color:#12386f;margin:4px 0 14px;}' +
+    '.ws-cd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}' +
+    '.ws-cd-card{background:#fff;border:1px solid #e0e7f2;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;min-height:70px;box-sizing:border-box;box-shadow:0 3px 10px rgba(21,52,95,.04);transition:.18s;}' +
+    '.ws-cd-card:hover{border-color:#9eb9e8;transform:translateY(-1px);box-shadow:0 7px 18px rgba(21,52,95,.09);}' +
+    '.ws-cd-info{flex:1;min-width:0;}' +
+    '.ws-cd-name{font-size:15.5px;font-weight:900;color:#183c78;margin-bottom:4px;}' +
+    '.ws-cd-phone{direction:ltr;unicode-bidi:embed;font-size:17px;font-weight:900;letter-spacing:.4px;color:#152f5e;}' +
+    '.ws-cd-note{color:#65799b;font-size:12px;margin-top:4px;}' +
+    '.ws-cd-region{display:inline-block;margin-top:6px;padding:3px 8px;border-radius:20px;background:#e5f6ea;color:#19864a;font-size:11px;font-weight:800;}' +
+    '.ws-cd-copy{flex:none;border:1px solid #d8e1ee;background:#fff;color:#173d79;border-radius:9px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:800;transition:.18s;font-family:inherit;}' +
+    '.ws-cd-copy:hover{background:#edf4ff;border-color:#8eafe0;}' +
+    '.ws-cd-copy.done{background:#dff5e6;color:#168044;border-color:#a9dfb9;}' +
+    '.ws-cd-empty{text-align:center;padding:60px 20px;color:#71809a;font-size:15px;}' +
+    '.ws-cd-footer{text-align:center;background:#fff;border-top:1px solid #e1e7f0;padding:11px;color:#5d7194;font-size:12px;flex-shrink:0;}' +
+    '#ws-cd-toast{position:fixed;left:50%;bottom:35px;transform:translateX(-50%) translateY(20px);z-index:2147483648;background:#143e7e;color:#fff;padding:11px 20px;border-radius:12px;font-size:13.5px;font-weight:800;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.25);}' +
+    '#ws-cd-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}' +
+    '@media(max-width:900px){.ws-cd-search{position:static;display:block;width:100%;margin-top:16px;}.ws-cd-tabs{grid-template-columns:repeat(2,1fr);}.ws-cd-grid{grid-template-columns:1fr;}.ws-cd-title{font-size:22px;}}' +
+    '@media(max-width:550px){.ws-cd-modal{width:100%;height:94vh;border-radius:16px;}#ws-contacts-overlay{padding:8px;}.ws-cd-tabs{padding:10px;gap:6px;}.ws-cd-tab{font-size:12.5px;height:44px;}.ws-cd-content{padding:12px;}}'
+  );
+
+  function formatPhoneDisplay(p) {
+    p = String(p).replace(/\s/g, '');
+    if (p.length === 11) { return p.slice(0, 4) + ' ' + p.slice(4, 7) + ' ' + p.slice(7); }
+    return p;
+  }
+
   function buildContactsPanel() {
     if (document.getElementById('ws-contacts-overlay')) { return; }
+
+    // تحويل بياناتنا الأصلية إلى شكل موحّد {name, phone, note, region, employeeNumber}
+    var DATA = {
+      callcenter: CONTACTS_CALLCENTER.map(function (e) { return { name: e[1], phone: e[0], note: 'للاستفسارات العامة' }; }),
+      provinces: [].concat(
+        CONTACTS_INQUIRY.map(function (e) { return { name: e[0], phone: e[1], note: 'رقم الاستفسار العام' }; }),
+        [].concat.apply([], CONTACTS_REPORTS.map(function (e) {
+          return e[1].map(function (phone, i) { return { name: e[0] + (i ? ' ' + (i + 1) : ''), phone: phone, note: 'تبليغات محافظة ' + e[0] }; });
+        }))
+      ),
+      karkh: CONTACTS_KARKH.map(function (e) { return { name: e[2], phone: e[3], region: e[1], employeeNumber: e[0] }; }),
+      rusafa: CONTACTS_RUSAFA.map(function (e, i) { return { name: e[1], phone: e[2], region: e[0], employeeNumber: 'رصافة ' + (i + 1) }; })
+    };
+
     var overlay = document.createElement('div'); overlay.id = 'ws-contacts-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;';
-    var panel = document.createElement('div');
-    panel.style.cssText = 'background:#fff;border-radius:8px;padding:16px 18px;width:340px;max-height:82vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Tahoma,Arial,sans-serif;';
-    var title = document.createElement('h3'); title.textContent = '☎️ دليل الأرقام'; title.style.cssText = 'margin:0 0 10px;font-size:15px;color:#222;'; panel.appendChild(title);
+    overlay.innerHTML =
+      '<div class="ws-cd-modal">' +
+        '<div class="ws-cd-header">' +
+          '<button type="button" class="ws-cd-close" id="ws-cd-close">×</button>' +
+          '<div class="ws-cd-title"><span>☎️</span><span>دليل أرقام الوسيط</span></div>' +
+          '<div class="ws-cd-subtitle">الكول سنتر، المحافظات، وموظفي متابعة بغداد (كرخ / رصافة)</div>' +
+          '<input id="ws-cd-search" class="ws-cd-search" type="text" placeholder="ابحث عن اسم أو رقم...">' +
+        '</div>' +
+        '<div class="ws-cd-tabs">' +
+          '<button type="button" class="ws-cd-tab active" data-section="callcenter">🎧 كول سنتر</button>' +
+          '<button type="button" class="ws-cd-tab" data-section="provinces">📍 محافظات</button>' +
+          '<button type="button" class="ws-cd-tab" data-section="karkh">🏢 بغداد - الكرخ</button>' +
+          '<button type="button" class="ws-cd-tab" data-section="rusafa">🏢 بغداد - الرصافة</button>' +
+        '</div>' +
+        '<div class="ws-cd-content" id="ws-cd-content"></div>' +
+        '<div class="ws-cd-footer">دليل أرقام داخلي — waseet-tools</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
 
-    var searchInp = document.createElement('input'); searchInp.type = 'text'; searchInp.placeholder = '🔍 ابحث بالاسم / المنطقة / الرقم...';
-    searchInp.style.cssText = 'width:100%;box-sizing:border-box;padding:7px 8px;border:1px solid #ccc;border-radius:6px;font-size:12.5px;margin-bottom:10px;';
-    panel.appendChild(searchInp);
+    var toast = document.getElementById('ws-cd-toast');
+    if (!toast) { toast = document.createElement('div'); toast.id = 'ws-cd-toast'; toast.textContent = 'تم نسخ الرقم ✓'; document.body.appendChild(toast); }
 
-    var tabsWrap = document.createElement('div'); tabsWrap.style.cssText = 'display:flex;gap:4px;margin-bottom:10px;';
-    var tabs = [{ key: 'gov', label: '🗺️ المحافظات' }, { key: 'karkh', label: '🏙️ كرخ' }, { key: 'rusafa', label: '🏙️ رصافة' }];
-    var tabBtns = {};
-    tabs.forEach(function (t) {
-      var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
-      b.style.cssText = 'flex:1;padding:6px 4px;border:1px solid #ccc;background:#f2f2f2;color:#333;border-radius:6px;font-size:12px;cursor:pointer;';
-      b.addEventListener('click', function () { setActiveTab(t.key); });
-      tabBtns[t.key] = b; tabsWrap.appendChild(b);
-    });
-    panel.appendChild(tabsWrap);
+    var content = document.getElementById('ws-cd-content');
+    var searchInp = document.getElementById('ws-cd-search');
+    var titles = { callcenter: '🎧 أرقام الكول سنتر', provinces: '📍 أرقام المحافظات', karkh: '🏢 بغداد - الكرخ', rusafa: '🏢 بغداد - الرصافة' };
+    var currentSection = 'callcenter';
 
-    var listWrap = document.createElement('div'); panel.appendChild(listWrap);
-    var emptyMsg = document.createElement('div'); emptyMsg.textContent = 'لا توجد نتائج مطابقة.'; emptyMsg.style.cssText = 'display:none;text-align:center;color:#999;font-size:12.5px;padding:16px 0;';
-    listWrap.appendChild(emptyMsg);
-
-    var activeTab = 'gov';
-    function setActiveTab(key) {
-      activeTab = key;
-      Object.keys(tabBtns).forEach(function (k) { tabBtns[k].style.background = (k === key) ? '#2e5bff' : '#f2f2f2'; tabBtns[k].style.color = (k === key) ? '#fff' : '#333'; });
-      render();
-    }
-    function makePhoneChip(phone) {
-      var chip = document.createElement('span'); chip.textContent = '📋 ' + phone;
-      chip.style.cssText = 'display:inline-block;background:#eef2ff;color:#2e42c9;border-radius:14px;padding:4px 10px;font-size:12px;margin:2px 3px 0 0;cursor:pointer;';
-      chip.addEventListener('click', function () { copyToClipboard(phone, chip); });
-      return chip;
-    }
-    // كل منطقة/محافظة تُعرض كخانة (بطاقة) مستقلة تضم اسمها وأرقامها الخاصة بها
-    function makeCard(mainTitle, sub, phones) {
-      var card = document.createElement('div'); card.className = 'ws-contact-row';
-      card.style.cssText = 'background:#f8f9fc;border:1px solid #e8e9f2;border-radius:8px;padding:8px 10px;margin-bottom:7px;';
-      card.setAttribute('data-search', (mainTitle + ' ' + (sub || '') + ' ' + phones.join(' ')).toLowerCase());
-      var t = document.createElement('div'); t.textContent = mainTitle; t.style.cssText = 'font-size:13px;color:#222;font-weight:bold;'; card.appendChild(t);
-      if (sub) { var s = document.createElement('div'); s.textContent = sub; s.style.cssText = 'font-size:11.5px;color:#777;margin-bottom:3px;'; card.appendChild(s); }
-      var chipsWrap = document.createElement('div'); chipsWrap.style.cssText = 'margin-top:3px;'; phones.forEach(function (p) { chipsWrap.appendChild(makePhoneChip(p)); }); card.appendChild(chipsWrap);
+    function makeCard(item) {
+      var isEmployee = !!item.region;
+      var card = document.createElement('div'); card.className = 'ws-cd-card';
+      card.setAttribute('data-search', (item.name + ' ' + item.phone + ' ' + (item.note || '') + ' ' + (item.region || '')).toLowerCase());
+      var info = document.createElement('div'); info.className = 'ws-cd-info';
+      var nameEl = document.createElement('div'); nameEl.className = 'ws-cd-name'; nameEl.textContent = item.name; info.appendChild(nameEl);
+      var phoneEl = document.createElement('div'); phoneEl.className = 'ws-cd-phone'; phoneEl.textContent = formatPhoneDisplay(item.phone); info.appendChild(phoneEl);
+      if (isEmployee) {
+        var noteEl = document.createElement('div'); noteEl.className = 'ws-cd-note'; noteEl.innerHTML = 'المنطقة المسؤول عنها: <strong>' + item.region + '</strong>'; info.appendChild(noteEl);
+        var badge = document.createElement('span'); badge.className = 'ws-cd-region'; badge.textContent = item.employeeNumber; info.appendChild(badge);
+      } else if (item.note) {
+        var noteEl2 = document.createElement('div'); noteEl2.className = 'ws-cd-note'; noteEl2.textContent = item.note; info.appendChild(noteEl2);
+      }
+      card.appendChild(info);
+      var copyBtn = document.createElement('button'); copyBtn.type = 'button'; copyBtn.className = 'ws-cd-copy'; copyBtn.textContent = 'نسخ';
+      copyBtn.addEventListener('click', function () {
+        copyToClipboard(item.phone, null);
+        copyBtn.classList.add('done'); copyBtn.textContent = 'تم النسخ ✓';
+        toast.classList.add('show');
+        setTimeout(function () { copyBtn.classList.remove('done'); copyBtn.textContent = 'نسخ'; toast.classList.remove('show'); }, 1400);
+      });
+      card.appendChild(copyBtn);
       return card;
     }
-    function sectionTitle(txt) {
-      var h = document.createElement('div'); h.textContent = txt; h.style.cssText = 'font-size:12.5px;color:#8e44ad;font-weight:bold;margin:10px 0 6px;'; return h;
-    }
-    function render() {
-      Array.prototype.slice.call(listWrap.querySelectorAll('.ws-contact-row,.ws-contact-head')).forEach(function (n) { n.remove(); });
-      if (activeTab === 'gov') {
-        var h1 = sectionTitle('☎️ الكول سنتر العام'); h1.className = 'ws-contact-head'; listWrap.appendChild(h1);
-        CONTACTS_CALLCENTER.forEach(function (e) { listWrap.appendChild(makeCard(e[1], null, [e[0]])); });
-        var h2 = sectionTitle('📞 أرقام الاستفسار حسب المحافظة'); h2.className = 'ws-contact-head'; listWrap.appendChild(h2);
-        CONTACTS_INQUIRY.forEach(function (e) { listWrap.appendChild(makeCard(e[0], null, [e[1]])); });
-        var h3 = sectionTitle('🚨 أرقام التبليغات حسب المحافظة'); h3.className = 'ws-contact-head'; listWrap.appendChild(h3);
-        CONTACTS_REPORTS.forEach(function (e) { listWrap.appendChild(makeCard(e[0], 'تبليغات', e[1])); });
-      } else if (activeTab === 'karkh') {
-        CONTACTS_KARKH.forEach(function (e) { listWrap.appendChild(makeCard(e[1] + ' — ' + e[0], e[2], [e[3]])); });
-      } else if (activeTab === 'rusafa') {
-        CONTACTS_RUSAFA.forEach(function (e) { listWrap.appendChild(makeCard(e[0], e[1], [e[2]])); });
-      }
-      applySearch();
-    }
-    function applySearch() {
-      var q = searchInp.value.trim().toLowerCase(), visible = 0, lastHead = null;
-      Array.prototype.slice.call(listWrap.children).forEach(function (n) {
-        if (n === emptyMsg) { return; }
-        if (n.classList.contains('ws-contact-head')) { lastHead = n; n.style.display = 'none'; return; }
-        var match = (!q || n.getAttribute('data-search').indexOf(q) !== -1);
-        n.style.display = match ? '' : 'none';
-        if (match) { visible++; if (lastHead) { lastHead.style.display = ''; } }
+
+    function render(section, search) {
+      currentSection = section;
+      var q = (search || '').trim().toLowerCase();
+      var items = DATA[section].filter(function (it) {
+        return !q || (it.name + ' ' + it.phone + ' ' + (it.note || '') + ' ' + (it.region || '')).toLowerCase().indexOf(q) !== -1;
       });
-      emptyMsg.style.display = visible ? 'none' : '';
+      content.innerHTML = '';
+      var st = document.createElement('div'); st.className = 'ws-cd-section-title'; st.textContent = titles[section]; content.appendChild(st);
+      if (!items.length) {
+        var empty = document.createElement('div'); empty.className = 'ws-cd-empty'; empty.textContent = 'لا توجد نتائج مطابقة للبحث'; content.appendChild(empty);
+        return;
+      }
+      var grid = document.createElement('div'); grid.className = 'ws-cd-grid';
+      items.forEach(function (it) { grid.appendChild(makeCard(it)); });
+      content.appendChild(grid);
     }
-    searchInp.addEventListener('input', applySearch);
 
-    var closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.textContent = 'إغلاق';
-    closeBtn.style.cssText = 'margin-top:12px;width:100%;background:#2e5bff;color:#fff;border:none;border-radius:5px;padding:8px;cursor:pointer;font-size:13px;';
-    closeBtn.addEventListener('click', function () { overlay.remove(); }); panel.appendChild(closeBtn);
+    overlay.querySelectorAll('.ws-cd-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        overlay.querySelectorAll('.ws-cd-tab').forEach(function (t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        searchInp.value = '';
+        render(tab.getAttribute('data-section'), '');
+      });
+    });
+    searchInp.addEventListener('input', function () { render(currentSection, searchInp.value); });
 
-    overlay.appendChild(panel); overlay.addEventListener('click', function (e) { if (e.target === overlay) { overlay.remove(); } }); document.body.appendChild(overlay);
-    setActiveTab('gov');
+    function closeModal() { overlay.remove(); document.body.style.overflow = ''; }
+    document.getElementById('ws-cd-close').addEventListener('click', closeModal);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) { closeModal(); } });
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') { if (document.getElementById('ws-contacts-overlay')) { closeModal(); } document.removeEventListener('keydown', escHandler); }
+    });
+
+    document.body.style.overflow = 'hidden';
+    render('callcenter', '');
   }
 
   function addContactsBtn() {
     if (document.getElementById('ws-contacts-btn')) { return; }
-    var btn = document.createElement('button'); btn.id = 'ws-contacts-btn'; btn.type = 'button'; btn.textContent = '☎️';
+    var btn = document.createElement('button'); btn.id = 'ws-contacts-btn'; btn.type = 'button'; btn.innerHTML = '☎';
     btn.title = 'دليل أرقام المحافظات والكول سنتر وبغداد (كرخ / رصافة)';
-    btn.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:99999;background:#1a8a3a;color:#fff;border:none;border-radius:50%;width:44px;height:44px;cursor:pointer;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;';
     btn.addEventListener('click', buildContactsPanel);
     document.body.appendChild(btn);
   }
   onReady(function () { setTimeout(addContactsBtn, 800); });
+
 
   var PAGE = location.href;
 
