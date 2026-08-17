@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      4.1.2
+// @version      4.1.3
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -22,6 +22,20 @@
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v4.1.3):
+  ───────────────────────────────────────────────────────────
+  • جديد: تبويب "📊 موظفو الـ CRM" داخل "دليل الأرقام" ☎️ — يعرض
+    كل موظف مع رقمه ومناطق مسؤوليته كشارات (badges) مرتبة، بنفس
+    ثيم النافذة الحالي (خلفية زرقاء متدرجة + شبكة بطاقات).
+  • كل بطاقة رقم أصبحت تحتوي 3 أزرار بدل زر واحد:
+    🟢 فتح واتساب مباشرة (يفتح محادثة فورية مع كليشة تواصل
+    احترافية جاهزة داخل الرسالة)، 📋 نسخ الكليشة (رسالة جاهزة
+    الصياغة تختلف تلقائياً حسب نوع البطاقة: كول سنتر / استفسار
+    محافظة / تبليغات محافظة / موظف متابعة كرخ-رصافة / موظف CRM)،
+    و🔢 نسخ الرقم فقط لمن يحتاج الرقم الخام.
+  • البيانات القديمة (كول سنتر، المحافظات، كرخ، رصافة) لم تتغير؛
+    فقط أُضيفت طبقة الكليشة والواتساب المباشر وقسم الـ CRM الجديد.
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v4.1.2):
   ───────────────────────────────────────────────────────────
   • تحسين: سلايدر "مستوى شفافية الأزرار" بالإعدادات أصبح يشمل
@@ -155,7 +169,7 @@
   }
   function curVer() {
     try { if (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) { return GM_info.script.version; } } catch (e) {}
-    return '4.1.2';
+    return '4.1.3';
   }
   function cmpVer(a, b) {
     var pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -1077,15 +1091,20 @@
     '.ws-cd-phone{direction:ltr;unicode-bidi:embed;font-size:17px;font-weight:900;letter-spacing:.4px;color:#152f5e;}' +
     '.ws-cd-note{color:#65799b;font-size:12px;margin-top:4px;}' +
     '.ws-cd-region{display:inline-block;margin-top:6px;padding:3px 8px;border-radius:20px;background:#e5f6ea;color:#19864a;font-size:11px;font-weight:800;}' +
-    '.ws-cd-copy{flex:none;border:1px solid #d8e1ee;background:#fff;color:#173d79;border-radius:9px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:800;transition:.18s;font-family:inherit;}' +
+    '.ws-cd-areas{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}' +
+    '.ws-cd-area-badge{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:700;}' +
+    '.ws-cd-actions{flex:none;display:flex;flex-direction:column;gap:6px;align-items:stretch;}' +
+    '.ws-cd-copy{border:1px solid #d8e1ee;background:#fff;color:#173d79;border-radius:9px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:800;transition:.18s;font-family:inherit;white-space:nowrap;}' +
     '.ws-cd-copy:hover{background:#edf4ff;border-color:#8eafe0;}' +
     '.ws-cd-copy.done{background:#dff5e6;color:#168044;border-color:#a9dfb9;}' +
+    '.ws-cd-wa{border:1px solid #bbf0cf;background:#e9fbf1;color:#0f7a3d;border-radius:9px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:800;transition:.18s;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-block;text-align:center;}' +
+    '.ws-cd-wa:hover{background:#d7f6e4;border-color:#8fe3b6;}' +
     '.ws-cd-empty{text-align:center;padding:60px 20px;color:#71809a;font-size:15px;}' +
     '.ws-cd-footer{text-align:center;background:#fff;border-top:1px solid #e1e7f0;padding:11px;color:#5d7194;font-size:12px;flex-shrink:0;}' +
     '#ws-cd-toast{position:fixed;left:50%;bottom:35px;transform:translateX(-50%) translateY(20px);z-index:2147483648;background:#143e7e;color:#fff;padding:11px 20px;border-radius:12px;font-size:13.5px;font-weight:800;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.25);}' +
     '#ws-cd-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}' +
-    '@media(max-width:900px){.ws-cd-search{position:static;display:block;width:100%;margin-top:16px;}.ws-cd-tabs{grid-template-columns:repeat(2,1fr);}.ws-cd-grid{grid-template-columns:1fr;}.ws-cd-title{font-size:22px;}}' +
-    '@media(max-width:550px){.ws-cd-modal{width:100%;height:94vh;border-radius:16px;}#ws-contacts-overlay{padding:8px;}.ws-cd-tabs{padding:10px;gap:6px;}.ws-cd-tab{font-size:12.5px;height:44px;}.ws-cd-content{padding:12px;}}'
+    '@media(max-width:900px){.ws-cd-search{position:static;display:block;width:100%;margin-top:16px;}.ws-cd-tabs{grid-template-columns:repeat(3,1fr);}.ws-cd-grid{grid-template-columns:1fr;}.ws-cd-title{font-size:22px;}}' +
+    '@media(max-width:550px){.ws-cd-modal{width:100%;height:94vh;border-radius:16px;}#ws-contacts-overlay{padding:8px;}.ws-cd-tabs{padding:10px;gap:6px;grid-template-columns:repeat(2,1fr);}.ws-cd-tab{font-size:12.5px;height:44px;}.ws-cd-content{padding:12px;}.ws-cd-card{flex-direction:column;align-items:stretch;}.ws-cd-actions{flex-direction:row;}.ws-cd-actions>*{flex:1;}}'
   );
 
   function formatPhoneDisplay(p) {
@@ -1094,20 +1113,88 @@
     return p;
   }
 
+  function waPhoneDigits(p) {
+    var d = String(p || '').replace(/\D/g, '');
+    if (d.charAt(0) === '0') { d = d.substring(1); }
+    if (d.substring(0, 3) !== '964') { d = '964' + d; }
+    return d;
+  }
+
+  function waLink(p, msg) {
+    var url = 'https://wa.me/' + waPhoneDigits(p);
+    if (msg) { url += '?text=' + encodeURIComponent(msg); }
+    return url;
+  }
+
+  // ── مولّد الكليشة الاحترافية بحسب نوع البطاقة ─────────────────
+  function buildContactCliche(item) {
+    if (item.kind === 'employee') {
+      return 'الأستاذ الفاضل، تحية طيبة 🌹\n' +
+        'طلبكم لدى متابع منطقة: ' + item.region + '\n' +
+        'الموظف المختص: ' + item.name + '\n' +
+        'رقم التواصل المباشر: ' + item.phone + '\n' +
+        'يرجى التواصل لإتمام إجراءات التوصيل، ولكم فائق الشكر.';
+    }
+    if (item.kind === 'crm') {
+      return 'الأستاذ الفاضل، تحية طيبة 🌹\n' +
+        'موظف الـ CRM المسؤول عن منطقتكم: ' + item.name + '\n' +
+        'رقم التواصل المباشر: ' + item.phone + '\n' +
+        'مناطق التغطية: ' + item.areas.join('، ') + '\n' +
+        'يرجى التواصل لمتابعة طلبكم، ولكم فائق الشكر.';
+    }
+    if (item.kind === 'report') {
+      return 'الأستاذ الفاضل، تحية طيبة 🌹\n' +
+        'لتقديم تبليغ بخصوص طلبكم في محافظة ' + item.name + '\n' +
+        'يرجى التواصل مع قسم التبليغات على الرقم: ' + item.phone + '\n' +
+        'وشكراً لتعاونكم.';
+    }
+    if (item.kind === 'inquiry') {
+      return 'الأستاذ الفاضل، تحية طيبة 🌹\n' +
+        'للاستفسار بخصوص طلبكم في محافظة ' + item.name + '\n' +
+        'يرجى التواصل على الرقم: ' + item.phone + '\n' +
+        'وشكراً لتعاونكم.';
+    }
+    return 'الأستاذ الفاضل، تحية طيبة 🌹\n' +
+      'للاستفسار العام يرجى التواصل مع الكول سنتر على الرقم: ' + item.phone + '\n' +
+      'وشكراً لتعاونكم.';
+  }
+
+  // اسم الموظف | الرقم | مناطق المسؤولية[]
+  var CONTACTS_CRM = [
+    ['احمد جديد', '07779397611', ['زعفرانية', 'جسر ديالى', 'كرغولية', 'ابو غريب', 'محمودية', 'نهروان', 'لطيفية', 'بسماية', 'مدائن', 'رضوانية']],
+    ['محمد شاكر', '07764032129', ['باب المعظم', 'الكفاح', 'الوزيرية الصناعية', 'السنك', 'المتنبي', 'حافظ القاضي', 'المثنى', 'باب الشرقي', 'ساحة الطيران', 'الشورجة']],
+    ['نور بسام', '07724036165', ['كاظمية', 'طارمية', 'سبع البور', 'عبايجي', 'مشاهدة', 'جكوك', 'شعلة', 'حي الجوادين', 'سلاميات', 'الخطيب']],
+    ['احمد محمد', '07730240405', ['ناصرية', 'الحرية', 'الدولعي', 'الوشاش', 'الطوبجي', 'الاسكان', 'المنصور', 'الحارثية', 'كرادة مريم', 'الجعيفر', 'صالحية', 'العلاوي', 'شيخ معروف', 'المنطقة الخضراء']],
+    ['ايناس فرج', '07779397548', ['عامرية', 'غزالية', 'حي الجامعة', 'حي حطين', 'اليرموك', 'الداخلية', 'القادسية', 'حي الخضراء', 'حي العامل', 'حي العدل', 'العطيفية', 'شالجية', 'علي الصالح']],
+    ['حسن ماجد', '07735572754', ['السيدية', 'حي الاعلام التراث', 'الري', 'معالف', 'الشرطة الرابعة', 'الشرطة الخامسة', 'سويب', 'البياع', 'حي الجهاد']],
+    ['حوراء علاء', '07779397549', ['الدورة', 'كرادة داخل', 'كرادة خارج', 'العرصات', 'السعدون', 'شارع الصناعة', 'الجادرية']],
+    ['رفل ربيع', '07779397551', ['الشعب', 'البنوك', 'حي اور', 'سبع قصور', 'حي البساتين', 'الجزيرة', 'كميرة', 'ام الكبر والغزلان', 'ثعالبة']],
+    ['مريم عامر', '07779397550', ['بلديات', 'مدينة الصدر', 'الحبيبية', 'حسينية الرشادية', 'جميلة', 'طالبية', 'سريدات', 'بوب الشام']],
+    ['مروة علاء', '07759150128', ['شارع فلسطين', 'شارع الربيعي', 'الاعظمية', 'زيونة', 'القاهرة', 'صليخ', 'كريعات', 'شارع المغرب', 'سبع ابكار']],
+    ['ميس', '07744441074', ['بغداد الجديدة', 'النعيرية', 'الامين', 'المشتل', 'العبيدي', 'الغدير', 'ساحة ميسلون', 'فضيلية', 'كمالية', 'معامل الحسينية']],
+    ['عبير اسماعيل', '07735572761', ['الموصل', 'الديوانية', 'كركوك']],
+    ['سعاد خالد', '07744442929', ['محافظة الحلة']],
+    ['نهاد خالد', '07744442323', ['محافظة النجف']],
+    ['علي حسين', '07744441064', ['كربلاء', 'دهوك', 'صلاح الدين', 'السماوة', 'العمارة']],
+    ['كرار علي وادي', '07779397531', ['البصرة', 'الانبار', 'الكوت']],
+    ['فاطمة حسين', '07744441065', ['اربيل', 'ديالى', 'السليمانية']]
+  ];
+
   function buildContactsPanel() {
     if (document.getElementById('ws-contacts-overlay')) { return; }
 
-    // تحويل بياناتنا الأصلية إلى شكل موحّد {name, phone, note, region, employeeNumber}
+    // تحويل بياناتنا الأصلية إلى شكل موحّد {name, phone, note, region, employeeNumber, kind}
     var DATA = {
-      callcenter: CONTACTS_CALLCENTER.map(function (e) { return { name: e[1], phone: e[0], note: 'للاستفسارات العامة' }; }),
+      callcenter: CONTACTS_CALLCENTER.map(function (e) { return { name: e[1], phone: e[0], note: 'للاستفسارات العامة', kind: 'callcenter' }; }),
       provinces: [].concat(
-        CONTACTS_INQUIRY.map(function (e) { return { name: e[0], phone: e[1], note: 'رقم الاستفسار العام' }; }),
+        CONTACTS_INQUIRY.map(function (e) { return { name: e[0], phone: e[1], note: 'رقم الاستفسار العام', kind: 'inquiry' }; }),
         [].concat.apply([], CONTACTS_REPORTS.map(function (e) {
-          return e[1].map(function (phone, i) { return { name: e[0] + (i ? ' ' + (i + 1) : ''), phone: phone, note: 'تبليغات محافظة ' + e[0] }; });
+          return e[1].map(function (phone, i) { return { name: e[0] + (i ? ' ' + (i + 1) : ''), phone: phone, note: 'تبليغات محافظة ' + e[0], kind: 'report' }; });
         }))
       ),
-      karkh: CONTACTS_KARKH.map(function (e) { return { name: e[2], phone: e[3], region: e[1], employeeNumber: e[0] }; }),
-      rusafa: CONTACTS_RUSAFA.map(function (e, i) { return { name: e[1], phone: e[2], region: e[0], employeeNumber: 'رصافة ' + (i + 1) }; })
+      karkh: CONTACTS_KARKH.map(function (e) { return { name: e[2], phone: e[3], region: e[1], employeeNumber: e[0], kind: 'employee' }; }),
+      rusafa: CONTACTS_RUSAFA.map(function (e, i) { return { name: e[1], phone: e[2], region: e[0], employeeNumber: 'رصافة ' + (i + 1), kind: 'employee' }; }),
+      crm: CONTACTS_CRM.map(function (e) { return { name: e[0], phone: e[1], areas: e[2], kind: 'crm' }; })
     };
 
     var overlay = document.createElement('div'); overlay.id = 'ws-contacts-overlay';
@@ -1116,14 +1203,15 @@
         '<div class="ws-cd-header">' +
           '<button type="button" class="ws-cd-close" id="ws-cd-close">×</button>' +
           '<div class="ws-cd-title"><span>☎️</span><span>دليل أرقام الوسيط</span></div>' +
-          '<div class="ws-cd-subtitle">الكول سنتر، المحافظات، وموظفي متابعة بغداد (كرخ / رصافة)</div>' +
-          '<input id="ws-cd-search" class="ws-cd-search" type="text" placeholder="ابحث عن اسم أو رقم...">' +
+          '<div class="ws-cd-subtitle">الكول سنتر، المحافظات، موظفي متابعة بغداد (كرخ / رصافة)، وموظفي الـ CRM</div>' +
+          '<input id="ws-cd-search" class="ws-cd-search" type="text" placeholder="ابحث عن اسم أو منطقة أو رقم...">' +
         '</div>' +
         '<div class="ws-cd-tabs">' +
           '<button type="button" class="ws-cd-tab active" data-section="callcenter">🎧 كول سنتر</button>' +
           '<button type="button" class="ws-cd-tab" data-section="provinces">📍 محافظات</button>' +
           '<button type="button" class="ws-cd-tab" data-section="karkh">🏢 بغداد - الكرخ</button>' +
           '<button type="button" class="ws-cd-tab" data-section="rusafa">🏢 بغداد - الرصافة</button>' +
+          '<button type="button" class="ws-cd-tab" data-section="crm">📊 موظفو الـ CRM</button>' +
         '</div>' +
         '<div class="ws-cd-content" id="ws-cd-content"></div>' +
         '<div class="ws-cd-footer">دليل أرقام داخلي — waseet-tools</div>' +
@@ -1132,34 +1220,72 @@
 
     var toast = document.getElementById('ws-cd-toast');
     if (!toast) { toast = document.createElement('div'); toast.id = 'ws-cd-toast'; toast.textContent = 'تم نسخ الرقم ✓'; document.body.appendChild(toast); }
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(function () { toast.classList.remove('show'); }, 1400);
+    }
 
     var content = document.getElementById('ws-cd-content');
     var searchInp = document.getElementById('ws-cd-search');
-    var titles = { callcenter: '🎧 أرقام الكول سنتر', provinces: '📍 أرقام المحافظات', karkh: '🏢 بغداد - الكرخ', rusafa: '🏢 بغداد - الرصافة' };
+    var titles = { callcenter: '🎧 أرقام الكول سنتر', provinces: '📍 أرقام المحافظات', karkh: '🏢 بغداد - الكرخ', rusafa: '🏢 بغداد - الرصافة', crm: '📊 موظفو الـ CRM ومناطق مسؤوليتهم' };
     var currentSection = 'callcenter';
 
     function makeCard(item) {
-      var isEmployee = !!item.region;
+      var isEmployee = item.kind === 'employee';
+      var isCrm = item.kind === 'crm';
       var card = document.createElement('div'); card.className = 'ws-cd-card';
-      card.setAttribute('data-search', (item.name + ' ' + item.phone + ' ' + (item.note || '') + ' ' + (item.region || '')).toLowerCase());
+      card.setAttribute('data-search', (item.name + ' ' + item.phone + ' ' + (item.note || '') + ' ' + (item.region || '') + ' ' + (item.areas ? item.areas.join(' ') : '')).toLowerCase());
+
       var info = document.createElement('div'); info.className = 'ws-cd-info';
       var nameEl = document.createElement('div'); nameEl.className = 'ws-cd-name'; nameEl.textContent = item.name; info.appendChild(nameEl);
       var phoneEl = document.createElement('div'); phoneEl.className = 'ws-cd-phone'; phoneEl.textContent = formatPhoneDisplay(item.phone); info.appendChild(phoneEl);
+
       if (isEmployee) {
         var noteEl = document.createElement('div'); noteEl.className = 'ws-cd-note'; noteEl.innerHTML = 'المنطقة المسؤول عنها: <strong>' + item.region + '</strong>'; info.appendChild(noteEl);
         var badge = document.createElement('span'); badge.className = 'ws-cd-region'; badge.textContent = item.employeeNumber; info.appendChild(badge);
+      } else if (isCrm) {
+        var noteEl3 = document.createElement('div'); noteEl3.className = 'ws-cd-note'; noteEl3.textContent = 'مسؤول(ة) CRM — مناطق التغطية:'; info.appendChild(noteEl3);
+        var areasWrap = document.createElement('div'); areasWrap.className = 'ws-cd-areas';
+        item.areas.forEach(function (a) { var b = document.createElement('span'); b.className = 'ws-cd-area-badge'; b.textContent = a; areasWrap.appendChild(b); });
+        info.appendChild(areasWrap);
       } else if (item.note) {
         var noteEl2 = document.createElement('div'); noteEl2.className = 'ws-cd-note'; noteEl2.textContent = item.note; info.appendChild(noteEl2);
       }
       card.appendChild(info);
-      var copyBtn = document.createElement('button'); copyBtn.type = 'button'; copyBtn.className = 'ws-cd-copy'; copyBtn.textContent = 'نسخ';
+
+      var actions = document.createElement('div'); actions.className = 'ws-cd-actions';
+
+      var cliche = buildContactCliche(item);
+
+      var waBtn = document.createElement('a');
+      waBtn.className = 'ws-cd-wa'; waBtn.textContent = '🟢 واتساب';
+      waBtn.href = waLink(item.phone, cliche);
+      waBtn.target = '_blank'; waBtn.rel = 'noopener noreferrer';
+      waBtn.title = 'فتح واتساب مباشرة مع كليشة تواصل جاهزة';
+      actions.appendChild(waBtn);
+
+      var copyBtn = document.createElement('button'); copyBtn.type = 'button'; copyBtn.className = 'ws-cd-copy'; copyBtn.textContent = '📋 نسخ الكليشة';
+      copyBtn.title = 'نسخ كليشة تواصل احترافية جاهزة (تتضمن الرقم)';
       copyBtn.addEventListener('click', function () {
-        copyToClipboard(item.phone, null);
+        copyToClipboard(cliche, null);
         copyBtn.classList.add('done'); copyBtn.textContent = 'تم النسخ ✓';
-        toast.classList.add('show');
-        setTimeout(function () { copyBtn.classList.remove('done'); copyBtn.textContent = 'نسخ'; toast.classList.remove('show'); }, 1400);
+        showToast('✅ تم نسخ الكليشة');
+        setTimeout(function () { copyBtn.classList.remove('done'); copyBtn.textContent = '📋 نسخ الكليشة'; }, 1600);
       });
-      card.appendChild(copyBtn);
+      actions.appendChild(copyBtn);
+
+      var numBtn = document.createElement('button'); numBtn.type = 'button'; numBtn.className = 'ws-cd-copy'; numBtn.textContent = '🔢 نسخ الرقم';
+      numBtn.title = 'نسخ الرقم فقط بدون نص';
+      numBtn.addEventListener('click', function () {
+        copyToClipboard(item.phone, null);
+        numBtn.classList.add('done'); numBtn.textContent = 'تم النسخ ✓';
+        showToast('✅ تم نسخ الرقم');
+        setTimeout(function () { numBtn.classList.remove('done'); numBtn.textContent = '🔢 نسخ الرقم'; }, 1600);
+      });
+      actions.appendChild(numBtn);
+
+      card.appendChild(actions);
       return card;
     }
 
@@ -1167,7 +1293,7 @@
       currentSection = section;
       var q = (search || '').trim().toLowerCase();
       var items = DATA[section].filter(function (it) {
-        return !q || (it.name + ' ' + it.phone + ' ' + (it.note || '') + ' ' + (it.region || '')).toLowerCase().indexOf(q) !== -1;
+        return !q || (it.name + ' ' + it.phone + ' ' + (it.note || '') + ' ' + (it.region || '') + ' ' + (it.areas ? it.areas.join(' ') : '')).toLowerCase().indexOf(q) !== -1;
       });
       content.innerHTML = '';
       var st = document.createElement('div'); st.className = 'ws-cd-section-title'; st.textContent = titles[section]; content.appendChild(st);
@@ -1204,7 +1330,7 @@
   function addContactsBtn() {
     if (document.getElementById('ws-contacts-btn')) { return; }
     var btn = document.createElement('button'); btn.id = 'ws-contacts-btn'; btn.type = 'button'; btn.innerHTML = '☎';
-    btn.title = 'دليل أرقام المحافظات والكول سنتر وبغداد (كرخ / رصافة)';
+    btn.title = 'دليل أرقام المحافظات والكول سنتر وبغداد (كرخ / رصافة) وموظفي CRM';
     btn.addEventListener('click', buildContactsPanel);
     document.body.appendChild(btn);
   }
