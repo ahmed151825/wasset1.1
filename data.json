@@ -156,11 +156,11 @@
     "btn": ""
   },
   "banner": {
-    "active": false,
-    "text": "",
+    "active": true,
+    "text": "لاضافة اي فكرة او مقترح التواصل على الواتساب هنا",
     "color": "#1E3A8A",
     "pos": "top",
-    "link": ""
+    "link": "https://api.whatsapp.com/send/?phone=%2B9647716828568&text&type=phone_number&app_absent=0"
   },
   "owner": {
     "name": "أحمد محمد كريم",
