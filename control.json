@@ -1,6 +1,6 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-08-26T10:14:49.519Z",
+  "updatedAt": "2026-08-26T10:27:42.413Z",
   "employees": {
     "باقر صلاح علي": {
       "enabled": true,
@@ -20,6 +20,26 @@
         "showReceivedCounter": true,
         "smartDecisionEnabled": false,
         "deliveryMonitorEnabled": true
+      }
+    },
+    "عقيل مسلم علي": {
+      "enabled": true,
+      "overrides": {
+        "showStory": false,
+        "showFees": false,
+        "showEdit": false,
+        "showWsMerchant": false,
+        "showWsCustomer": false,
+        "showSms": false,
+        "showPhoneSearch": false,
+        "showDelayCheck": false,
+        "showCopyReport": false,
+        "showCopyReps": false,
+        "showRepRating": false,
+        "showDeferred": false,
+        "showReceivedCounter": false,
+        "smartDecisionEnabled": false,
+        "deliveryMonitorEnabled": false
       }
     }
   }
