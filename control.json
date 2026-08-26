@@ -1,6 +1,6 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-08-26T10:48:34.790Z",
+  "updatedAt": "2026-08-26T10:48:46.542Z",
   "employees": {
     "باقر صلاح علي": {
       "enabled": true,
@@ -16,9 +16,9 @@
         "showCopyReport": true,
         "showCopyReps": true,
         "showRepRating": true,
-        "showDeferred": true,
+        "showDeferred": false,
         "showReceivedCounter": true,
-        "smartDecisionEnabled": true,
+        "smartDecisionEnabled": false,
         "deliveryMonitorEnabled": true
       }
     },
