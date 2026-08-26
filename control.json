@@ -1,9 +1,9 @@
 {
-  "globalEnabled": true,
-  "updatedAt": "2026-08-26T11:12:33.154Z",
+  "globalEnabled": false,
+  "updatedAt": "2026-08-26T11:15:23.405Z",
   "employees": {
     "مصطفى عبدالكريم ابراهيم": {
-      "enabled": false,
+      "enabled": true,
       "overrides": {
         "showStory": false,
         "showFees": false,
