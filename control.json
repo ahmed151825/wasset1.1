@@ -1,5 +1,26 @@
 {
-  "globalEnabled": true,
-  "updatedAt": "2026-08-26T10:58:17.307Z",
-  "employees": {}
+  "globalEnabled": false,
+  "updatedAt": "2026-08-26T11:09:34.098Z",
+  "employees": {
+    "مصطفى عبدالكريم ابراهيم": {
+      "enabled": true,
+      "overrides": {
+        "showStory": true,
+        "showFees": true,
+        "showEdit": true,
+        "showWsMerchant": true,
+        "showWsCustomer": true,
+        "showSms": true,
+        "showPhoneSearch": true,
+        "showDelayCheck": true,
+        "showCopyReport": true,
+        "showCopyReps": true,
+        "showRepRating": true,
+        "showDeferred": true,
+        "showReceivedCounter": true,
+        "smartDecisionEnabled": true,
+        "deliveryMonitorEnabled": true
+      }
+    }
+  }
 }
