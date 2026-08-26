@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      4.1.3
+// @version      4.4.0
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -15,6 +15,8 @@
 // @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
 // @connect      raw.githubusercontent.com
+// @connect      api.github.com
+// @connect      alwaseet-iq.net
 // @icon         data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🚚</text></svg>
 // @run-at       document-start
 // @updateURL    https://raw.githubusercontent.com/ahmed151825/wasset1.1/main/waseet-tools.user.js
@@ -22,6 +24,272 @@
 // ==/UserScript==
 
 /*
+  سجل التحديثات (v4.4.0):
+  ───────────────────────────────────────────────────────────
+  • جديد: وحدة "تحكم المدير عن بُعد" — حساب اليوزر "احمد محمد كريم"
+    يظهر له زر 🛡️ عائم بلوحة تحكم كاملة تسمح له بـ:
+    - تشغيل/إيقاف السكربت بالكامل لأي موظف (أو للجميع دفعة واحدة).
+    - تفعيل/تعطيل أي ميزة رئيسية بشكل منفصل لكل موظف (زر المؤجل،
+      واتساب التاجر/الزبون، تقييم المندوب، الزر الذكي، عدّاد الطلبات،
+      مراقب التوصيل...الخ).
+    - محاولة سحب أسماء تلقائية من الصفحة المفتوحة حالياً (تجريبي —
+      يحتاج مراجعة يدوية قبل الحفظ) بالإضافة لإضافة الأسماء يدوياً.
+    - حفظ الإعدادات ورفعها مباشرة لملف control.json على GitHub عبر
+      GitHub API (يتطلب Personal Access Token خاص بالمدير يُحفظ محلياً
+      على جهازه فقط، ولا يُرسل أو يظهر لأي موظف آخر).
+    كل موظف آخر: سكربته يقرأ إعدادات control.json تلقائياً كل ١٥ دقيقة
+    ويطبّق القيود دون أي تدخل منه، وتظهر له رسالة توضيحية إذا أُوقف
+    السكربت بالكامل من قبل الإدارة (شفافية كاملة، بدون تعطيل خفي).
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.8):
+  ───────────────────────────────────────────────────────────
+  • تدقيق شامل للملف كامل بعد التوضيح إن الفرق الملاحظ بين صفحة أجور
+    التوصيل القديمة وصفحة الإحصائيات كان طبيعياً (نطاقا بيانات مختلفان
+    تماماً: يوم واحد بلا فلترة حالة مقابل شهر كامل مفلتر بالحالة)،
+    وليس خطأ حساب. تم فحص الملف بالكامل عبر: تحليل صياغة V8 حقيقي،
+    فحص تكرار كل دالة بالملف (مع تتبّع يدوي لكل حالة تكرار للتأكد أنها
+    بنطاقات معزولة آمنة)، اختبار استخلاص الفئات فعلياً بمحاكي DOM على
+    عيّنة بياناتك الحقيقية (النتائج طابقت المتوقع 100%)، وفحص ESLint
+    لرصد أي دالة/متغيّر غير معرّف (النتائج المتبقية إنذارات كاذبة
+    لأنماط دفاعية موجودة أصلاً بالكود الأصلي).
+  • إصلاح: جدول تفصيل الفئات بنافذة ملخص الشهر كان يعرض أحياناً صفاً
+    فارغاً (كل قيمه صفر) لفئة موجودة فقط بسجلات "غير مستلمة" ومالها
+    أي طلب "مستلمة" فعلياً — رغم إن عنوان الجدول "الطلبات المستلمة"
+    تحديداً. الآن الجدول يعرض حصراً الفئات الموجودة فعلياً بسجلات
+    "مستلمة"، ولا يعرض أي صف فارغ غير منطقي.
+  • حذف: دالة `statsAllFeeTiers` أصبحت بلا استخدام بعد الإصلاح أعلاه.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.7):
+  ───────────────────────────────────────────────────────────
+  • إصلاح إضافي حاسم لحساب الأجر بصفحة إحصائيات فروقات الأجور: تبيّن
+    أن "مجموع الفروقات" الظاهر برأس كل مجموعة بالجدول هو قيمة الفرق
+    بالسعر نفسها (مثال: 61 سجل × 5,000 = 305,000) — وليس أجر المندوب
+    الفعلي. الأجر الحقيقي يُحسب بنفس آلية زر "💰 المحفظة" بصفحة أجور
+    التوصيل الأصلية بالضبط: عدد طلبات كل فئة × سعر تلك الفئة تحديداً
+    (من الإعدادات ⚙️ ← 💰 إعدادات المحفظة الشهرية: walletFee5000/
+    4000/3000/2000، افتراضياً 300/200/150/100 دينار)، وليس ضرب العدد
+    بقيمة الفرق نفسها. نافذة الملخص الآن تعرض عمود "سعر/طلب" لكل فئة
+    بجانب "الأجر" المحسوب منه للشفافية الكاملة.
+  • حذف: حقل "أجر السجل المستلم (إحصائيات الفروقات)" من الإعدادات ⚙️
+    ← 💰 إعدادات المحفظة الشهرية — أصبح بلا فائدة بعد اعتماد نفس أسعار
+    فئات المحفظة الحقيقية بدل سعر ثابت واحد تخميني.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.6):
+  ───────────────────────────────────────────────────────────
+  • إصلاح جذري لحساب الأجر: تبيّن أن جدول صفحة إحصائيات فروقات
+    الأجور مُجمّع فعلياً حسب "قيمة الفرق" (نفس منطق صفحة أجور
+    التوصيل الأصلية) — كل مجموعة تعرض رأساً فيه "قيمة الفرق" و"عدد
+    الطلبات" و"مجموع الفروقات" الحقيقي. زر "💰 إحصائية الشهر الكامل"
+    كان يتجاهل هذي الأرقام الحقيقية ويحسب الأجر بضرب عدد "المستلمة"
+    بسعر ثابت واحد من الإعدادات — خطأ جذري لأن السعر يختلف فعلياً
+    حسب الفئة (5000/4000/3000/2000...الخ). الآن يُقرأ المبلغ الحقيقي
+    مباشرة من كل فئة موجودة فعلياً بنتائج البحث (بدون أي تخمين)،
+    ويُصنَّف كل سجل داخل كل فئة إلى عادي/VIP حسب اسم المندوب (نفس
+    التصنيف المستخدم بصفحة أجور التوصيل بالضبط)، مع دعم أي فئة إضافية
+    غير معتادة قد تظهر بالبيانات.
+  • تعديل: زر "📋 نسخ التقرير" داخل نافذة ملخص الشهر صار يبني التقرير
+    بنفس القالب والفئات المستخدمة بصفحة أجور التوصيل الأصلية حرفياً
+    (عادي/VIP لكل فئة 5000/4000/3000/2000، بنفس القالب القابل للتخصيص
+    من الإعدادات ⚙️ ← قالب تقرير الأجور).
+  • نافذة الملخص الآن تعرض جدول تفصيلي لكل فئة (عادي/VIP/العدد/المبلغ)
+    للمستلمة فقط، بينما "غير مستلمة" تُعرض كعدد إعلامي فقط بدون أي
+    احتساب بالأجر (يُحتسب الأجر على الطلبات المستلمة حصراً).
+  • تأكيد: زر واحد فقط بهذه الصفحة تحديداً ("💰 إحصائية الشهر الكامل")
+    يقوم بكل العملية من الألف للياء — لا يوجد أي زر إضافي أو مكرر.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.5):
+  ───────────────────────────────────────────────────────────
+  • إصلاح جذري: زر "💰 إحصائية الشهر الكامل" (صفحة إحصائيات فروقات
+    الأجور) كان يحسب أعداداً غلط أحياناً لأنه كان يقرأ عدد النتائج
+    بعد مهلة ثابتة (1.2 ثانية) بدل انتظار اكتمال البحث فعلياً — لو
+    تأخر تحميل بيانات الشهر (مئات السجلات) كان يقرأ رقماً قديماً أو
+    ناقصاً. الآن ينتظر اكتمال البحث الحقيقي (حدث draw.dt من
+    DataTables + تغيّر شريط النتائج + اختفاء مؤشر التحميل، حتى 25
+    ثانية) قبل قراءة أي رقم، ويستهدف عناصر الصفحة الحقيقية مباشرة
+    بدل التخمين. كما أُصلح خطأ كان يحسب صف "لا يوجد بيانات" الفارغ
+    كسجل حقيقي بالعدّ اليدوي الاحتياطي. البحثان (مستلمة/غير مستلمة)
+    صارا متسلسلين فعلياً بدون أي تداخل بينهما.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.4):
+  ───────────────────────────────────────────────────────────
+  • تعديل: زر "💰 إحصائية الشهر الكامل" (صفحة إحصائيات فروقات الأجور)
+    صار يحسب من أول يوم بالشهر الحالي **إلى تاريخ اليوم الذي يُضغط
+    فيه الزر** (مثال: لو اليوم 8/22 يحسب من 8/1 إلى 8/22)، بدل حساب
+    الشهر كاملاً حتى لو فيه أيام مستقبلية لم تصل بعد.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.3):
+  ───────────────────────────────────────────────────────────
+  • جديد (صفحة /cs/delivery-fees-differences/statistics فقط — إحصائيات
+    فروقات الأجور): حُذف زر "📋 نسخ التقرير" من هذه الصفحة تحديداً
+    (باقي صفحات "أجور التوصيل" لكل طلب لم تتأثر). زر "💰 المحفظة"
+    بهذه الصفحة أصبح "💰 إحصائية الشهر الكامل" وله عمل مختلف تماماً:
+    يضبط تلقائياً حقلي التاريخ "من/إلى" على أول وآخر يوم بالشهر
+    الحالي، يضغط "بحث"، يحاول عرض كل الصفوف دفعة واحدة، ثم يتنقّل
+    بين الصفحات (إن وُجدت) لجمع كل السجلات، يحسب عدد الطلبات
+    "المستلمة" و"الغير مستلمة" من عمود "الحالة"، ويحسب الأجر
+    (عدد المستلمة × أجر السجل الواحد — قابل للتعديل من الإعدادات
+    ⚙️ ← قسم 💰 المحفظة الشهرية)، ويعرض النتيجة بنافذة ملخّص فيها
+    زر "📋 نسخ الملخص" لنسخه كنص جاهز.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.2):
+  ───────────────────────────────────────────────────────────
+  • تحسين: كليشة "🏆 الأعلى واصلة" (صفحة تقارير المدن) أصبحت أكثر
+    ترتيباً وتنسيقاً — عنوان وفاصل علوي/سفلي، أسماء المناديب تظهر
+    **غامقة** (تنسيق واتساب بالنجمتين)، وسمايلات تعبّر عن السرعة
+    تميّز كل مركز (🚀 للأول، 🏍️ للثاني، ⚡ للثالث). كما صار الاسم
+    المُستخرَج لكل مندوب هو **الاسم العربي فقط**، مع حذف أي إضافات
+    إنكليزية تلقائياً (مثل "MAN_C"، "MAN_P"...الخ) قبل بناء الكليشة.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.1):
+  ───────────────────────────────────────────────────────────
+  • جديد: صفحة "تقارير المدن" (cs/city/reports) — زر "🏆 كليشة الأعلى
+    واصلة" بجانب حقل البحث. عند الضغط عليه يقرأ عمود "الواصلة" بجدول
+    المناديب الظاهر حالياً، يرتّبه تنازلياً، ويبني كليشة نصية جاهزة
+    للنسخ تحتوي 3 مراكز (🥇/🥈/🥉)، كل مركز فيه ثلاث أسماء مع عدد
+    الواصلة الخاص بكل واحد منهم (أعلى 9 مناديب إجمالاً)، ثم تُنسخ
+    تلقائياً للحافظة عند الضغط.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.3.0) — تحديثات ما قبل النشر لبقية الموظفين:
+  ───────────────────────────────────────────────────────────
+  • استثناءات: زر "🕒" (الوضع الذكي) لا يعمل إطلاقاً على 3 قرارات:
+    "رفض الطلب"، "العنوان غير دقيق"، و"تغيير سعر" (احتياطاً، رغم
+    عدم وجودها حالياً بقائمة الموقع). الزر يعرض تسمية الحالة بس
+    ويتعطّل تماماً لهذي الحالات الثلاث، حتى لو الوضع الذكي مفعّل.
+  • أمان قبل النشر: "الزر الذكي" (يتصرف حسب كل حالات القرار) صار
+    **معطّلاً افتراضياً** لكل من يحدّث/يثبّت السكربت من جديد. الزر
+    يبقى ببساطته الأصلية (🕒 يسوي "مؤجل" فقط دايماً) لحد ما الموظف
+    نفسه يدخل ⚙️ الإعدادات ← قسم "🕒 الزر الذكي" ويفعّله بنفسه بوعي.
+  • سجل الطلبات المؤجلة أصبح "سجل الطلبات والقرارات": كل عملية عبر
+    الزر (سواء تأجيل بسيط أو تأكيد قرار ذكي) تُسجَّل الآن برقم الطلب
+    + **القرار المتخذ فعلياً** (مؤجل / الغاء الطلب / لم يطلب / ...)
+    + الوقت. نافذة السجل بالإعدادات تعرض القرار بجانب كل طلب، وزر
+    النسخ يشملها بالنص المنسوخ. السجلات القديمة (قبل هذا التحديث)
+    تُعرض تلقائياً كـ"مؤجل" افتراضياً لأنها كانت كلها عمليات تأجيل.
+  • تأكيد: مراقب التوصيل الخلفي (v4.1.5) يعمل فعلاً بدون فتح صفحة
+    "قيد التوصيل" مطلقاً — يكفي فتح أي صفحة على موقع الوسيط (بما فيها
+    الكول سنتر مباشرة) ليبدأ الفحص الدوري بالخلفية تلقائياً (بشرط
+    "مراقب التوصيل" مفعّل من الإعدادات، وهو مفعّل افتراضياً).
+  • فحص شامل للملف بالكامل: تدقيق صياغة (node --check)، تدقيق توازن
+    الأقواس، تدقيق عدم تكرار أي دالة أو متغيّر رئيسي، وتتبّع يدوي
+    لكل نقاط الربط الجديدة (لا مراجع معلّقة أو دوال يتيمة).
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.2.2):
+  ───────────────────────────────────────────────────────────
+  • حذف: ميزة تلوين خلية حالة الطلب باللون الأخضر الشفاف عند "مؤجل"
+    (أُضيفت بـ v4.1.9) — تمت إزالتها بالكامل بناءً على الطلب. باقي
+    الميزات (الزر الذكي حسب حالة الطلب، سجل الطلبات المؤجلة، إلخ)
+    غير متأثرة ومستمرة كما هي.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.2.1):
+  ───────────────────────────────────────────────────────────
+  • تعديل: نص الملاحظة عند تأكيد أي قرار غير "مؤجل" (الغاء الطلب،
+    لم يطلب، لا يرد، ...الخ) صار **فارغاً تماماً** بدل تعبئته بنص
+    الحالة نفسها كما كان بالنسخة السابقة. حالة "مؤجل" فقط تبقى
+    محتفظة بملاحظتها الثابتة "غدا" كما هي.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.2.0):
+  ───────────────────────────────────────────────────────────
+  • تطوير كبير: زر "🕒 المؤجل" صار "زر ذكي" يتصرف حسب الحالة الحالية
+    المسجّلة بعمود حالة الطلب (نفس الخلية اللي تتلوّن أخضر):
+      - لا توجد حالة مسجّلة بعد ← الزر الافتراضي "🕒" يبقى يسوي نفس
+        تأجيل الطلب المعتاد (مؤجل + ملاحظة "غدا") بضغطة واحدة.
+      - فيه حالة معروفة مسجّلة (مؤجل / الغاء الطلب / لم يطلب / لا يرد
+        / رفض الطلب / ...الخ — كل الحالات الـ18 بقائمة الموقع) ← نص
+        ولون الزر يتغيّر ليطابقها، وبضغطة وحدة يؤكّد نفس القرار
+        المطابق (نفس تسلسل معالجة ← اتخذ القرار ← اختيار القيمة
+        الصحيحة ← ملاحظة ← تغيير) بدون تصفح القائمة يدوياً.
+      - فيه حالة مسجّلة لكن غير معروفة بالخريطة ← الزر يعرض نص
+        الحالة فقط كتسمية ويتعطّل تلقائياً (تفادياً لتنفيذ قرار خاطئ
+        بالتخمين).
+    ⚠️ نص الملاحظة الافتراضي لكل الحالات ما عدا "مؤجل" (وملاحظتها
+    "غدا") هو نص الحالة نفسه مؤقتاً، وقابل للتخصيص لكل حالة عند
+    الطلب (مثال: نص ملاحظة مختلف لحالة "الغاء الطلب" أو "لم يطلب").
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.9):
+  ───────────────────────────────────────────────────────────
+  • جديد: تمييز خلية "الحالة/التبليغ" تلقائياً بلون أخضر شفاف عندما
+    تكون حالة الطلب "مؤجل" (أو أي حالة تحتوي كلمة "مؤجل"، بما فيها
+    "مؤجل لحين اعادة الطلب لاحقاً")، حتى تتميز بصرياً بسرعة عن باقي
+    الطلبات بالجدول. يعمل تلقائياً بدون أي إعداد، ويتحدّث فوراً مع
+    أي تغيّر بالجدول (تحميل صفوف جديدة، أو بعد اتخاذ قرار عبر زر
+    "🕒 المؤجل" نفسه).
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.8):
+  ───────────────────────────────────────────────────────────
+  • جديد: سجل محلي للطلبات المؤجلة — كل مرة يُنجز زر "🕒 المؤجل"
+    عملية تأجيل بنجاح، يُسجَّل رقم الطلب ووقت التأجيل تلقائياً
+    (يحتفظ بآخر 300 عملية).
+  • زر جديد بالإعدادات الرئيسية ⚙️ ← "🕒 سجل الطلبات المؤجلة" (يعرض
+    عدد السجلات المحفوظة على الزر نفسه)، يفتح نافذة بها:
+      - قائمة كل طلب مؤجَّل مع تاريخ ووقت التأجيل (يوم/شهر — ساعة:دقيقة).
+      - زر "📋 نسخ القائمة" لنسخ السجل كامل كنص جاهز للصق (تقرير سريع).
+      - زر "🗑️ مسح السجل" (يطلب ضغطة تأكيد ثانية خلال 2.5 ثانية
+        تفادياً للمسح بالخطأ).
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.7):
+  ───────────────────────────────────────────────────────────
+  • إصلاح: زر "🕒 المؤجل" كان يفشل بإيجاد زر "معالجة" لأنه كان يدوّر
+    عنه عبر تطابق id مع رقم الطلب الظاهر بالجدول — تبيّن إن id الحقيقي
+    لزر "معالجة" (وكل عناصر الصف الأخرى) معرّف داخلي مختلف تماماً عن
+    رقم الطلب المعروض. الحل: صار يدوّر عن زر "معالجة" مباشرة داخل نفس
+    صف الطلب (tr) بدل الاعتماد على تطابق الأرقام، ويستخرج المعرّف
+    الداخلي الصحيح من الزر نفسه (id أو من داخل onclick="openTicket(id)")
+    ليستخدمه لاحقاً بإيجاد زر "اتخذ القرار" (#decide[data-id]) بدقة.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.6):
+  ───────────────────────────────────────────────────────────
+  • جديد: زر "🕒 المؤجل" بجانب أزرار (قصة الطلب / تغيير العنوان /
+    تقييم المندوب) بكل طلب. عند الضغط عليه ينفّذ تلقائياً نفس تسلسل
+    خطوات الموظف اليدوية:
+      1) يضغط زر "معالجة" الخاص بالطلب.
+      2) يضغط "اتخذ القرار".
+      3) يختار "مؤجل" من قائمة الحالة (change_status).
+      4) يكتب "غدا" بخانة الملاحظات تلقائياً.
+      5) يضغط زر التأكيد "تغيير" (SweetAlert2) لإتمام القرار فوراً.
+    الزر يعرض حالة تقدّم مؤقتة على نفسه (⏳ ... ثم ✓ أو رسالة خطأ)
+    وتظهر رسالة تأكيد/خطأ بأسفل الشاشة (toast) بكل الحالات، مع مهلة
+    انتظار لكل خطوة (النافذة تُبنى ديناميكياً بجافاسكربت) حتى لا
+    يفشل الزر إذا تأخر ظهور أي عنصر قليلاً.
+  • إمكانية إخفاء/إظهار هذا الزر من الإعدادات الرئيسية ⚙️ مثل باقي
+    الأزرار (مفعّل افتراضياً).
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.5):
+  ───────────────────────────────────────────────────────────
+  • جديد: "المراقب الخلفي" لمراقب التوصيل — لم يعد شرطاً فتح صفحة
+    "قيد التوصيل" حتى يعمل الفحص والتنبيهات. أي تبويب آخر مفتوح على
+    موقع الوسيط (أي صفحة) يجلب محتوى صفحة "قيد التوصيل" عبر الشبكة
+    كل بضع دقائق (5 افتراضياً، قابلة للتعديل من الإعدادات الرئيسية
+    ⚙️ ← قسم 🚚 مراقب التوصيل) ويطبّق عليها **نفس منطق الحساب بالضبط**
+    المستخدم باللوحة الحيّة (نفس مدة التوقف، نفس الموعد النهائي، نفس
+    مفاتيح التخزين)، فتبقى الإعدادات والأرقام والتنبيهات محفوظة
+    ومستمرة سواء فتحت اللوحة يدوياً أو تركتها مغلقة.
+  • حماية من الازدواجية: إذا كانت اللوحة الحيّة مفتوحة فعلياً بأي
+    تبويب (نبض حديث خلال آخر دقيقة)، يتنحّى المراقب الخلفي تلقائياً
+    ويترك الفحص للّوحة الحيّة الأدق (تعتمد DOM مباشرة)، تفادياً لأي
+    تعارض أو ازدواج بالحساب.
+  • قفل بسيط بين التبويبات: إذا كان عندك أكثر من تبويب مفتوح على
+    الموقع بنفس اللحظة، تبويب واحد فقط يقوم فعلياً بالجلب الخلفي
+    بكل دورة، لتفادي طلبات شبكة مكررة بلا داعٍ.
+  • عند فتح اللوحة يدوياً بصفحة "قيد التوصيل"، تعمل كالمعتاد تماماً
+    بدون أي تغيير — تحافظ على نفس الإعدادات والحسابات المخزّنة سواء
+    كانت محدَّثة من فحص خلفي سابق أو من اللوحة نفسها.
+  ───────────────────────────────────────────────────────────
+  سجل التحديثات (v4.1.4):
+  ───────────────────────────────────────────────────────────
+  • تعديل: بحث "دليل الأرقام" ☎️ أصبح يشمل كل القوائم (كول سنتر +
+    محافظات + كرخ + رصافة + CRM) دفعة واحدة عند كتابة أي نص، بدل
+    الاقتصار على التبويب المفتوح فقط — مع وسم صغير على كل بطاقة
+    يوضح من أي قسم أتت، وعداد لعدد النتائج الإجمالي.
+  • جديد: تظليل (تمييز أصفر) للجزء المطابق من الاسم/الرقم/الملاحظة/
+    المنطقة داخل نتائج البحث لتسهيل القراءة السريعة.
+  • جديد: تركيز تلقائي على حقل البحث فور فتح نافذة الدليل.
+  • جديد: شريط "🔍 وضع البحث الشامل" يظهر أعلى التبويبات + تعتيم
+    التبويبات نفسها أثناء البحث الشامل، توضيحاً إن النتائج المعروضة
+    ليست مرتبطة بتبويب واحد فقط.
+  • تعديل: زر "🟢 واتساب" أصبح يفتح المحادثة مباشرة بدون أي نص
+    جاهز مرفق تلقائياً؛ الكليشة الاحترافية الجاهزة صارت حصراً عبر
+    زر "📋 نسخ الكليشة" (تُنسخ ثم تُلصق يدوياً بالمحادثة عند الحاجة).
+  ───────────────────────────────────────────────────────────
   سجل التحديثات (v4.1.3):
   ───────────────────────────────────────────────────────────
   • جديد: تبويب "📊 موظفو الـ CRM" داخل "دليل الأرقام" ☎️ — يعرض
@@ -149,6 +417,504 @@
 */
 
 // ══════════════════════════════════════════════════════════════
+//  🛡️ وحدة تحكم المدير عن بُعد (خاصة حصراً بحساب "احمد محمد كريم")
+//  ─────────────────────────────────────────────────────────────
+//  ماذا تفعل:
+//   • تتعرّف على اسم الموظف الحالي من span.user-name بأعلى الموقع.
+//   • تجلب ملف إعدادات مشترك (control.json) من مستودع GitHub نفسه
+//     الذي يُستخدم أصلاً لتحديث السكربت، وتخزّنه محلياً (يتحدّث كل
+//     ١٥ دقيقة تلقائياً، وعند فتح أي صفحة جديدة).
+//   • إن كان الموظف الحالي = "احمد محمد كريم" تظهر له زر 🛡️ عائم
+//     يفتح "لوحة تحكم المدير" لإيقاف/تشغيل السكربت كاملاً أو أي
+//     ميزة رئيسية بشكل منفصل لكل موظف، وحفظ ذلك مباشرة على GitHub.
+//   • لبقية الموظفين: لا يظهر لهم أي زر أو إشارة لوجود هذه الوحدة
+//     إطلاقاً، فقط تُطبَّق القيود (إن وُجدت) بصمت على واجهاتهم، مع
+//     رسالة توضيحية واحدة فقط إذا أُوقف السكربت بالكامل لهم.
+//   • فشل الاتصال بالإنترنت أو تعذّر الوصول لملف الإعدادات = يبقى
+//     السكربت يعمل بشكل طبيعي (Fail-Open) حتى لا يتعطل عمل الموظفين
+//     بسبب مشكلة شبكة أو تعليق بالمستودع.
+// ══════════════════════════════════════════════════════════════
+(function () {
+  'use strict';
+
+  var ADMIN_NAME       = 'احمد محمد كريم';
+  var CONTROL_REPO     = 'ahmed151825/wasset1.1';
+  var CONTROL_PATH     = 'control.json';
+  var CONTROL_RAW_URL  = 'https://raw.githubusercontent.com/' + CONTROL_REPO + '/main/' + CONTROL_PATH;
+  var CONTROL_API_URL  = 'https://api.github.com/repos/' + CONTROL_REPO + '/contents/' + CONTROL_PATH;
+
+  var CACHE_KEY        = 'ws_admin_control_cache_v1';
+  var USERNAME_KEY      = 'ws_admin_cached_username_v1';
+  var TOKEN_KEY         = 'ws_admin_gh_token_v1';
+  var LAST_FETCH_KEY    = 'ws_admin_last_fetch_v1';
+  var KNOWN_USERS_KEY   = 'ws_admin_known_usernames_v1';
+  var FETCH_INTERVAL_MS = 15 * 60 * 1000; // 15 دقيقة
+
+  // كل ميزة قابلة للتحكم بها عن بعد لكل موظف. المفاتيح مطابقة تماماً
+  // لأسماء خصائص wsSettings الموجودة أصلاً بالملف (باستثناء آخر ميزتين).
+  var FEATURE_DEFS = [
+    { key: 'showStory',            label: '🔍 زر قصة الطلب' },
+    { key: 'showFees',              label: '➕ زر أجور التوصيل' },
+    { key: 'showEdit',               label: '🌐 زر تغيير العنوان' },
+    { key: 'showWsMerchant',         label: '💬 واتساب التاجر' },
+    { key: 'showWsCustomer',         label: '📦 واتساب الزبون' },
+    { key: 'showSms',                label: '📱 رسالة SMS للزبون' },
+    { key: 'showPhoneSearch',        label: '🔎 بحث الزبون بالهاتف' },
+    { key: 'showDelayCheck',         label: '🔎 فحص التأخير' },
+    { key: 'showCopyReport',         label: '📋 نسخ تقرير الأجور' },
+    { key: 'showCopyReps',           label: '📋 نسخ قائمة المناديب' },
+    { key: 'showRepRating',          label: '⭐ تقييم المندوب' },
+    { key: 'showDeferred',           label: '🕒 زر المؤجل' },
+    { key: 'showReceivedCounter',    label: '📦 عدّاد الطلبات المستلمة' },
+    { key: 'smartDecisionEnabled',   label: '🧠 الزر الذكي' },
+    { key: 'deliveryMonitorEnabled', label: '🚚 مراقب التوصيل' }
+  ];
+
+  // ───────────────── تخزين محلي (GM أولاً، مع مرآة localStorage) ─────────────────
+  function gGet(k, d) {
+    try { if (typeof GM_getValue !== 'undefined') { var v = GM_getValue(k, null); if (v !== null && v !== undefined) { return v; } } } catch (e) {}
+    try { var v2 = localStorage.getItem(k); if (v2 !== null) { return v2; } } catch (e) {}
+    return d;
+  }
+  function gSet(k, v) {
+    try { if (typeof GM_setValue !== 'undefined') { GM_setValue(k, v); } } catch (e) {}
+    try { localStorage.setItem(k, v); } catch (e) {}
+  }
+
+  // ───────────────── تحديد اسم الموظف الحالي ─────────────────
+  function getUsername() {
+    try {
+      var el = document.querySelector('span.user-name');
+      if (el) {
+        var name = (el.textContent || '').trim();
+        if (name) { gSet(USERNAME_KEY, name); return name; }
+      }
+    } catch (e) {}
+    return gGet(USERNAME_KEY, '') || '';
+  }
+
+  function isAdmin() {
+    return getUsername() === ADMIN_NAME;
+  }
+
+  function recordKnownUsername(name) {
+    if (!name) { return; }
+    var raw = gGet(KNOWN_USERS_KEY, '[]'), list;
+    try { list = JSON.parse(raw); } catch (e) { list = []; }
+    if (!Array.isArray(list)) { list = []; }
+    if (list.indexOf(name) === -1) { list.push(name); gSet(KNOWN_USERS_KEY, JSON.stringify(list)); }
+  }
+
+  // ───────────────── قراءة/حفظ إعدادات التحكم المخزّنة محلياً ─────────────────
+  function defaultConfig() {
+    return { globalEnabled: true, updatedAt: null, employees: {} };
+  }
+  function loadCachedControl() {
+    var raw = gGet(CACHE_KEY, null);
+    if (!raw) { return null; }
+    try { var obj = JSON.parse(raw); return (obj && typeof obj === 'object') ? obj : null; } catch (e) { return null; }
+  }
+  function saveCachedControl(obj) {
+    try { gSet(CACHE_KEY, JSON.stringify(obj)); } catch (e) {}
+  }
+
+  function getEmployeeRule(username) {
+    var cfg = loadCachedControl();
+    if (!cfg) { return null; } // لا يوجد إعداد محفوظ بعد
+    if (cfg.globalEnabled === false) { return { enabled: false, overrides: {} }; }
+    var emp = cfg.employees && cfg.employees[username];
+    if (!emp) { return { enabled: true, overrides: {} }; }
+    return { enabled: emp.enabled !== false, overrides: emp.overrides || {} };
+  }
+
+  // ───────────────── واجهات يستخدمها بقية السكربت (IIFEs الأخرى) ─────────────────
+  function isEnabledForMe() {
+    if (isAdmin()) { return true; }
+    var rule = getEmployeeRule(getUsername());
+    if (!rule) { return true; } // Fail-open: لا إعداد بعد أو تعذّر الوصول
+    return rule.enabled !== false;
+  }
+
+  function isDeliveryMonitorEnabledForMe() {
+    if (isAdmin()) { return true; }
+    var rule = getEmployeeRule(getUsername());
+    if (!rule) { return true; }
+    if (rule.enabled === false) { return false; }
+    return rule.overrides && rule.overrides.deliveryMonitorEnabled === false ? false : true;
+  }
+
+  // يدمج قيود المدير فوق إعدادات الموظف المحلية (⚙️) — يعطّل فقط، لا يفرض تفعيل قسري
+  function applyOverrides(settings) {
+    if (isAdmin()) { return settings; }
+    var rule = getEmployeeRule(getUsername());
+    if (!rule || rule.enabled === false) { return settings; } // حالة الإيقاف الكامل يتكفّل بها الفحص بأعلى كل IIFE
+    var merged = {};
+    for (var k in settings) { if (Object.prototype.hasOwnProperty.call(settings, k)) { merged[k] = settings[k]; } }
+    var ov = rule.overrides || {};
+    for (var fk in ov) {
+      if (Object.prototype.hasOwnProperty.call(ov, fk) && ov[fk] === false && fk !== 'deliveryMonitorEnabled') {
+        merged[fk] = false;
+      }
+    }
+    return merged;
+  }
+
+  function showDisabledNotice() {
+    if (document.getElementById('ws-admin-disabled-banner')) { return; }
+    var b = document.createElement('div'); b.id = 'ws-admin-disabled-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#c0392b;color:#fff;' +
+      'text-align:center;padding:8px 10px;font-family:Tahoma,Arial,sans-serif;font-size:13px;font-weight:bold;direction:rtl;';
+    b.textContent = '⛔ تم إيقاف أدوات المساعدة (السكربت) لحسابك من قبل الإدارة. راجع المسؤول لمزيد من التفاصيل.';
+    var appendNow = function () { if (document.body) { document.body.appendChild(b); } };
+    if (document.body) { appendNow(); } else { document.addEventListener('DOMContentLoaded', appendNow); }
+  }
+
+  // ───────────────── جلب ملف control.json من GitHub (قراءة فقط، لكل الموظفين) ─────────────────
+  function fetchRemoteControl(force, cb) {
+    var last = parseInt(gGet(LAST_FETCH_KEY, '0'), 10) || 0;
+    if (!force && (Date.now() - last) < FETCH_INTERVAL_MS) { if (cb) { cb(loadCachedControl()); } return; }
+    gSet(LAST_FETCH_KEY, String(Date.now()));
+    var url = CONTROL_RAW_URL + '?t=' + Date.now();
+    function handle(text) {
+      try {
+        var obj = JSON.parse(text);
+        if (obj && typeof obj === 'object') { saveCachedControl(obj); }
+        if (cb) { cb(loadCachedControl()); }
+      } catch (e) { if (cb) { cb(loadCachedControl()); } }
+    }
+    try {
+      if (typeof GM_xmlhttpRequest !== 'undefined') {
+        GM_xmlhttpRequest({
+          method: 'GET', url: url,
+          onload: function (res) { if (res.status === 200) { handle(res.responseText); } else if (cb) { cb(loadCachedControl()); } },
+          onerror: function () { if (cb) { cb(loadCachedControl()); } },
+          ontimeout: function () { if (cb) { cb(loadCachedControl()); } }
+        });
+      } else if (typeof fetch !== 'undefined') {
+        fetch(url).then(function (r) { return r.ok ? r.text() : Promise.reject(); }).then(handle)
+          .catch(function () { if (cb) { cb(loadCachedControl()); } });
+      } else if (cb) { cb(loadCachedControl()); }
+    } catch (e) { if (cb) { cb(loadCachedControl()); } }
+  }
+
+  // ───────────────── رفع إعدادات جديدة (المدير فقط) عبر GitHub API ─────────────────
+  function pushControlToGitHub(newConfig, cb) {
+    var token = gGet(TOKEN_KEY, '');
+    if (!token) { cb(false, 'لا يوجد GitHub Token محفوظ. اضغط 🔑 أولاً وأدخل التوكن.'); return; }
+    if (typeof GM_xmlhttpRequest === 'undefined') { cb(false, 'المتصفح/المدير لا يدعم GM_xmlhttpRequest.'); return; }
+    newConfig.updatedAt = new Date().toISOString();
+    GM_xmlhttpRequest({
+      method: 'GET', url: CONTROL_API_URL,
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' },
+      onload: function (res) {
+        var sha = null;
+        if (res.status === 200) {
+          try { var j = JSON.parse(res.responseText); sha = j.sha || null; } catch (e) {}
+        } else if (res.status !== 404) {
+          cb(false, 'فشل التحقق من الملف الحالي (HTTP ' + res.status + ').'); return;
+        }
+        var jsonStr = JSON.stringify(newConfig, null, 2);
+        var b64;
+        try { b64 = btoa(unescape(encodeURIComponent(jsonStr))); } catch (e) { cb(false, 'فشل تجهيز البيانات (ترميز).'); return; }
+        var body = { message: 'تحديث إعدادات التحكم عن بعد - ' + newConfig.updatedAt, content: b64 };
+        if (sha) { body.sha = sha; }
+        GM_xmlhttpRequest({
+          method: 'PUT', url: CONTROL_API_URL,
+          headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+          data: JSON.stringify(body),
+          onload: function (res2) {
+            if (res2.status >= 200 && res2.status < 300) {
+              saveCachedControl(newConfig); gSet(LAST_FETCH_KEY, String(Date.now())); cb(true);
+            } else {
+              cb(false, 'فشل الحفظ (HTTP ' + res2.status + '): ' + String(res2.responseText || '').slice(0, 200));
+            }
+          },
+          onerror: function () { cb(false, 'فشل الاتصال بـ GitHub API عند الحفظ (تأكد من صلاحية التوكن).'); }
+        });
+      },
+      onerror: function () { cb(false, 'فشل الاتصال بـ GitHub API لجلب نسخة الملف الحالية.'); }
+    });
+  }
+
+  // ───────────────── مسح أسماء الموظفين بالصفحة الحالية ─────────────────
+  // الموقع يستخدم نفس العنصر <span class="... user-name ..."> لعرض اسم
+  // الموظف بأي مكان — سواء اسم المستخدم الحالي بأعلى الصفحة (نسخة واحدة)
+  // أو اسم كل موظف بصفوف صفحة قوائم/تقارير الموظفين (نسخة لكل صف). لذا
+  // نعتمد هذا العنصر كمصدر أساسي وموثوق، مع فحص احتياطي عام لصفحات أخرى.
+  var arabicNameRe = /^[\u0600-\u06FF\s.]{4,40}$/;
+  function scanPageForNameCandidates() {
+    var found = {};
+    try {
+      var userNameEls = document.querySelectorAll('span.user-name, .user-name');
+      userNameEls.forEach(function (el) {
+        var txt = (el.textContent || '').trim();
+        if (arabicNameRe.test(txt)) { found[txt] = true; }
+      });
+      if (Object.keys(found).length === 0) {
+        var nameHintRe = /(اسم|الاسم|يوزر|مستخدم|موظف|الموظف|user|name)/i;
+        var tables = document.querySelectorAll('table');
+        tables.forEach(function (table) {
+          var headerCells = table.querySelectorAll('thead th, thead td, tr:first-child th, tr:first-child td');
+          var nameColIdx = -1;
+          headerCells.forEach(function (th, idx) { if (nameHintRe.test(th.textContent || '')) { nameColIdx = idx; } });
+          if (nameColIdx === -1) { return; }
+          var rows = table.querySelectorAll('tbody tr, tr');
+          rows.forEach(function (row) {
+            var cells = row.querySelectorAll('td');
+            if (cells.length > nameColIdx) {
+              var txt = (cells[nameColIdx].textContent || '').trim();
+              if (arabicNameRe.test(txt)) { found[txt] = true; }
+            }
+          });
+        });
+      }
+      if (Object.keys(found).length === 0) {
+        var hintEls = document.querySelectorAll('[class*="user" i], [class*="name" i], [class*="agent" i]');
+        hintEls.forEach(function (el) {
+          var txt = (el.textContent || '').trim();
+          if (arabicNameRe.test(txt) && txt.split(/\s+/).length <= 5) { found[txt] = true; }
+        });
+      }
+    } catch (e) {}
+    return Object.keys(found);
+  }
+
+  // ───────────────── لوحة تحكم المدير (تُبنى فقط إذا isAdmin()) ─────────────────
+  var panelDraft = null; // نسخة قيد التعديل قبل الحفظ
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function ensureDraft() {
+    if (!panelDraft) {
+      var cached = loadCachedControl();
+      panelDraft = cached ? JSON.parse(JSON.stringify(cached)) : defaultConfig();
+      if (!panelDraft.employees) { panelDraft.employees = {}; }
+    }
+    return panelDraft;
+  }
+
+  function ensureEmployee(name) {
+    var d = ensureDraft();
+    if (!d.employees[name]) {
+      var ov = {};
+      FEATURE_DEFS.forEach(function (f) { ov[f.key] = true; });
+      d.employees[name] = { enabled: true, overrides: ov };
+    }
+    if (!d.employees[name].overrides) { d.employees[name].overrides = {}; }
+    FEATURE_DEFS.forEach(function (f) { if (!(f.key in d.employees[name].overrides)) { d.employees[name].overrides[f.key] = true; } });
+    return d.employees[name];
+  }
+
+  function renderPanel() {
+    if (document.getElementById('ws-admin-overlay')) { return; }
+    ensureDraft();
+
+    var overlay = document.createElement('div'); overlay.id = 'ws-admin-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;' +
+      'display:flex;align-items:center;justify-content:center;direction:rtl;font-family:Tahoma,Arial,sans-serif;';
+
+    var panel = document.createElement('div');
+    panel.style.cssText = 'background:#fff;border-radius:10px;padding:16px 18px;width:480px;max-width:94vw;' +
+      'max-height:88vh;overflow:auto;box-shadow:0 6px 26px rgba(0,0,0,.4);';
+    panel.innerHTML =
+      '<h2 style="margin:0 0 10px;font-size:16px;color:#1a1a2e;">🛡️ لوحة تحكم المدير — ' + escapeHtml(ADMIN_NAME) + '</h2>' +
+      '<div style="font-size:11.5px;color:#777;margin-bottom:10px;line-height:1.6;">' +
+        'هذه اللوحة تظهر لك فقط. أي تعديل هنا لا يُطبَّق فعلياً على أجهزة الموظفين إلا بعد الضغط على "حفظ ورفع"، ' +
+        'وتصل التغييرات لجهازهم خلال ١٥ دقيقة تقريباً (أو فوراً عند فتحهم صفحة جديدة).' +
+      '</div>' +
+      '<div id="ws-admin-status" style="font-size:12px;margin-bottom:10px;min-height:16px;"></div>' +
+      '<div style="display:flex;align-items:center;gap:8px;background:#f5f5f8;border-radius:6px;padding:8px 10px;margin-bottom:12px;">' +
+        '<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:bold;cursor:pointer;flex:1;">' +
+          '<input type="checkbox" id="ws-admin-global-toggle" style="width:16px;height:16px;">' +
+          '🔌 تشغيل السكربت للجميع (المفتاح العام)' +
+        '</label>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:10px;">' +
+        '<input id="ws-admin-add-name" type="text" placeholder="اسم موظف جديد..." style="flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:12.5px;direction:rtl;">' +
+        '<button id="ws-admin-add-btn" type="button" style="background:#2e5bff;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12.5px;cursor:pointer;">+ إضافة</button>' +
+      '</div>' +
+      '<button id="ws-admin-scan-btn" type="button" style="width:100%;background:#8e44ad;color:#fff;border:none;border-radius:5px;padding:7px;font-size:12px;cursor:pointer;margin-bottom:12px;">' +
+        '🔍 محاولة سحب أسماء من الصفحة الحالية (تجريبي — يحتاج مراجعة)' +
+      '</button>' +
+      '<div id="ws-admin-employees" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+        '<button id="ws-admin-refresh" type="button" style="flex:1;min-width:110px;background:#888;color:#fff;border:none;border-radius:5px;padding:8px;font-size:12.5px;cursor:pointer;">🔄 تحديث من GitHub</button>' +
+        '<button id="ws-admin-token" type="button" style="flex:1;min-width:110px;background:#34495e;color:#fff;border:none;border-radius:5px;padding:8px;font-size:12.5px;cursor:pointer;">🔑 GitHub Token</button>' +
+        '<button id="ws-admin-save" type="button" style="flex:1;min-width:110px;background:#28a745;color:#fff;border:none;border-radius:5px;padding:8px;font-size:12.5px;font-weight:bold;cursor:pointer;">💾 حفظ ورفع للجميع</button>' +
+      '</div>' +
+      '<button id="ws-admin-close" type="button" style="width:100%;margin-top:8px;background:#eee;color:#333;border:none;border-radius:5px;padding:7px;font-size:12.5px;cursor:pointer;">إغلاق</button>';
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    function setStatus(msg, isError) {
+      var s = document.getElementById('ws-admin-status');
+      if (s) { s.textContent = msg; s.style.color = isError ? '#c0392b' : '#28a745'; }
+    }
+
+    function renderEmployees() {
+      var list = document.getElementById('ws-admin-employees');
+      if (!list) { return; }
+      list.innerHTML = '';
+      var names = Object.keys(panelDraft.employees).sort();
+      if (names.length === 0) {
+        list.innerHTML = '<div style="font-size:12px;color:#999;text-align:center;padding:10px;">لا يوجد موظفون مضافون بعد. أضِف اسماً يدوياً أو جرّب زر السحب من الصفحة.</div>';
+        return;
+      }
+      names.forEach(function (name) {
+        var emp = panelDraft.employees[name];
+        var card = document.createElement('div');
+        card.style.cssText = 'border:1px solid #e2e2e2;border-radius:7px;padding:8px 10px;';
+        var head = document.createElement('div');
+        head.style.cssText = 'display:flex;align-items:center;gap:6px;';
+        head.innerHTML =
+          '<label style="display:flex;align-items:center;gap:6px;flex:1;font-size:12.5px;font-weight:bold;cursor:pointer;">' +
+            '<input type="checkbox" data-emp-enable="' + escapeHtml(name) + '" ' + (emp.enabled !== false ? 'checked' : '') + ' style="width:15px;height:15px;">' +
+            escapeHtml(name) +
+          '</label>' +
+          '<button type="button" data-emp-toggle-details="' + escapeHtml(name) + '" style="background:none;border:1px solid #ccc;border-radius:4px;font-size:11px;padding:3px 8px;cursor:pointer;">الميزات ▾</button>' +
+          '<button type="button" data-emp-delete="' + escapeHtml(name) + '" style="background:none;border:none;color:#c0392b;font-size:14px;cursor:pointer;">🗑️</button>';
+        card.appendChild(head);
+
+        var details = document.createElement('div');
+        details.setAttribute('data-emp-details', name);
+        details.style.cssText = 'display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #ddd;grid-template-columns:1fr 1fr;gap:4px 10px;';
+        FEATURE_DEFS.forEach(function (f) {
+          var row = document.createElement('label');
+          row.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer;padding:2px 0;';
+          var checked = emp.overrides && emp.overrides[f.key] !== false;
+          row.innerHTML = '<input type="checkbox" data-emp-feat="' + escapeHtml(name) + '" data-feat-key="' + f.key + '" ' + (checked ? 'checked' : '') + ' style="width:13px;height:13px;">' + f.label;
+          details.appendChild(row);
+        });
+        card.appendChild(details);
+        list.appendChild(card);
+      });
+
+      list.querySelectorAll('[data-emp-enable]').forEach(function (cb) {
+        cb.addEventListener('change', function () { panelDraft.employees[cb.getAttribute('data-emp-enable')].enabled = cb.checked; });
+      });
+      list.querySelectorAll('[data-emp-feat]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var name = cb.getAttribute('data-emp-feat'), key = cb.getAttribute('data-feat-key');
+          panelDraft.employees[name].overrides[key] = cb.checked;
+        });
+      });
+      list.querySelectorAll('[data-emp-toggle-details]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var name = btn.getAttribute('data-emp-toggle-details');
+          var d = list.querySelector('[data-emp-details="' + name + '"]');
+          if (d) { d.style.display = (d.style.display === 'grid') ? 'none' : 'grid'; }
+        });
+      });
+      list.querySelectorAll('[data-emp-delete]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var name = btn.getAttribute('data-emp-delete');
+          if (confirm('حذف "' + name + '" من قائمة التحكم؟ (سيعود لإعداداته الافتراضية)')) {
+            delete panelDraft.employees[name]; renderEmployees();
+          }
+        });
+      });
+    }
+
+    document.getElementById('ws-admin-global-toggle').checked = panelDraft.globalEnabled !== false;
+    document.getElementById('ws-admin-global-toggle').addEventListener('change', function (e) { panelDraft.globalEnabled = e.target.checked; });
+    renderEmployees();
+
+    document.getElementById('ws-admin-add-btn').addEventListener('click', function () {
+      var input = document.getElementById('ws-admin-add-name');
+      var name = (input.value || '').trim();
+      if (!name) { return; }
+      ensureEmployee(name); input.value = ''; renderEmployees();
+    });
+    document.getElementById('ws-admin-add-name').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { document.getElementById('ws-admin-add-btn').click(); }
+    });
+
+    document.getElementById('ws-admin-scan-btn').addEventListener('click', function () {
+      var candidates = scanPageForNameCandidates().filter(function (n) { return n !== ADMIN_NAME; });
+      if (candidates.length === 0) { setStatus('⚠️ لم يتم العثور على أسماء واضحة بهذه الصفحة. جرّب صفحة أخرى أو أضف الاسم يدوياً.', true); return; }
+      var added = 0;
+      candidates.forEach(function (name) { if (!panelDraft.employees[name]) { ensureEmployee(name); added++; } });
+      renderEmployees();
+      setStatus('✅ تمت إضافة ' + added + ' اسم مرشّح (من أصل ' + candidates.length + ' موجود بالصفحة) — راجعها قبل الحفظ.', false);
+    });
+
+    document.getElementById('ws-admin-refresh').addEventListener('click', function () {
+      setStatus('⏳ يتم التحديث من GitHub...', false);
+      fetchRemoteControl(true, function (cfg) {
+        panelDraft = cfg ? JSON.parse(JSON.stringify(cfg)) : defaultConfig();
+        if (!panelDraft.employees) { panelDraft.employees = {}; }
+        document.getElementById('ws-admin-global-toggle').checked = panelDraft.globalEnabled !== false;
+        renderEmployees();
+        setStatus('✅ تم التحديث من GitHub.', false);
+      });
+    });
+
+    document.getElementById('ws-admin-token').addEventListener('click', function () {
+      var cur = gGet(TOKEN_KEY, '');
+      var val = prompt(
+        'أدخل GitHub Personal Access Token (يُفضّل Fine-grained Token بصلاحية Contents: Read & Write على مستودع ' + CONTROL_REPO + ' فقط).\n' +
+        'يُحفظ هذا التوكن على جهازك أنت فقط ولا يظهر لأي موظف آخر:',
+        cur ? '' : ''
+      );
+      if (val === null) { return; }
+      val = val.trim();
+      if (val) { gSet(TOKEN_KEY, val); setStatus('✅ تم حفظ التوكن محلياً على هذا الجهاز.', false); }
+    });
+
+    document.getElementById('ws-admin-save').addEventListener('click', function () {
+      setStatus('⏳ يتم الحفظ والرفع لـ GitHub...', false);
+      pushControlToGitHub(panelDraft, function (ok, err) {
+        setStatus(ok ? '✅ تم الحفظ والرفع بنجاح — ستصل التغييرات لأجهزة الموظفين خلال دقائق.' : ('❌ ' + err), !ok);
+      });
+    });
+
+    document.getElementById('ws-admin-close').addEventListener('click', function () { overlay.remove(); });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) { overlay.remove(); } });
+  }
+
+  function renderAdminButton() {
+    if (document.getElementById('ws-admin-fab')) { return; }
+    var btn = document.createElement('button'); btn.id = 'ws-admin-fab'; btn.type = 'button'; btn.title = 'لوحة تحكم المدير';
+    btn.textContent = '🛡️';
+    btn.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:2147483000;width:42px;height:42px;border-radius:50%;' +
+      'background:#1a1a2e;color:#fff;border:none;font-size:19px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35);';
+    btn.addEventListener('click', renderPanel);
+    document.body.appendChild(btn);
+  }
+
+  // ───────────────── الإقلاع ─────────────────
+  function boot(attemptsLeft) {
+    var name = getUsername();
+    if (!name && attemptsLeft > 0) { setTimeout(function () { boot(attemptsLeft - 1); }, 1000); return; }
+    if (isAdmin()) { recordKnownUsername(ADMIN_NAME); renderAdminButton(); }
+    else if (!isEnabledForMe()) { showDisabledNotice(); }
+    fetchRemoteControl(false, function () {}); // تحديث بالخلفية (لن يُحدّث الواجهة الحالية تلقائياً، يسري بالتحميل التالي)
+  }
+  function start() {
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function () { boot(8); }); }
+    else { boot(8); }
+  }
+  start();
+
+  // واجهة مشتركة تستخدمها بقية أجزاء السكربت (IIFEs الأخرى بنفس الملف)
+  var API = {
+    getUsername: getUsername,
+    isAdmin: isAdmin,
+    isEnabledForMe: isEnabledForMe,
+    isDeliveryMonitorEnabledForMe: isDeliveryMonitorEnabledForMe,
+    applyOverrides: applyOverrides,
+    showDisabledNotice: showDisabledNotice
+  };
+  try { window.WSAdmin = API; } catch (e) {}
+  try { if (typeof unsafeWindow !== 'undefined') { unsafeWindow.WSAdmin = API; } } catch (e) {}
+})();
+
+// ══════════════════════════════════════════════════════════════
 //  🔄 وحدة فحص التحديثات التلقائي (مشتركة)
 // ══════════════════════════════════════════════════════════════
 (function () {
@@ -259,6 +1025,13 @@
 (function () {
   'use strict';
 
+  // 🛡️ بوابة تحكم المدير: إن أوقف "احمد محمد كريم" السكربت لهذا الموظف
+  // عن بعد، نتوقف هنا فوراً قبل أي تهيئة (لا أزرار ولا أي تعديل بالصفحة).
+  if (typeof window !== 'undefined' && window.WSAdmin && !window.WSAdmin.isEnabledForMe()) {
+    try { window.WSAdmin.showDisabledNotice(); } catch (e) {}
+    return;
+  }
+
   var BASE_URL = 'https://alwaseet-iq.net';
 
   function storeSet(key, val) {
@@ -268,6 +1041,31 @@
   function storeGet(key) {
     try { if (typeof GM_getValue !== 'undefined') { var v = GM_getValue(key, null); if (v !== null && v !== undefined) { return v; } } } catch (e) {}
     try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  // ✅ (4.3.0): سجل محلي عام لكل قرار يُتّخذ عبر زر "🕒 المؤجل" — يحفظ
+  // رقم الطلب + القرار المتخذ (مؤجل/الغاء الطلب/لم يطلب/...الخ) + الوقت
+  // (نفس مفتاح التخزين القديم يُستخدم لغرض التوافق مع السجلات السابقة؛
+  // السجلات القديمة ما فيها حقل "decision" فتُعرض كـ"مؤجل" افتراضياً)
+  var DEFERRED_LOG_KEY = 'ws_deferred_log';
+  var DEFERRED_LOG_MAX = 300;
+  function getDeferredLog() {
+    var raw = storeGet(DEFERRED_LOG_KEY);
+    if (!raw) { return []; }
+    try { var arr = JSON.parse(raw); return Array.isArray(arr) ? arr : []; } catch (e) { return []; }
+  }
+  function logOrderDecision(orderNum, decisionLabel) {
+    var list = getDeferredLog();
+    list.unshift({ order: String(orderNum), decision: decisionLabel || 'مؤجل', time: Date.now() });
+    if (list.length > DEFERRED_LOG_MAX) { list = list.slice(0, DEFERRED_LOG_MAX); }
+    storeSet(DEFERRED_LOG_KEY, JSON.stringify(list));
+  }
+  function clearDeferredLog() { storeSet(DEFERRED_LOG_KEY, '[]'); }
+  function fmtDeferredTime(ts) {
+    var d = new Date(ts);
+    var dd = String(d.getDate()).padStart(2, '0'), mm = String(d.getMonth() + 1).padStart(2, '0');
+    var hh = String(d.getHours()).padStart(2, '0'), mi = String(d.getMinutes()).padStart(2, '0');
+    return dd + '/' + mm + ' — ' + hh + ':' + mi;
   }
   function injectCss(css) {
     try { if (typeof GM_addStyle === 'function') { GM_addStyle(css); return; } } catch (e) {}
@@ -354,6 +1152,39 @@
       setTimeout(function () { if (link.parentNode) { link.parentNode.removeChild(link); } }, 500);
     }
   }
+  // ✅ (4.1.6): toast مشترك على مستوى الملف كامل — لعرض رسائل حالة سريعة
+  // (مثل نتيجة زر "المؤجل") من أي قسم بالسكربت بدون الحاجة لنافذة مفتوحة
+  function wsGlobalToast(msg) {
+    var t = document.getElementById('ws-global-toast');
+    if (!t) {
+      t = document.createElement('div'); t.id = 'ws-global-toast';
+      t.style.cssText = 'position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:#1b1f27;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;z-index:2147483647;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.3);';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(function () { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 2200);
+  }
+  // ✅ (4.1.6): يفحص وجود عنصر بشكل متكرر حتى يظهر بالـ DOM (نوافذ SweetAlert2
+  // تُبنى ديناميكياً بجافاسكربت بعد الضغط، فنحتاج ننتظرها بدل الاعتماد على وجودها فوراً)
+  function wsWaitFor(selectorFn, callback, opts) {
+    var maxTries  = (opts && opts.maxTries)  || 40;
+    var interval  = (opts && opts.interval)  || 100;
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      var el;
+      try { el = selectorFn(); } catch (e) { el = null; }
+      if (el) {
+        clearInterval(timer);
+        callback(el);
+      } else if (tries >= maxTries) {
+        clearInterval(timer);
+        if (opts && opts.onTimeout) { opts.onTimeout(); }
+      }
+    }, interval);
+  }
   function observeAndRun(fn, delay) {
     var pending = false;
     function run() { fn(); applyVisibility(); pending = false; }
@@ -393,13 +1224,14 @@
   var DEFAULT_SETTINGS = {
     showStory:true, showFees:true, showEdit:true, showWsMerchant:true, showWsCustomer:true,
     showSms:true, showPhoneSearch:true, showDelayCheck:true, showCopyReport:true,
-    showCopyReps:true, showRepRating:true, opacity:100,
+    showCopyReps:true, showRepRating:true, showDeferred:true, opacity:100,
     stationName:'المنصور', reportTemplate:DEFAULT_REPORT_TEMPLATE,
     customerTemplateId:'default', customerCustomTemplate:'', delayCheckMode:'auto',
     ratingAutoReport:true, ratingScoreExcellent:3, ratingScoreGood:1, ratingScoreBad:-2,
     walletFee5000:300, walletFee4000:200, walletFee3000:150, walletFee2000:100,
     walletOffDay:5,   // 0=أحد 1=اثنين 2=ثلاثاء 3=أربعاء 4=خميس 5=جمعة 6=سبت
-    showReceivedCounter:true
+    showReceivedCounter:true,
+    smartDecisionEnabled:false // ✅ (4.3.0): الزر الذكي (يعمل على كل القرارات) معطّل افتراضياً — يفعّله كل موظف بنفسه من الإعدادات
   };
   function loadSettings() {
     var raw = storeGet(SETTINGS_KEY);
@@ -408,6 +1240,11 @@
   }
   function saveSettings(s) { storeSet(SETTINGS_KEY, JSON.stringify(s)); }
   var wsSettings = loadSettings();
+  // 🛡️ تطبيق قيود المدير عن بعد (إن وُجدت) فوق إعدادات الموظف المحلية —
+  // تُعطّل فقط الميزات التي أوقفها المدير تحديداً، ولا تفرض تفعيل أي شيء.
+  if (typeof window !== 'undefined' && window.WSAdmin) {
+    try { wsSettings = window.WSAdmin.applyOverrides(wsSettings); } catch (e) {}
+  }
 
   // ══════════════════════════════════════════════════════════════
   //  📦 عدّاد الطلبات المستلمة اليوم (صفحة الكول سنتر) — لا يتكرر،
@@ -486,10 +1323,26 @@
     try { localStorage.setItem('dm_fallback_' + DM_STOP_CHECK_KEY, s); } catch (e) {}
   }
 
+  // ✅ (4.1.5): جسر مماثل لعدد دقائق "الفحص الخلفي بدون فتح صفحة قيد التوصيل"
+  var DM_BG_POLL_MIN_KEY = 'dm_bg_poll_minutes';
+  function dmGetBgPollMinutes() {
+    var v = null;
+    try { if (typeof GM_getValue !== 'undefined') { v = GM_getValue(DM_BG_POLL_MIN_KEY, null); } } catch (e) {}
+    if (v === null || v === undefined) { try { v = localStorage.getItem('dm_fallback_' + DM_BG_POLL_MIN_KEY); } catch (e) {} }
+    var n = parseInt(v, 10);
+    return (!isNaN(n) && n >= 2) ? n : 5;
+  }
+  function dmSetBgPollMinutes(n) {
+    var s = String(Math.max(2, Math.min(30, parseInt(n, 10) || 5)));
+    try { if (typeof GM_setValue !== 'undefined') { GM_setValue(DM_BG_POLL_MIN_KEY, s); } } catch (e) {}
+    try { localStorage.setItem('dm_fallback_' + DM_BG_POLL_MIN_KEY, s); } catch (e) {}
+  }
+
   var VISIBILITY_MAP = {
     'story':'showStory','fees':'showFees','edit':'showEdit','ws-merchant':'showWsMerchant',
     'ws-customer':'showWsCustomer','sms-customer':'showSms','phone-search':'showPhoneSearch',
-    'delay-check':'showDelayCheck','copy-report':'showCopyReport','copy-reps':'showCopyReps','rep-rating':'showRepRating'
+    'delay-check':'showDelayCheck','copy-report':'showCopyReport','copy-reps':'showCopyReps','rep-rating':'showRepRating',
+    'deferred':'showDeferred'
   };
   function applyVisibility() {
     var op = (wsSettings.opacity != null ? wsSettings.opacity : 100) / 100;
@@ -924,7 +1777,7 @@
     var overlay=document.createElement('div');overlay.id='ws-settings-overlay';overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;';
     var panel=document.createElement('div');panel.style.cssText='background:#fff;border-radius:8px;padding:18px 20px;width:320px;max-height:82vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Tahoma,Arial,sans-serif;';
     var title=document.createElement('h3');title.textContent='⚙️ إظهار/إخفاء الأزرار والأيقونات';title.style.cssText='margin:0 0 12px;font-size:15px;color:#222;';panel.appendChild(title);
-    [{key:'showStory',label:'🔍 زر قصة الطلب'},{key:'showFees',label:'➕ زر أجور التوصيل'},{key:'showEdit',label:'🌐 زر تغيير العنوان'},{key:'showWsMerchant',label:'💬 واتساب التاجر'},{key:'showWsCustomer',label:'📦 واتساب الزبون'},{key:'showSms',label:'📱 رسالة SMS للزبون'},{key:'showPhoneSearch',label:'🔎 بحث عن الزبون برقم الهاتف'},{key:'showDelayCheck',label:'🔎 زر فحص التأخير'},{key:'showCopyReport',label:'📋 زر نسخ التقرير (صفحة الأجور)'},{key:'showCopyReps',label:'📋 زر نسخ قائمة المناديب'},{key:'showRepRating',label:'⭐ زر تقييم المندوب'}].forEach(function(item){
+    [{key:'showStory',label:'🔍 زر قصة الطلب'},{key:'showFees',label:'➕ زر أجور التوصيل'},{key:'showEdit',label:'🌐 زر تغيير العنوان'},{key:'showWsMerchant',label:'💬 واتساب التاجر'},{key:'showWsCustomer',label:'📦 واتساب الزبون'},{key:'showSms',label:'📱 رسالة SMS للزبون'},{key:'showPhoneSearch',label:'🔎 بحث عن الزبون برقم الهاتف'},{key:'showDelayCheck',label:'🔎 زر فحص التأخير'},{key:'showCopyReport',label:'📋 زر نسخ التقرير (صفحة الأجور)'},{key:'showCopyReps',label:'📋 زر نسخ قائمة المناديب'},{key:'showRepRating',label:'⭐ زر تقييم المندوب'},{key:'showDeferred',label:'🕒 زر المؤجل (تأجيل الطلب تلقائياً)'}].forEach(function(item){
       var row=document.createElement('label');row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:13px;color:#333;cursor:pointer;border-bottom:1px solid #eee;';var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!wsSettings[item.key];cb.addEventListener('change',function(){wsSettings[item.key]=cb.checked;saveSettings(wsSettings);applyVisibility();});var span=document.createElement('span');span.textContent=item.label;row.appendChild(cb);row.appendChild(span);panel.appendChild(row);
     });
 
@@ -944,7 +1797,39 @@
     dmRow.appendChild(dmCb);dmRow.appendChild(dmStateLbl);dmSection.appendChild(dmRow);
     var dmHint=document.createElement('div');dmHint.style.cssText='font-size:11px;color:#666;line-height:1.5;';
     dmHint.textContent=dmCb.checked?'مفعّل — اللوحة تظهر وتعمل بصفحة "قيد التوصيل". التغيير يسري خلال ~3 ثوانٍ بدون إعادة تحميل.':'🔕 موقوف حالياً — لوحة المراقب مخفية ولا يعمل أي فحص.';
-    dmSection.appendChild(dmHint);panel.appendChild(dmSection);
+    dmSection.appendChild(dmHint);
+    // ✅ (4.1.5): الفحص الخلفي بدون فتح صفحة "قيد التوصيل"
+    var dmBgRow=document.createElement('div');dmBgRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed #ddd;';
+    var dmBgLbl=document.createElement('label');dmBgLbl.textContent='📡 فحص خلفي بدون فتح الصفحة كل (دقيقة):';dmBgLbl.style.cssText='font-size:12px;color:#333;';
+    var dmBgInp=document.createElement('input');dmBgInp.type='number';dmBgInp.min='2';dmBgInp.max='30';dmBgInp.value=dmGetBgPollMinutes();dmBgInp.style.cssText='width:70px;padding:5px;border:1px solid #ccc;border-radius:5px;font-size:12px;text-align:center;';
+    dmBgInp.addEventListener('change',function(){dmSetBgPollMinutes(dmBgInp.value);dmBgInp.value=dmGetBgPollMinutes();});
+    dmBgRow.appendChild(dmBgLbl);dmBgRow.appendChild(dmBgInp);dmSection.appendChild(dmBgRow);
+    var dmBgHint=document.createElement('div');dmBgHint.style.cssText='font-size:11px;color:#666;line-height:1.5;margin-top:4px;';
+    dmBgHint.textContent='إذا كانت صفحة "قيد التوصيل" غير مفتوحة بأي تبويب، يقوم أي تبويب آخر مفتوح على موقع الوسيط بجلب بيانات الصفحة وفحصها بصمت بنفس هذا الفاصل الزمني، ويحافظ على نفس إعدادات وحسابات المراقب (المدة، الموعد النهائي، إلخ) حتى تفتح اللوحة لاحقاً.';
+    dmSection.appendChild(dmBgHint);
+    panel.appendChild(dmSection);
+
+    var deferredLogSep=document.createElement('div');deferredLogSep.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';panel.appendChild(deferredLogSep);
+    var deferredLogBtn=document.createElement('button');deferredLogBtn.type='button';
+    var deferredLogCount=getDeferredLog().length;
+    deferredLogBtn.textContent='🕒 سجل الطلبات والقرارات'+(deferredLogCount?(' ('+deferredLogCount+')'):'');
+    deferredLogBtn.style.cssText='width:100%;background:#16a085;color:#fff;border:none;border-radius:6px;padding:10px;cursor:pointer;font-size:13px;font-weight:bold;';
+    deferredLogBtn.addEventListener('click',function(){overlay.remove();openDeferredLogPanel();});
+    deferredLogSep.appendChild(deferredLogBtn);
+
+    // ✅ (4.3.0): تفعيل/تعطيل "الزر الذكي" — معطّل افتراضياً لكل موظف حتى يفعّله بنفسه
+    var smartSep=document.createElement('div');smartSep.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';panel.appendChild(smartSep);
+    var smartTitle=document.createElement('div');smartTitle.textContent='🕒 الزر الذكي (يعمل على كل القرارات)';smartTitle.style.cssText='font-size:13px;color:#333;font-weight:bold;margin-bottom:8px;';smartSep.appendChild(smartTitle);
+    var smartRow=document.createElement('div');smartRow.style.cssText='display:flex;align-items:center;justify-content:space-between;';
+    var smartLbl=document.createElement('label');smartLbl.style.cssText='font-size:12px;color:#555;flex:1;';
+    var smartCb=document.createElement('input');smartCb.type='checkbox';smartCb.checked=!!wsSettings.smartDecisionEnabled;smartCb.style.cssText='width:18px;height:18px;cursor:pointer;';
+    var smartStateLbl=document.createElement('span');smartStateLbl.style.cssText='font-size:12px;font-weight:bold;margin-right:6px;color:'+(smartCb.checked?'#1a8a3a':'#999')+';';smartStateLbl.textContent=smartCb.checked?'مفعّل':'معطّل';
+    smartLbl.textContent='تفعيل التصرف حسب كل القرارات';
+    smartCb.addEventListener('change',function(){wsSettings.smartDecisionEnabled=smartCb.checked;saveSettings(wsSettings);smartStateLbl.textContent=smartCb.checked?'مفعّل':'معطّل';smartStateLbl.style.color=smartCb.checked?'#1a8a3a':'#999';smartHint.textContent=smartCb.checked?smartHintOn:smartHintOff;});
+    smartRow.appendChild(smartCb);smartRow.appendChild(smartLbl);smartRow.appendChild(smartStateLbl);smartSep.appendChild(smartRow);
+    var smartHintOn='مفعّل — الزر يتغيّر تلقائياً حسب حالة الطلب الحالية (مؤجل/الغاء/لم يطلب/...الخ) ويأكّد نفس القرار بضغطة واحدة. مستثنى دائماً: "رفض الطلب" و"العنوان غير دقيق" و"تغيير سعر" (الزر يتعطّل لهم).';
+    var smartHintOff='🔕 معطّل حالياً — الزر يبقى بسيط ويسوي فقط "تأجيل الطلب" (مؤجل + ملاحظة "غدا") دايماً، بغض النظر عن حالة الطلب.';
+    var smartHint=document.createElement('div');smartHint.style.cssText='font-size:11px;color:#666;line-height:1.5;margin-top:6px;';smartHint.textContent=smartCb.checked?smartHintOn:smartHintOff;smartSep.appendChild(smartHint);
 
     var ratingSep=document.createElement('div');ratingSep.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid #ddd;';panel.appendChild(ratingSep);var ratingBtn=document.createElement('button');ratingBtn.type='button';ratingBtn.textContent='⭐ التقييم — الإعدادات والإحصائية';ratingBtn.style.cssText='width:100%;background:#8e44ad;color:#fff;border:none;border-radius:6px;padding:10px;cursor:pointer;font-size:13px;font-weight:bold;';ratingBtn.addEventListener('click',function(){overlay.remove();openRatingSettingsPanel();});ratingSep.appendChild(ratingBtn);
 
@@ -969,6 +1854,56 @@
 
     var resetBtn=document.createElement('button');resetBtn.type='button';resetBtn.textContent='إعادة الكل للوضع الافتراضي';resetBtn.style.cssText='margin-top:14px;width:100%;background:#888;color:#fff;border:none;border-radius:5px;padding:7px;cursor:pointer;font-size:12px;';resetBtn.addEventListener('click',function(){wsSettings=Object.assign({},DEFAULT_SETTINGS);saveSettings(wsSettings);applyVisibility();if(typeof applyDelayMode==='function'){applyDelayMode();}if(typeof updateCheckBtnLabel==='function'){updateCheckBtnLabel();}overlay.remove();buildSettingsPanel();});panel.appendChild(resetBtn);
     var closeBtn=document.createElement('button');closeBtn.type='button';closeBtn.textContent='إغلاق';closeBtn.style.cssText='margin-top:8px;width:100%;background:#2e5bff;color:#fff;border:none;border-radius:5px;padding:8px;cursor:pointer;font-size:13px;';closeBtn.addEventListener('click',function(){overlay.remove();});panel.appendChild(closeBtn);
+    overlay.appendChild(panel);overlay.addEventListener('click',function(e){if(e.target===overlay){overlay.remove();}});document.body.appendChild(overlay);
+  }
+
+  // ✅ (4.3.0): نافذة عرض سجل الطلبات والقرارات (رقم الطلب + القرار + الوقت)
+  function openDeferredLogPanel(){
+    if(document.getElementById('ws-deferred-log-overlay')){return;}
+    var overlay=document.createElement('div');overlay.id='ws-deferred-log-overlay';overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;';
+    var panel=document.createElement('div');panel.style.cssText='background:#fff;border-radius:8px;padding:18px 20px;width:360px;max-height:82vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Tahoma,Arial,sans-serif;';
+    var title=document.createElement('h3');title.textContent='🕒 سجل الطلبات والقرارات';title.style.cssText='margin:0 0 10px;font-size:15px;color:#222;';panel.appendChild(title);
+
+    var list=getDeferredLog();
+    var hint=document.createElement('div');hint.style.cssText='font-size:11px;color:#666;line-height:1.5;margin-bottom:10px;';
+    hint.textContent=list.length?('عدد القرارات المسجّلة: '+list.length+' (آخر '+DEFERRED_LOG_MAX+' كحد أقصى).'):'لا يوجد أي قرار مسجّل بعد. يُسجَّل الطلب والقرار المتخذ تلقائياً هنا عند نجاح ضغط زر "🕒 المؤجل".';
+    panel.appendChild(hint);
+
+    if(list.length){
+      var listWrap=document.createElement('div');listWrap.style.cssText='max-height:340px;overflow:auto;border:1px solid #eee;border-radius:6px;margin-bottom:12px;';
+      list.forEach(function(entry,idx){
+        var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-size:12.5px;color:#333;gap:8px;'+(idx<list.length-1?'border-bottom:1px solid #f0f0f0;':'');
+        var leftWrap=document.createElement('div');leftWrap.style.cssText='display:flex;flex-direction:column;gap:2px;overflow:hidden;';
+        var orderSpan=document.createElement('span');orderSpan.textContent='📦 '+entry.order;orderSpan.style.cssText='font-weight:bold;';
+        var decisionSpan=document.createElement('span');decisionSpan.textContent='القرار: '+(entry.decision||'مؤجل');decisionSpan.style.cssText='font-size:11px;color:#16a085;font-weight:bold;';
+        leftWrap.appendChild(orderSpan);leftWrap.appendChild(decisionSpan);
+        var timeSpan=document.createElement('span');timeSpan.textContent=fmtDeferredTime(entry.time);timeSpan.style.cssText='color:#888;font-size:11.5px;white-space:nowrap;';
+        row.appendChild(leftWrap);row.appendChild(timeSpan);listWrap.appendChild(row);
+      });
+      panel.appendChild(listWrap);
+
+      var copyBtn=document.createElement('button');copyBtn.type='button';copyBtn.textContent='📋 نسخ القائمة';
+      copyBtn.style.cssText='width:100%;background:#2e5bff;color:#fff;border:none;border-radius:6px;padding:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-bottom:8px;';
+      copyBtn.addEventListener('click',function(){
+        var text=list.map(function(e){return e.order+' — '+(e.decision||'مؤجل')+' — '+fmtDeferredTime(e.time);}).join('\n');
+        var done=function(){var orig=copyBtn.textContent;copyBtn.textContent='✅ تم النسخ';setTimeout(function(){copyBtn.textContent=orig;},1500);};
+        if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done).catch(function(){fallbackCopy(text);done();});}
+        else{fallbackCopy(text);done();}
+      });
+      panel.appendChild(copyBtn);
+
+      var clearBtn=document.createElement('button');clearBtn.type='button';clearBtn.textContent='🗑️ مسح السجل';
+      clearBtn.style.cssText='width:100%;background:#c0392b;color:#fff;border:none;border-radius:6px;padding:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-bottom:8px;';
+      clearBtn.addEventListener('click',function(){
+        if(clearBtn.getAttribute('data-confirm')==='1'){clearDeferredLog();overlay.remove();openDeferredLogPanel();return;}
+        clearBtn.setAttribute('data-confirm','1');clearBtn.textContent='⚠️ اضغط مرة ثانية للتأكيد';
+        setTimeout(function(){clearBtn.removeAttribute('data-confirm');clearBtn.textContent='🗑️ مسح السجل';},2500);
+      });
+      panel.appendChild(clearBtn);
+    }
+
+    var closeBtn=document.createElement('button');closeBtn.type='button';closeBtn.textContent='إغلاق';closeBtn.style.cssText='width:100%;background:#888;color:#fff;border:none;border-radius:5px;padding:8px;cursor:pointer;font-size:13px;';closeBtn.addEventListener('click',function(){overlay.remove();});panel.appendChild(closeBtn);
+
     overlay.appendChild(panel);overlay.addEventListener('click',function(e){if(e.target===overlay){overlay.remove();}});document.body.appendChild(overlay);
   }
 
@@ -1077,14 +2012,20 @@
     '.ws-cd-subtitle{text-align:center;margin-top:6px;font-size:14px;opacity:.9;}' +
     '.ws-cd-close{position:absolute;right:20px;top:18px;width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.10);color:#fff;font-size:24px;cursor:pointer;line-height:1;}' +
     '.ws-cd-search{position:absolute;left:24px;top:24px;width:260px;height:42px;border:0;outline:0;border-radius:12px;padding:0 16px;font-size:13.5px;background:#fff;color:#16376d;box-sizing:border-box;}' +
-    '.ws-cd-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 22px;background:#fff;border-bottom:1px solid #e2e8f2;flex-shrink:0;}' +
+    '.ws-cd-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 22px;background:#fff;border-bottom:1px solid #e2e8f2;flex-shrink:0;transition:.2s;}' +
+    '.ws-cd-search-mode{display:none;text-align:center;background:#eaf1ff;color:#173d79;font-size:12.5px;font-weight:800;padding:9px;border-bottom:1px solid #dbe6f7;}' +
+    '.ws-cd-search-mode.show{display:block;}' +
+    '.ws-cd-tabs.searching .ws-cd-tab{opacity:.42;}' +
+    '.ws-cd-tabs.searching .ws-cd-tab.active{background:none;color:#12386f;box-shadow:none;border-color:transparent;opacity:.42;}' +
+    '.ws-cd-hl{background:#ffe58a;color:#5a3d00;border-radius:3px;padding:0 1px;}' +
     '.ws-cd-tab{height:50px;border-radius:12px;border:1px solid #dce4f0;background:#fff;color:#173b78;font-size:14.5px;font-weight:800;cursor:pointer;transition:.2s;font-family:inherit;}' +
     '.ws-cd-tab:hover{background:#f2f6fd;}' +
     '.ws-cd-tab.active{background:linear-gradient(135deg,#17499d,#0d357c);color:#fff;box-shadow:0 8px 20px rgba(19,64,140,.20);border-color:transparent;}' +
     '.ws-cd-content{flex:1;overflow:auto;padding:18px 22px 22px;}' +
     '.ws-cd-section-title{font-size:19px;font-weight:900;color:#12386f;margin:4px 0 14px;}' +
     '.ws-cd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}' +
-    '.ws-cd-card{background:#fff;border:1px solid #e0e7f2;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;min-height:70px;box-sizing:border-box;box-shadow:0 3px 10px rgba(21,52,95,.04);transition:.18s;}' +
+    '.ws-cd-card{position:relative;background:#fff;border:1px solid #e0e7f2;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;min-height:70px;box-sizing:border-box;box-shadow:0 3px 10px rgba(21,52,95,.04);transition:.18s;}' +
+    '.ws-cd-source-tag{position:absolute;top:-9px;right:12px;background:linear-gradient(135deg,#17499d,#0d357c);color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;box-shadow:0 3px 8px rgba(19,64,140,.25);}' +
     '.ws-cd-card:hover{border-color:#9eb9e8;transform:translateY(-1px);box-shadow:0 7px 18px rgba(21,52,95,.09);}' +
     '.ws-cd-info{flex:1;min-width:0;}' +
     '.ws-cd-name{font-size:15.5px;font-weight:900;color:#183c78;margin-bottom:4px;}' +
@@ -1206,6 +2147,7 @@
           '<div class="ws-cd-subtitle">الكول سنتر، المحافظات، موظفي متابعة بغداد (كرخ / رصافة)، وموظفي الـ CRM</div>' +
           '<input id="ws-cd-search" class="ws-cd-search" type="text" placeholder="ابحث عن اسم أو منطقة أو رقم...">' +
         '</div>' +
+        '<div class="ws-cd-search-mode" id="ws-cd-search-mode">🔍 وضع البحث الشامل — النتائج معروضة من كل القوائم دفعة واحدة</div>' +
         '<div class="ws-cd-tabs">' +
           '<button type="button" class="ws-cd-tab active" data-section="callcenter">🎧 كول سنتر</button>' +
           '<button type="button" class="ws-cd-tab" data-section="provinces">📍 محافظات</button>' +
@@ -1231,26 +2173,54 @@
     var titles = { callcenter: '🎧 أرقام الكول سنتر', provinces: '📍 أرقام المحافظات', karkh: '🏢 بغداد - الكرخ', rusafa: '🏢 بغداد - الرصافة', crm: '📊 موظفو الـ CRM ومناطق مسؤوليتهم' };
     var currentSection = 'callcenter';
 
-    function makeCard(item) {
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // يظلّل أول ظهور (وكل ما يليه) لنص البحث q داخل text، مع الحفاظ على الأمان من HTML injection
+    function highlightMatch(text, q) {
+      var str = String(text);
+      if (!q) { return escapeHtml(str); }
+      var lower = str.toLowerCase();
+      var idx = lower.indexOf(q);
+      if (idx === -1) { return escapeHtml(str); }
+      var out = '', last = 0;
+      while (idx !== -1) {
+        out += escapeHtml(str.slice(last, idx));
+        out += '<mark class="ws-cd-hl">' + escapeHtml(str.slice(idx, idx + q.length)) + '</mark>';
+        last = idx + q.length;
+        idx = lower.indexOf(q, last);
+      }
+      out += escapeHtml(str.slice(last));
+      return out;
+    }
+
+    function makeCard(item, q) {
       var isEmployee = item.kind === 'employee';
       var isCrm = item.kind === 'crm';
       var card = document.createElement('div'); card.className = 'ws-cd-card';
       card.setAttribute('data-search', (item.name + ' ' + item.phone + ' ' + (item.note || '') + ' ' + (item.region || '') + ' ' + (item.areas ? item.areas.join(' ') : '')).toLowerCase());
 
       var info = document.createElement('div'); info.className = 'ws-cd-info';
-      var nameEl = document.createElement('div'); nameEl.className = 'ws-cd-name'; nameEl.textContent = item.name; info.appendChild(nameEl);
-      var phoneEl = document.createElement('div'); phoneEl.className = 'ws-cd-phone'; phoneEl.textContent = formatPhoneDisplay(item.phone); info.appendChild(phoneEl);
+      var nameEl = document.createElement('div'); nameEl.className = 'ws-cd-name'; nameEl.innerHTML = highlightMatch(item.name, q); info.appendChild(nameEl);
+      var phoneEl = document.createElement('div'); phoneEl.className = 'ws-cd-phone';
+      var phoneDisplay = formatPhoneDisplay(item.phone);
+      var phoneMatches = !!q && item.phone.toLowerCase().replace(/\s/g, '').indexOf(q.replace(/\s/g, '')) !== -1;
+      phoneEl.innerHTML = phoneMatches ? '<mark class="ws-cd-hl">' + escapeHtml(phoneDisplay) + '</mark>' : escapeHtml(phoneDisplay);
+      info.appendChild(phoneEl);
 
       if (isEmployee) {
-        var noteEl = document.createElement('div'); noteEl.className = 'ws-cd-note'; noteEl.innerHTML = 'المنطقة المسؤول عنها: <strong>' + item.region + '</strong>'; info.appendChild(noteEl);
+        var noteEl = document.createElement('div'); noteEl.className = 'ws-cd-note'; noteEl.innerHTML = 'المنطقة المسؤول عنها: <strong>' + highlightMatch(item.region, q) + '</strong>'; info.appendChild(noteEl);
         var badge = document.createElement('span'); badge.className = 'ws-cd-region'; badge.textContent = item.employeeNumber; info.appendChild(badge);
       } else if (isCrm) {
         var noteEl3 = document.createElement('div'); noteEl3.className = 'ws-cd-note'; noteEl3.textContent = 'مسؤول(ة) CRM — مناطق التغطية:'; info.appendChild(noteEl3);
         var areasWrap = document.createElement('div'); areasWrap.className = 'ws-cd-areas';
-        item.areas.forEach(function (a) { var b = document.createElement('span'); b.className = 'ws-cd-area-badge'; b.textContent = a; areasWrap.appendChild(b); });
+        item.areas.forEach(function (a) { var b = document.createElement('span'); b.className = 'ws-cd-area-badge'; b.innerHTML = highlightMatch(a, q); areasWrap.appendChild(b); });
         info.appendChild(areasWrap);
       } else if (item.note) {
-        var noteEl2 = document.createElement('div'); noteEl2.className = 'ws-cd-note'; noteEl2.textContent = item.note; info.appendChild(noteEl2);
+        var noteEl2 = document.createElement('div'); noteEl2.className = 'ws-cd-note'; noteEl2.innerHTML = highlightMatch(item.note, q); info.appendChild(noteEl2);
       }
       card.appendChild(info);
 
@@ -1260,9 +2230,9 @@
 
       var waBtn = document.createElement('a');
       waBtn.className = 'ws-cd-wa'; waBtn.textContent = '🟢 واتساب';
-      waBtn.href = waLink(item.phone, cliche);
+      waBtn.href = waLink(item.phone);
       waBtn.target = '_blank'; waBtn.rel = 'noopener noreferrer';
-      waBtn.title = 'فتح واتساب مباشرة مع كليشة تواصل جاهزة';
+      waBtn.title = 'فتح محادثة واتساب مباشرة بدون نص جاهز';
       actions.appendChild(waBtn);
 
       var copyBtn = document.createElement('button'); copyBtn.type = 'button'; copyBtn.className = 'ws-cd-copy'; copyBtn.textContent = '📋 نسخ الكليشة';
@@ -1292,17 +2262,50 @@
     function render(section, search) {
       currentSection = section;
       var q = (search || '').trim().toLowerCase();
-      var items = DATA[section].filter(function (it) {
-        return !q || (it.name + ' ' + it.phone + ' ' + (it.note || '') + ' ' + (it.region || '') + ' ' + (it.areas ? it.areas.join(' ') : '')).toLowerCase().indexOf(q) !== -1;
-      });
+      var searching = !!q;
+      var items;
+      if (searching) {
+        // عند وجود نص بحث: ابحث عبر كل الأقسام (كل القوائم) دفعة واحدة
+        items = [];
+        Object.keys(DATA).forEach(function (sec) {
+          DATA[sec].forEach(function (it) {
+            var hay = (it.name + ' ' + it.phone + ' ' + (it.note || '') + ' ' + (it.region || '') + ' ' + (it.areas ? it.areas.join(' ') : '')).toLowerCase();
+            if (hay.indexOf(q) !== -1) {
+              var itemWithSection = {};
+              for (var k in it) { if (it.hasOwnProperty(k)) { itemWithSection[k] = it[k]; } }
+              itemWithSection._sectionKey = sec;
+              items.push(itemWithSection);
+            }
+          });
+        });
+      } else {
+        items = DATA[section];
+      }
       content.innerHTML = '';
-      var st = document.createElement('div'); st.className = 'ws-cd-section-title'; st.textContent = titles[section]; content.appendChild(st);
+      var st = document.createElement('div'); st.className = 'ws-cd-section-title';
+      st.textContent = searching ? ('🔍 نتائج البحث في كل القوائم: "' + (search || '').trim() + '" (' + items.length + ')') : titles[section];
+      content.appendChild(st);
+
+      var searchModeBar = document.getElementById('ws-cd-search-mode');
+      var tabsBar = overlay.querySelector('.ws-cd-tabs');
+      if (searchModeBar) { searchModeBar.classList.toggle('show', searching); }
+      if (tabsBar) { tabsBar.classList.toggle('searching', searching); }
+
       if (!items.length) {
         var empty = document.createElement('div'); empty.className = 'ws-cd-empty'; empty.textContent = 'لا توجد نتائج مطابقة للبحث'; content.appendChild(empty);
         return;
       }
       var grid = document.createElement('div'); grid.className = 'ws-cd-grid';
-      items.forEach(function (it) { grid.appendChild(makeCard(it)); });
+      items.forEach(function (it) {
+        var card = makeCard(it, searching ? q : '');
+        if (searching && it._sectionKey && titles[it._sectionKey]) {
+          var srcTag = document.createElement('div');
+          srcTag.className = 'ws-cd-source-tag';
+          srcTag.textContent = titles[it._sectionKey];
+          card.insertBefore(srcTag, card.firstChild);
+        }
+        grid.appendChild(card);
+      });
       content.appendChild(grid);
     }
 
@@ -1325,6 +2328,7 @@
 
     document.body.style.overflow = 'hidden';
     render('callcenter', '');
+    setTimeout(function () { try { searchInp.focus(); } catch (e) {} }, 60);
   }
 
   function addContactsBtn() {
@@ -1345,7 +2349,224 @@
   if(PAGE.indexOf('/cs/call_center')!==-1){
     var RE_ORDER=/^\d{6,}$/,RE_PHONE=/^(0|964)/;
     function directText(el){var s='';el.childNodes.forEach(function(n){if(n.nodeType===3){s+=n.textContent;}});return s.trim();}
-    function makeBtn(label,tip,color,fn,key){var b=document.createElement('button');b.textContent=label;b.title=tip;b.type='button';if(key){b.setAttribute('data-ws-btn',key);}b.style.cssText='display:inline-block;margin:2px 2px 0;background:'+color+';color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:13px;line-height:1.5;vertical-align:middle;';b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();fn();});return b;}
+    function makeBtn(label,tip,color,fn,key){var b=document.createElement('button');b.textContent=label;b.title=tip;b.type='button';if(key){b.setAttribute('data-ws-btn',key);}b.style.cssText='display:inline-block;margin:2px 2px 0;background:'+color+';color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:13px;line-height:1.5;vertical-align:middle;';b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();fn(b);});return b;}
+    // ✅ (4.3.0): الزر "ذكي" — يتصرف حسب الحالة الحالية المسجّلة
+    // بعمود حالة الطلب، لكن **معطّل افتراضياً** لكل موظف حتى يفعّله
+    // بنفسه من ⚙️ الإعدادات الرئيسية (قسم 🕒 الزر الذكي):
+    //  • غير مفعّل من الإعدادات ← الزر دايماً "🕒" ويسوي فقط تأجيل
+    //    الطلب (مؤجل + ملاحظة "غدا") — نفس السلوك الأصلي البسيط.
+    //  • مفعّل، وما فيه حالة مسجّلة بعد (فارغة) ← نفس تأجيل الطلب.
+    //  • مفعّل، وفيه حالة مسجّلة معروفة (مؤجل/الغاء/لم يطلب/...الخ)
+    //    ← نص/لون الزر يتغيّر ليطابقها، وبضغطة وحدة يؤكّد نفس القرار
+    //    المطابق (معالجة ← اتخذ القرار ← اختيار القيمة ← ملاحظة ← تغيير).
+    //  • مفعّل، وفيه حالة "رفض الطلب" أو "العنوان غير دقيق" أو "تغيير
+    //    سعر" ← الزر يعرض التسمية بس ويتعطّل تماماً (مستثناة عمداً).
+    //  • مفعّل، وفيه حالة مسجّلة غير معروفة بالخريطة ← نفس تعطيل عرض
+    //    التسمية (تفادي تنفيذ قرار خاطئ بالتخمين).
+    //
+    // ⚠️ ملاحظة: نص الملاحظة لكل الحالات ما عدا "مؤجل" (وملاحظتها
+    // "غدا") يُترك فارغاً تماماً افتراضياً.
+    var WS_STATUS_DECISION_OPTIONS = [
+      { value: '0',  label: 'تمت المعالجة (توصيل)' },
+      { value: '25', label: 'لا يرد' },
+      { value: '26', label: 'لا يرد بعد الاتفاق' },
+      { value: '27', label: 'مغلق' },
+      { value: '28', label: 'مغلق بعد الاتفاق' },
+      { value: '29', label: 'مؤجل' },
+      { value: '30', label: 'مؤجل لحين اعادة الطلب لاحقا' },
+      { value: '31', label: 'الغاء الطلب' },
+      { value: '32', label: 'رفض الطلب' },
+      { value: '33', label: 'مفصول عن الخدمة' },
+      { value: '34', label: 'طلب مكرر' },
+      { value: '35', label: 'مستلم مسبقا' },
+      { value: '36', label: 'الرقم غير معرف' },
+      { value: '37', label: 'الرقم غير داخل في الخدمة' },
+      { value: '38', label: 'العنوان غير دقيق' },
+      { value: '39', label: 'لم يطلب' },
+      { value: '40', label: 'حظر المندوب' },
+      { value: '41', label: 'لا يمكن الاتصال بالرقم' },
+      { value: '42', label: 'تغيير المندوب' }
+    ];
+    // نص الملاحظة المخصّص لكل قيمة (value)؛ غير الموجود هنا تبقى ملاحظته فارغة تماماً افتراضياً
+    var WS_STATUS_NOTE_OVERRIDES = { '29': 'غدا' };
+    // ✅ (4.3.0): قرارات مستثناة تماماً من عمل الزر — الزر يعرض تسميتها
+    // فقط بدون أي فعل عند الضغط، حتى لو الزر الذكي مفعّل من الإعدادات
+    var WS_STATUS_EXCLUDED_VALUES = ['32', '38']; // رفض الطلب، العنوان غير دقيق
+    var WS_STATUS_EXCLUDED_TEXT_PATTERNS = [/تغيير\s*سعر/]; // "تغيير سعر" (احتياط: غير موجودة حالياً بقائمة change_status)
+    function isExcludedStatus(statusText, cfg) {
+      if (cfg && WS_STATUS_EXCLUDED_VALUES.indexOf(cfg.value) !== -1) { return true; }
+      return WS_STATUS_EXCLUDED_TEXT_PATTERNS.some(function (re) { return re.test(statusText || ''); });
+    }
+    // لون الزر حسب فئة الحالة (تقريبي، قابل للتعديل)
+    var WS_STATUS_COLOR_MAP = {
+      '0': '#27ae60', '29': '#16a085', '30': '#16a085',
+      '31': '#c0392b', '32': '#c0392b', '40': '#c0392b',
+      '25': '#e67e22', '26': '#e67e22', '41': '#e67e22',
+      '27': '#7f8c8d', '28': '#7f8c8d', '33': '#7f8c8d', '39': '#7f8c8d',
+      '34': '#8e44ad', '35': '#8e44ad', '42': '#8e44ad',
+      '36': '#34495e', '37': '#34495e', '38': '#34495e'
+    };
+    // أطول تسمية أولاً حتى ما ينخدع بمطابقة جزئية خاطئة (مثال: "مؤجل" داخل "مؤجل لحين اعادة الطلب لاحقا")
+    var WS_STATUS_OPTIONS_SORTED = WS_STATUS_DECISION_OPTIONS.slice().sort(function (a, b) { return b.label.length - a.label.length; });
+    function matchStatusConfig(statusText) {
+      var t = (statusText || '').trim();
+      if (!t) { return null; }
+      for (var i = 0; i < WS_STATUS_OPTIONS_SORTED.length; i++) {
+        if (t.indexOf(WS_STATUS_OPTIONS_SORTED[i].label) !== -1) { return WS_STATUS_OPTIONS_SORTED[i]; }
+      }
+      return null;
+    }
+    function shortStatusLabel(label) { return label.length > 11 ? (label.slice(0, 10) + '…') : label; }
+
+    function executeOrderDecision(displayOrderNum, rowEl, triggerBtn, decisionValue, noteText, decisionLabel) {
+      var origLabel = triggerBtn ? triggerBtn.textContent : '';
+      var origBg = triggerBtn ? triggerBtn.style.background : '';
+      function setBusy(msg) { if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.textContent = msg; } }
+      function finish(msg, ok) {
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.textContent = msg;
+          setTimeout(function () { triggerBtn.textContent = origLabel; triggerBtn.style.background = origBg; delete triggerBtn.dataset.wsMode; }, 2400);
+        }
+        wsGlobalToast((ok ? '✅ ' : '⚠️ ') + msg);
+      }
+
+      setBusy('⏳ ...');
+
+      // ✅ إصلاح: زر "معالجة" يحمل مُعرّف داخلي (id) مختلف عن رقم الطلب
+      // الظاهر بالجدول (مثال: id="43330986" بينما رقم الطلب المعروض
+      // "156744570")، لذلك ندوّر عليه داخل نفس صف الطلب مباشرة بدل
+      // الاعتماد على تطابق الأرقام، ونستخرج المعرّف الداخلي الصحيح منه
+      var processBtn = null;
+      if (rowEl) {
+        processBtn = rowEl.querySelector('button[onclick^="openTicket("]') || rowEl.querySelector('button.btn-info');
+      }
+      if (!processBtn) {
+        finish('تعذر إيجاد زر "معالجة" بصف هذا الطلب', false);
+        return;
+      }
+
+      var internalId = processBtn.id;
+      if (!internalId) {
+        var m = (processBtn.getAttribute('onclick') || '').match(/openTicket\((\d+)\)/);
+        internalId = m ? m[1] : null;
+      }
+      if (!internalId) {
+        finish('تعذر تحديد المعرّف الداخلي للطلب', false);
+        return;
+      }
+
+      processBtn.click();
+
+      wsWaitFor(function () { return document.querySelector('#decide[data-id="' + internalId + '"]'); }, function (decideBtn) {
+        decideBtn.click();
+
+        wsWaitFor(function () { return document.getElementById('change_status'); }, function (select) {
+          select.value = decisionValue;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          select.dispatchEvent(new Event('input', { bubbles: true }));
+
+          wsWaitFor(function () { return document.getElementById('notes'); }, function (notesInput) {
+            notesInput.value = noteText;
+            notesInput.dispatchEvent(new Event('input', { bubbles: true }));
+            notesInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+            wsWaitFor(function () {
+              var btns = document.querySelectorAll('.swal2-confirm.swal2-styled');
+              for (var i = 0; i < btns.length; i++) { if (btns[i].offsetParent !== null) { return btns[i]; } }
+              return null;
+            }, function (confirmBtn) {
+              confirmBtn.click();
+              logOrderDecision(displayOrderNum, decisionLabel);
+              finish('تم: ' + decisionLabel + ' ✓', true);
+            }, { onTimeout: function () { finish('تعذر إيجاد زر "تغيير" للتأكيد', false); } });
+          }, { onTimeout: function () { finish('تعذر إيجاد خانة الملاحظات', false); } });
+        }, { onTimeout: function () { finish('تعذر إيجاد قائمة الحالة', false); } });
+      }, { onTimeout: function () { finish('تعذر إيجاد زر "اتخذ القرار"', false); } });
+    }
+
+    // عند الضغط: يقرأ حالة الطلب الحالية بلحظة الضغط ويحدد القرار المناسب
+    // (فقط إذا "الزر الذكي" مفعّل من الإعدادات؛ غير هيك يبقى تأجيل بس دايماً)
+    function onDeferredBtnClick(displayOrderNum, rowEl, triggerBtn) {
+      if (!wsSettings.smartDecisionEnabled) {
+        executeOrderDecision(displayOrderNum, rowEl, triggerBtn, '29', 'غدا', 'مؤجل');
+        return;
+      }
+
+      var statusEl = rowEl ? rowEl.querySelector('[id^="status-"]') : null;
+      var statusText = statusEl ? statusEl.textContent.trim() : '';
+      if (!statusText) {
+        executeOrderDecision(displayOrderNum, rowEl, triggerBtn, '29', 'غدا', 'مؤجل');
+        return;
+      }
+      var cfg = matchStatusConfig(statusText);
+      if (isExcludedStatus(statusText, cfg)) {
+        wsGlobalToast('⚠️ هذا القرار مستثنى من عمل الزر: ' + (cfg ? cfg.label : statusText));
+        return;
+      }
+      if (!cfg) {
+        wsGlobalToast('⚠️ حالة غير معروفة للأتمتة: ' + statusText);
+        return;
+      }
+      var note = (WS_STATUS_NOTE_OVERRIDES[cfg.value] !== undefined) ? WS_STATUS_NOTE_OVERRIDES[cfg.value] : '';
+      executeOrderDecision(displayOrderNum, rowEl, triggerBtn, cfg.value, note, cfg.label);
+    }
+
+    // ✅ يحدّث شكل/تسمية كل أزرار "المؤجل" الظاهرة حالياً بالجدول لتعكس
+    // الحالة الحالية المسجّلة بكل صف (تُستدعى مع كل تحديث للجدول)
+    function refreshDeferredButtons() {
+      document.querySelectorAll('button[data-ws-btn="deferred"]').forEach(function (btn) {
+        var row = btn.closest('tr');
+        if (!row) { return; }
+
+        function setDefaultMode() {
+          if (btn.dataset.wsMode !== 'default') {
+            btn.dataset.wsMode = 'default';
+            btn.textContent = '🕒';
+            btn.title = 'تأجيل الطلب (يختار "مؤجل" ويكتب "غدا" بالملاحظات تلقائياً)';
+            btn.style.background = '#16a085';
+            btn.disabled = false;
+          }
+        }
+
+        // الزر الذكي غير مفعّل من الإعدادات ← يبقى دايماً بوضعه الافتراضي البسيط
+        if (!wsSettings.smartDecisionEnabled) { setDefaultMode(); return; }
+
+        var statusEl = row.querySelector('[id^="status-"]');
+        var statusText = statusEl ? statusEl.textContent.trim() : '';
+        if (!statusText) { setDefaultMode(); return; }
+
+        var cfg = matchStatusConfig(statusText);
+        if (isExcludedStatus(statusText, cfg)) {
+          var exModeKey = 'excluded:' + (cfg ? cfg.value : 'text');
+          if (btn.dataset.wsMode !== exModeKey) {
+            btn.dataset.wsMode = exModeKey;
+            btn.textContent = shortStatusLabel(cfg ? cfg.label : statusText);
+            btn.title = 'هذا القرار مستثنى من عمل الزر: ' + (cfg ? cfg.label : statusText);
+            btn.style.background = '#95a5a6';
+            btn.disabled = true;
+          }
+          return;
+        }
+        if (cfg) {
+          var modeKey = 'match:' + cfg.value;
+          if (btn.dataset.wsMode !== modeKey) {
+            btn.dataset.wsMode = modeKey;
+            btn.textContent = shortStatusLabel(cfg.label);
+            btn.title = 'تأكيد القرار: ' + cfg.label + ' (ضغطة واحدة تنفّذ القرار مباشرة)';
+            btn.style.background = WS_STATUS_COLOR_MAP[cfg.value] || '#16a085';
+            btn.disabled = false;
+          }
+        } else if (btn.dataset.wsMode !== 'unknown') {
+          btn.dataset.wsMode = 'unknown';
+          btn.textContent = shortStatusLabel(statusText);
+          btn.title = 'حالة غير معروفة للأتمتة: ' + statusText;
+          btn.style.background = '#888';
+          btn.disabled = true;
+        }
+      });
+    }
+
     function getMerchantCell(row){var cells=row.querySelectorAll('td');for(var i=0;i<cells.length;i++){var td=cells[i];if(td.style.display==='none'){continue;}if(!td.querySelector('a.phone-number')){continue;}if(td.querySelector('div')){continue;}return td;}return null;}
     function getCustomerCell(row){var cells=row.querySelectorAll('td');for(var i=0;i<cells.length;i++){var td=cells[i];if(td.style.display==='none'){continue;}if(!td.querySelector('a.phone-number')){continue;}if(!td.querySelector('div')){continue;}return td;}return null;}
     function phoneFromLink(link){if(!link){return '';}return(link.href||'').replace('https://wa.me/','').replace(/\+/g,'').trim();}
@@ -1357,8 +2578,9 @@
       if(!row.dataset.wsCustomer){var cCell=getCustomerCell(row);if(cCell&&!cCell.querySelector('[data-ws-customer]')){var cLinks=[];cCell.querySelectorAll('a.phone-number').forEach(function(l){cLinks.push(l);});var validLinks=cLinks.filter(function(l){var p=phoneFromLink(l);return p&&p.length>=7;});if(validLinks.length){row.dataset.wsCustomer='1';function buildCustomerMessage(){var pageName=getMerchantName(row),price=getPrice(row,orderNum),cleanOrder=orderNum.replace(/\D/g,'');return renderTemplate(getCustomerMessageTemplate(),{merchant:pageName||'...',price:price||'...',order:cleanOrder});}function buildPhoneButtons(phone,afterLink,searchType,isFirst){var localPhone=phone;if(localPhone.indexOf('964')===0){localPhone='0'+localPhone.slice(3);}var labelSuffix=isFirst?'':' (الرقم الثاني)',groupWrap=document.createElement('span');groupWrap.style.cssText='display:inline-block;vertical-align:middle;';var cBtn=document.createElement('button');cBtn.type='button';cBtn.textContent='📦';cBtn.title='واتساب الزبون'+labelSuffix;if(isFirst){cBtn.setAttribute('data-ws-customer','1');}cBtn.style.cssText='display:inline-block;font-size:20px;background:none;border:none;cursor:pointer;line-height:1.3;padding:0;';var cWrap=makeUsedBadgeWrapper(cBtn);cWrap.el.setAttribute('data-ws-btn','ws-customer');cWrap.el.style.marginTop='4px';cWrap.el.style.marginLeft='4px';cBtn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openTab('https://wa.me/'+phone+'?text='+encodeURIComponent(buildCustomerMessage()),'ws_wa_c_'+orderNum);cWrap.markUsed();});groupWrap.appendChild(cWrap.el);var smsBtn=document.createElement('button');smsBtn.type='button';smsBtn.textContent='📱';smsBtn.title='رسالة خط للزبون'+labelSuffix;smsBtn.setAttribute('data-ws-btn','sms-customer');smsBtn.style.cssText='display:inline-block;font-size:20px;background:none;border:none;cursor:pointer;line-height:1.3;padding:0;';var smsWrap=makeUsedBadgeWrapper(smsBtn);smsWrap.el.setAttribute('data-ws-btn','sms-customer');smsWrap.el.style.marginTop='4px';smsWrap.el.style.marginLeft='4px';smsBtn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openSmsLink(localPhone,buildCustomerMessage());smsWrap.markUsed();});groupWrap.appendChild(smsWrap.el);var phoneBtn=document.createElement('button');phoneBtn.type='button';phoneBtn.textContent='🔎';phoneBtn.title='بحث عن طلبات الزبون'+labelSuffix;phoneBtn.setAttribute('data-ws-btn','phone-search');phoneBtn.style.cssText='display:inline-block;font-size:12px;background:none;border:none;cursor:pointer;line-height:1;padding:0;opacity:.8;vertical-align:middle;margin-top:4px;margin-left:4px;';phoneBtn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openTab(BASE_URL+'/cs/view_search?ws_phone='+encodeURIComponent(phone)+'&ws_search_type='+searchType,'ws_phone_search');});groupWrap.appendChild(phoneBtn);afterLink.insertAdjacentElement('afterend',groupWrap);}validLinks.forEach(function(link,idx){buildPhoneButtons(phoneFromLink(link),link,(idx===0)?'2':'3',idx===0);});}}}
     }
     function addIcons(){
+      refreshDeferredButtons();
       document.querySelectorAll('tr').forEach(function(tr){var name=extractRepNameFromHeaderRow(tr);if(name){wsLastRepName=name;}});
-      document.querySelectorAll('td.dtr-control').forEach(function(cell){var txt=directText(cell);if(cell.dataset.wsAdded){var row0=cell.closest('tr');if(row0&&txt){addWhatsappBtns(row0,txt);}return;}if(!RE_ORDER.test(txt)||RE_PHONE.test(txt)){return;}cell.dataset.wsAdded='1';recordReceivedOrder(txt);var capturedTxt=txt,row=cell.closest('tr');if(row){var repNameNow=findRepNameForRow(row);if(!repNameNow&&wsLastRepName){repNameNow=wsLastRepName;}if(repNameNow){row.setAttribute('data-ws-rep',repNameNow);wsLastRepName=repNameNow;}}var wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:4px;';wrap.appendChild(makeBtn('🔍','قصة الطلب: '+capturedTxt,'#2e5bff',function(){openTab(BASE_URL+'/order-story?ws_order='+encodeURIComponent(capturedTxt),'ws_story');},'story'));wrap.appendChild(makeBtn('➕','أجور التوصيل: '+capturedTxt,'#28a745',function(){openTab(BASE_URL+'/cs/delivery-fees-differences?ws_order='+encodeURIComponent(capturedTxt),'ws_fees');},'fees'));wrap.appendChild(makeBtn('🌐','تغيير العنوان: '+capturedTxt,'#e67e22',function(){openTab(BASE_URL+'/cs/editOrder?ws_order='+encodeURIComponent(capturedTxt),'ws_edit');},'edit'));wrap.appendChild(makeBtn('⭐','تقييم المندوب: '+capturedTxt,'#8e44ad',function(){var liveRow=cell.closest('tr'),repName='';if(liveRow){repName=liveRow.getAttribute('data-ws-rep')||'';}if(!repName&&liveRow){repName=findRepNameForRow(liveRow);}if(!repName){repName=wsLastRepName;}openRatingDialog(capturedTxt,repName);},'rep-rating'));cell.appendChild(wrap);if(row){addWhatsappBtns(row,capturedTxt);}});
+      document.querySelectorAll('td.dtr-control').forEach(function(cell){var txt=directText(cell);if(cell.dataset.wsAdded){var row0=cell.closest('tr');if(row0&&txt){addWhatsappBtns(row0,txt);}return;}if(!RE_ORDER.test(txt)||RE_PHONE.test(txt)){return;}cell.dataset.wsAdded='1';recordReceivedOrder(txt);var capturedTxt=txt,row=cell.closest('tr');if(row){var repNameNow=findRepNameForRow(row);if(!repNameNow&&wsLastRepName){repNameNow=wsLastRepName;}if(repNameNow){row.setAttribute('data-ws-rep',repNameNow);wsLastRepName=repNameNow;}}var wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-wrap:wrap;justify-content:center;gap:3px;margin-top:4px;';wrap.appendChild(makeBtn('🔍','قصة الطلب: '+capturedTxt,'#2e5bff',function(){openTab(BASE_URL+'/order-story?ws_order='+encodeURIComponent(capturedTxt),'ws_story');},'story'));wrap.appendChild(makeBtn('➕','أجور التوصيل: '+capturedTxt,'#28a745',function(){openTab(BASE_URL+'/cs/delivery-fees-differences?ws_order='+encodeURIComponent(capturedTxt),'ws_fees');},'fees'));wrap.appendChild(makeBtn('🌐','تغيير العنوان: '+capturedTxt,'#e67e22',function(){openTab(BASE_URL+'/cs/editOrder?ws_order='+encodeURIComponent(capturedTxt),'ws_edit');},'edit'));wrap.appendChild(makeBtn('⭐','تقييم المندوب: '+capturedTxt,'#8e44ad',function(){var liveRow=cell.closest('tr'),repName='';if(liveRow){repName=liveRow.getAttribute('data-ws-rep')||'';}if(!repName&&liveRow){repName=findRepNameForRow(liveRow);}if(!repName){repName=wsLastRepName;}openRatingDialog(capturedTxt,repName);},'rep-rating'));wrap.appendChild(makeBtn('🕒','تأجيل الطلب: '+capturedTxt+' (يختار "مؤجل" ويكتب "غدا" بالملاحظات تلقائياً)','#16a085',function(btnEl){onDeferredBtnClick(capturedTxt,row,btnEl);},'deferred'));cell.appendChild(wrap);if(row){addWhatsappBtns(row,capturedTxt);}});
     }
     onReady(function(){setTimeout(function(){observeAndRun(addIcons,400);renderAndSync(addSettingsBtn);addReceivedBadge();checkWeeklyAutoReport();},800);});
   }
@@ -1369,7 +2591,7 @@
   // ══════════════════════════════════════════════════════════════
   //  ③ delivery-fees-differences — مع الحفظ التلقائي للمحفظة
   // ══════════════════════════════════════════════════════════════
-  if(PAGE.indexOf('/cs/delivery-fees-differences')!==-1){
+  if(PAGE.indexOf('/cs/delivery-fees-differences')!==-1 && PAGE.indexOf('/cs/delivery-fees-differences/statistics')===-1){
     var feesParams=new URLSearchParams(location.search),feesNum=feesParams.get('ws_order');
     if(feesNum){onReady(function(){waitFor('input[name="orderQrId"]',function(inp){inp.value=feesNum;inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));inp.focus();});});}
 
@@ -1508,6 +2730,456 @@
     });
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  ③b delivery-fees-differences/statistics — إحصائية الشهر الكامل
+  //  (v4.3.6): إصلاح جذري لحساب الأجر — الجدول بهذي الصفحة مُجمّع
+  //  فعلياً حسب "قيمة الفرق" (تماماً متل صفحة أجور التوصيل الأصلية):
+  //  كل مجموعة برأس فيه "قيمة الفرق: X | عدد الطلبات: N | مجموع
+  //  الفروقات: M" — وM هو المبلغ الحقيقي الصحيح (وليس تخميناً بسعر
+  //  ثابت). الآن يُقرأ هذا المبلغ مباشرة من كل فئة موجودة فعلياً
+  //  بالنتائج (بدل ضرب عدد المستلمة بسعر واحد ثابت من الإعدادات)،
+  //  ويُصنَّف كل سجل داخل كل فئة إلى عادي/VIP (حسب وجود حروف
+  //  إنكليزية باسم المندوب — نفس منطق صفحة أجور التوصيل بالضبط)،
+  //  وزر "📋 نسخ التقرير" يبني التقرير بنفس قالب وفئات تلك الصفحة
+  //  حرفياً. زر واحد فقط بهذي الصفحة ("💰 إحصائية الشهر الكامل")
+  //  يقوم بكل العملية — بدون أي زر إضافي مكرر.
+  // ══════════════════════════════════════════════════════════════
+  if (PAGE.indexOf('/cs/delivery-fees-differences/statistics') !== -1) {
+
+    var STATS_KNOWN_TIERS = [5000, 4000, 3000, 2000];
+
+    // ── عناصر الصفحة (بمعرّفاتها الحقيقية) ──────────────────────
+    function statsGetTable() {
+      return document.getElementById('dfds_table') || document.querySelector('table');
+    }
+    function statsGetInfoEl() {
+      return document.getElementById('dfds_table_info') || document.querySelector('.dataTables_info');
+    }
+    function statsGetDateInputs() {
+      var fromInp = document.getElementById('min');
+      var toInp = document.getElementById('max');
+      if (fromInp && toInp) { return { from: fromInp, to: toInp }; }
+      var inputs = Array.from(document.querySelectorAll('input[type="date"]'));
+      return { from: inputs[0] || null, to: inputs[1] || null };
+    }
+    function statsFindSearchBtn() {
+      return document.getElementById('search_btn') || Array.from(document.querySelectorAll('button')).find(function (b) {
+        return b.textContent.trim() === 'بحث' && b.id !== 'ws-stats-btn';
+      });
+    }
+    function statsFindNextBtn() {
+      return Array.from(document.querySelectorAll('a,button')).find(function (el) {
+        return el.textContent.trim() === 'التالي' && !el.disabled && !el.classList.contains('disabled') && !(el.parentElement && el.parentElement.classList.contains('disabled'));
+      });
+    }
+    function statsIsLoaderBusy() {
+      var loader = document.getElementById('btn-loader');
+      if (!loader) { return false; }
+      var style = window.getComputedStyle(loader);
+      return style.display !== 'none' && style.visibility !== 'hidden' && loader.offsetParent !== null;
+    }
+
+    function statsSetInputValue(inp, val) {
+      var proto = window.HTMLInputElement.prototype;
+      var setter = Object.getOwnPropertyDescriptor(proto, 'value') && Object.getOwnPropertyDescriptor(proto, 'value').set;
+      if (setter) { setter.call(inp, val); } else { inp.value = val; }
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function statsSetSelectValue(sel, val) {
+      sel.value = val;
+      sel.dispatchEvent(new Event('input', { bubbles: true }));
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      try {
+        var $ = (typeof unsafeWindow !== 'undefined' && unsafeWindow.jQuery) ? unsafeWindow.jQuery : window.jQuery;
+        if ($) { $(sel).val(val).trigger('change'); }
+      } catch (e) {}
+    }
+
+    function statsGetDT() {
+      try {
+        var $ = (typeof unsafeWindow !== 'undefined' && unsafeWindow.jQuery) ? unsafeWindow.jQuery : window.jQuery;
+        if ($ && $.fn && $.fn.dataTable && $.fn.dataTable.isDataTable('#dfds_table')) {
+          return $('#dfds_table').DataTable();
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    // انتظار حقيقي لاكتمال البحث/إعادة الرسم — حدث draw.dt الفعلي +
+    // تغيّر نص شريط النتائج + اختفاء مؤشر التحميل، مع مهلة أقصى
+    function statsWaitSearchComplete(prevInfoText, timeoutMs) {
+      return new Promise(function (resolve) {
+        var settled = false;
+        var dt = statsGetDT();
+        var poller = null, hardTimeout = null;
+
+        function cleanup() {
+          if (dt) { try { dt.off('draw.wsstats'); } catch (e) {} }
+          if (poller) { clearInterval(poller); }
+          if (hardTimeout) { clearTimeout(hardTimeout); }
+        }
+        function finish() {
+          if (settled) { return; }
+          settled = true;
+          cleanup();
+          setTimeout(resolve, 300);
+        }
+
+        if (dt) {
+          try { dt.one('draw.wsstats', finish); } catch (e) {}
+        }
+
+        poller = setInterval(function () {
+          var infoEl = statsGetInfoEl();
+          var curText = infoEl ? infoEl.textContent.trim() : '';
+          if (curText && curText !== prevInfoText && !statsIsLoaderBusy()) { finish(); }
+        }, 200);
+
+        hardTimeout = setTimeout(finish, timeoutMs);
+      });
+    }
+
+    function statsGetTotalCount() {
+      var infoEl = statsGetInfoEl();
+      if (!infoEl) { return null; }
+      var text = infoEl.textContent || '';
+      var m = text.match(/من\s*[اإأ]صل\s*([\d,]+)/);
+      if (m) { return parseInt(m[1].replace(/,/g, ''), 10); }
+      if (/عرض\s*0\s*مدخل/.test(text) || text.indexOf('لا يوجد') !== -1) { return 0; }
+      return null;
+    }
+
+    function statsEnsureShowAll() {
+      var dt = statsGetDT();
+      if (dt) {
+        try {
+          if (dt.page.len() !== -1) { dt.page.len(-1).draw(false); return true; }
+          return false;
+        } catch (e) {}
+      }
+      var lenSelect = document.querySelector('select[name="dfds_table_length"]');
+      if (lenSelect && lenSelect.value !== '100') {
+        var opt = Array.from(lenSelect.options).find(function (o) { return o.value === '100'; });
+        if (opt) { lenSelect.value = '100'; lenSelect.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+      }
+      return false;
+    }
+
+    function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+    // ✅ الأساس الجديد: يقرأ فئات "قيمة الفرق" الحقيقية من رؤوس
+    // المجموعات (dtrg-group) — كل رأس يحمل العدد والمبلغ الصحيحين
+    // فعلياً من الموقع نفسه (لا تخمين بسعر ثابت)، ويصنّف كل سجل
+    // داخل كل فئة إلى عادي/VIP حسب اسم المندوب (نفس منطق صفحة أجور
+    // التوصيل الأصلية بالضبط). carryFee يسمح بترحيل الفئة الحالية
+    // عبر حدود الصفحات لو تعذّر عرض كل الصفوف دفعة واحدة.
+    function statsExtractCategoryBreakdownFromDOM(carryFee) {
+      var table = statsGetTable();
+      var result = { breakdown: {}, lastFee: carryFee || null };
+      if (!table) { return result; }
+      var tbody = table.querySelector('tbody');
+      if (!tbody) { return result; }
+      var currentFee = carryFee || null;
+      Array.from(tbody.children).forEach(function (tr) {
+        if (tr.classList.contains('dtrg-group')) {
+          var text = tr.textContent || '';
+          var feeM = text.match(/قيمة الفرق:\s*([\d,]+)/);
+          var cntM = text.match(/عدد الطلبات:\s*([\d,]+)/);
+          var sumM = text.match(/مجموع الفروقات:\s*([\d,]+)/);
+          if (feeM) {
+            currentFee = parseInt(feeM[1].replace(/,/g, ''), 10);
+            if (!result.breakdown[currentFee]) { result.breakdown[currentFee] = { count: 0, sum: 0, vip: 0, normal: 0 }; }
+            result.breakdown[currentFee].count += cntM ? parseInt(cntM[1].replace(/,/g, ''), 10) : 0;
+            result.breakdown[currentFee].sum += sumM ? parseInt(sumM[1].replace(/,/g, ''), 10) : 0;
+          }
+          return;
+        }
+        if (tr.querySelector('td.dataTables_empty')) { return; }
+        if (currentFee == null) { return; }
+        var cells = tr.querySelectorAll('td');
+        if (cells.length < 3) { return; }
+        var repName = cells[2].textContent.trim();
+        if (!result.breakdown[currentFee]) { result.breakdown[currentFee] = { count: 0, sum: 0, vip: 0, normal: 0 }; }
+        if (/[a-zA-Z]/.test(repName)) { result.breakdown[currentFee].vip++; } else { result.breakdown[currentFee].normal++; }
+      });
+      result.lastFee = currentFee;
+      return result;
+    }
+
+    function statsMergeBreakdown(target, source) {
+      Object.keys(source).forEach(function (fee) {
+        if (!target[fee]) { target[fee] = { count: 0, sum: 0, vip: 0, normal: 0 }; }
+        target[fee].count += source[fee].count;
+        target[fee].sum += source[fee].sum;
+        target[fee].vip += source[fee].vip;
+        target[fee].normal += source[fee].normal;
+      });
+      return target;
+    }
+
+    // يجمع كل الفئات عبر كل الصفحات — يحاول أولاً عرض كل الصفوف
+    // دفعة واحدة (DataTables API)، وإن تعذّر يتنقل بين الصفحات مع
+    // ترحيل الفئة الحالية بينها تفادياً لأي خطأ عدّ عند حدود الصفحة
+    async function statsCollectBreakdownAllPages(btn, label) {
+      var infoEl = statsGetInfoEl();
+      var prevText = infoEl ? infoEl.textContent.trim() : '';
+      var didShowAll = statsEnsureShowAll();
+      if (didShowAll) {
+        if (btn) { btn.textContent = '⏳ يجمع فئات "' + label + '"...'; }
+        await statsWaitSearchComplete(prevText, 20000);
+      }
+
+      var dt = statsGetDT();
+      var isShowingAll = false;
+      if (dt) {
+        try { isShowingAll = (dt.page.len() === -1); } catch (e) {}
+      }
+      if (isShowingAll || !statsFindNextBtn()) {
+        var res = statsExtractCategoryBreakdownFromDOM(null);
+        return res.breakdown;
+      }
+
+      // احتياط: تجميع عبر عدة صفحات
+      var merged = {};
+      var carry = null;
+      var safe = 0;
+      while (safe++ < 100) {
+        var res2 = statsExtractCategoryBreakdownFromDOM(carry);
+        statsMergeBreakdown(merged, res2.breakdown);
+        carry = res2.lastFee;
+        var nb = statsFindNextBtn();
+        if (!nb) { break; }
+        if (btn) { btn.textContent = '⏳ يجمع فئات "' + label + '" (صفحة ' + (safe + 1) + ')...'; }
+        nb.click();
+        await sleep(900);
+      }
+      return merged;
+    }
+
+    // ✅ (v4.3.7): نفس آلية حساب الأجر المستخدمة بصفحة أجور التوصيل
+    // الأصلية بالضبط (نظام المحفظة) — كل فئة لها سعر مختلف قابل
+    // للتعديل من الإعدادات ⚙️ ← 💰 إعدادات المحفظة الشهرية، والأجر هو
+    // (عدد طلبات الفئة × سعر تلك الفئة) — وليس "مجموع الفروقات" الخام
+    // (اللي هو قيمة الفرق بالسعر نفسها، مو أجر المندوب الفعلي)
+    function statsWalletRateFor(fee) {
+      var map = {
+        5000: wsSettings.walletFee5000 != null ? wsSettings.walletFee5000 : DEFAULT_SETTINGS.walletFee5000,
+        4000: wsSettings.walletFee4000 != null ? wsSettings.walletFee4000 : DEFAULT_SETTINGS.walletFee4000,
+        3000: wsSettings.walletFee3000 != null ? wsSettings.walletFee3000 : DEFAULT_SETTINGS.walletFee3000,
+        2000: wsSettings.walletFee2000 != null ? wsSettings.walletFee2000 : DEFAULT_SETTINGS.walletFee2000
+      };
+      return map[fee] != null ? map[fee] : 0;
+    }
+    function statsSumWage(breakdown) {
+      var total = 0;
+      Object.keys(breakdown || {}).forEach(function (fee) {
+        total += (breakdown[fee].count || 0) * statsWalletRateFor(Number(fee));
+      });
+      return total;
+    }
+
+    function statsMonthRange() {
+      var now = new Date();
+      var first = new Date(now.getFullYear(), now.getMonth(), 1);
+      function fmt(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+      return { from: fmt(first), to: fmt(now), label: getMonthLabel(fmt(first).slice(0, 7)) };
+    }
+
+    // يبحث عن نوع سجل معيّن (1=مستلمة، 2=غير مستلمة) بنفس نطاق
+    // التاريخ، وينتظر اكتمال البحث فعلياً، ثم يجمع تفصيل الفئات
+    // الحقيقية (لا تخمين) عبر كل الصفحات
+    async function statsSearchByType(typeValue, range, btn, label) {
+      var dateInputs = statsGetDateInputs();
+      if (dateInputs.from) { statsSetInputValue(dateInputs.from, range.from); }
+      if (dateInputs.to) { statsSetInputValue(dateInputs.to, range.to); }
+
+      var typeSel = document.getElementById('type');
+      if (typeSel) { statsSetSelectValue(typeSel, typeValue); }
+
+      await sleep(150);
+
+      var infoElBefore = statsGetInfoEl();
+      var prevInfoText = infoElBefore ? infoElBefore.textContent.trim() : '';
+
+      if (btn) { btn.textContent = '⏳ يبحث عن "' + label + '"...'; }
+      var searchBtn = statsFindSearchBtn();
+      if (!searchBtn) { return { count: 0, breakdown: {} }; }
+      searchBtn.click();
+
+      await statsWaitSearchComplete(prevInfoText, 25000);
+
+      var breakdown = await statsCollectBreakdownAllPages(btn, label);
+      var totalCount = statsGetTotalCount();
+      if (totalCount == null) {
+        totalCount = Object.keys(breakdown).reduce(function (s, k) { return s + breakdown[k].count; }, 0);
+      }
+      return { count: totalCount || 0, breakdown: breakdown || {} };
+    }
+
+    function statsOpenSummaryDialog(range, receivedRes, notReceivedRes) {
+      if (document.getElementById('ws-stats-overlay')) { document.getElementById('ws-stats-overlay').remove(); }
+
+      var receivedBreakdown = receivedRes.breakdown || {};
+      var notReceivedBreakdown = notReceivedRes.breakdown || {};
+      // ✅ تدقيق (مراجعة v4.3.7): الفئات المعروضة بجدول التفصيل تُبنى
+      // من "المستلمة" فقط (نفس عنوان الجدول)، وليس اتحاد الفئات مع
+      // "غير مستلمة" — تفادياً لعرض صف فارغ (كل قيمه صفر) لفئة موجودة
+      // فقط بغير المستلمة وما لها أي طلب مستلم فعلياً
+      var tiers = Object.keys(receivedBreakdown).map(Number).sort(function (a, b) { return b - a; });
+      var totalWage = statsSumWage(receivedBreakdown);
+
+      var overlay = document.createElement('div'); overlay.id = 'ws-stats-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000002;display:flex;align-items:center;justify-content:center;direction:rtl;';
+      var panel = document.createElement('div');
+      panel.style.cssText = 'background:#fff;border-radius:10px;padding:18px 20px;width:400px;max-height:90vh;overflow:auto;box-shadow:0 6px 28px rgba(0,0,0,.4);font-family:Tahoma,Arial,sans-serif;';
+
+      var hdr = document.createElement('div'); hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;';
+      var hdrTitle = document.createElement('h3'); hdrTitle.textContent = '💰 إحصائية الشهر الكامل'; hdrTitle.style.cssText = 'margin:0;font-size:15px;color:#222;';
+      var closeX = document.createElement('button'); closeX.type = 'button'; closeX.textContent = '✕'; closeX.style.cssText = 'background:none;border:none;font-size:18px;cursor:pointer;color:#888;padding:0;line-height:1;';
+      closeX.addEventListener('click', function () { overlay.remove(); });
+      hdr.appendChild(hdrTitle); hdr.appendChild(closeX); panel.appendChild(hdr);
+
+      var monthLbl = document.createElement('div'); monthLbl.textContent = '📅 ' + range.label + ' (' + range.from + ' → ' + range.to + ')';
+      monthLbl.style.cssText = 'font-size:12px;color:#555;margin-bottom:10px;'; panel.appendChild(monthLbl);
+
+      if (!tiers.length) {
+        var emptyNote = document.createElement('div');
+        emptyNote.style.cssText = 'text-align:center;color:#999;padding:14px 0;font-size:12px;';
+        emptyNote.textContent = 'لا توجد سجلات فروقات أجور بهذا النطاق.';
+        panel.appendChild(emptyNote);
+      } else {
+        var catTitle = document.createElement('div'); catTitle.textContent = '✅ تفصيل الفئات — الطلبات المستلمة'; catTitle.style.cssText = 'font-size:12.5px;font-weight:bold;color:#1a8a3a;margin:8px 0 6px;'; panel.appendChild(catTitle);
+
+        var tbl = document.createElement('table'); tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:10px;';
+        var thead = document.createElement('thead');
+        var hRow = document.createElement('tr'); hRow.style.cssText = 'background:#f0f0f0;';
+        ['الفئة', 'عادي', 'VIP', 'العدد', 'سعر/طلب', 'الأجر'].forEach(function (h) {
+          var th = document.createElement('th'); th.textContent = h; th.style.cssText = 'padding:5px 4px;text-align:center;border:1px solid #ddd;color:#444;font-size:10.5px;'; hRow.appendChild(th);
+        });
+        thead.appendChild(hRow); tbl.appendChild(thead);
+        var tbodyEl = document.createElement('tbody');
+        var hasUnratedTier = false;
+        tiers.forEach(function (fee) {
+          var r = receivedBreakdown[fee] || { count: 0, sum: 0, vip: 0, normal: 0 };
+          var rate = statsWalletRateFor(fee);
+          if (rate === 0 && r.count > 0) { hasUnratedTier = true; }
+          var wage = r.count * rate;
+          var tr = document.createElement('tr');
+          [formatNum(fee), r.normal, r.vip, r.count, formatNum(rate), formatNum(wage) + ' د'].forEach(function (val, i) {
+            var td = document.createElement('td'); td.textContent = val;
+            td.style.cssText = 'padding:5px 4px;border:1px solid #eee;text-align:center;font-size:11px;color:' + (i === 5 ? '#1a8a3a' : '#333') + ';font-weight:' + (i === 5 ? 'bold' : 'normal') + ';';
+            tr.appendChild(td);
+          });
+          tbodyEl.appendChild(tr);
+        });
+        tbl.appendChild(tbodyEl); panel.appendChild(tbl);
+        if (hasUnratedTier) {
+          var unratedNote = document.createElement('div');
+          unratedNote.style.cssText = 'font-size:10.5px;color:#c2410c;background:#fff7ed;border-radius:6px;padding:6px 8px;margin-bottom:8px;line-height:1.6;';
+          unratedNote.textContent = '⚠️ فيه فئة/فئات بدون سعر أجر مُعرّف بالإعدادات (⚙️ ← 💰 إعدادات المحفظة الشهرية) — أجرها احتُسب صفر مؤقتاً.';
+          panel.appendChild(unratedNote);
+        }
+      }
+
+      var totalBox = document.createElement('div');
+      totalBox.style.cssText = 'background:#e8f5e9;border:2px solid #1a8a3a;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
+      var tlbl = document.createElement('span'); tlbl.textContent = '💵 إجمالي الأجر (المستلمة فقط)'; tlbl.style.cssText = 'font-size:12px;color:#333;font-weight:bold;';
+      var tval = document.createElement('span'); tval.textContent = formatNum(totalWage) + ' دينار'; tval.style.cssText = 'font-size:19px;font-weight:bold;color:#1a8a3a;';
+      totalBox.appendChild(tlbl); totalBox.appendChild(tval); panel.appendChild(totalBox);
+
+      var notRecCount = notReceivedRes.count || 0;
+      var notRecBox = document.createElement('div');
+      notRecBox.style.cssText = 'background:#fdecea;border:1.5px solid #c0392b;border-radius:8px;padding:9px 14px;text-align:center;margin-bottom:12px;font-size:12px;color:#c0392b;';
+      notRecBox.textContent = '❌ غير مستلمة: ' + notRecCount + ' سجل (لا تُحتسب بالأجر)';
+      panel.appendChild(notRecBox);
+
+      var copyReportBtn = document.createElement('button'); copyReportBtn.type = 'button'; copyReportBtn.textContent = '📋 نسخ التقرير (نفس قالب أجور التوصيل)';
+      copyReportBtn.style.cssText = 'width:100%;background:#28a745;color:#fff;border:none;border-radius:6px;padding:9px;cursor:pointer;font-size:12.5px;font-weight:bold;margin-bottom:6px;';
+      copyReportBtn.addEventListener('click', function () {
+        var f = function (n) { return n > 0 ? n : ''; };
+        var g = function (fee, key) { return receivedBreakdown[fee] ? receivedBreakdown[fee][key] : 0; };
+        var empEl = document.querySelector('span.user-name'); var empName = empEl ? empEl.textContent.trim() : 'غير معروف';
+        var tpl = (wsSettings.reportTemplate && wsSettings.reportTemplate.trim()) ? wsSettings.reportTemplate : DEFAULT_REPORT_TEMPLATE;
+        var reportText = renderTemplate(tpl, {
+          station: wsSettings.stationName || 'المنصور', employee: empName, date: range.from + ' → ' + range.to, day: range.label,
+          normal5000: f(g(5000, 'normal')), normal4000: f(g(4000, 'normal')), normal3000: f(g(3000, 'normal')), normal2000: f(g(2000, 'normal')),
+          vip5000: f(g(5000, 'vip')), vip4000: f(g(4000, 'vip')), vip3000: f(g(3000, 'vip')), vip2000: f(g(2000, 'vip')),
+          total5000: f(g(5000, 'count')), total4000: f(g(4000, 'count')), total3000: f(g(3000, 'count')), total2000: f(g(2000, 'count'))
+        });
+        var extraTiers = tiers.filter(function (t) { return STATS_KNOWN_TIERS.indexOf(t) === -1; });
+        if (extraTiers.length) {
+          reportText += '\n\nفئات إضافية غير مدرجة بالقالب الأساسي (بلا سعر أجر مُعرّف):\n' + extraTiers.map(function (t) {
+            var r = receivedBreakdown[t]; return formatNum(t) + ': ' + (r ? r.count : 0) + ' سجل';
+          }).join('\n');
+        }
+        reportText += '\n\nإجمالي الأجر: ' + formatNum(totalWage) + ' دينار';
+        copyText(reportText);
+        var orig = copyReportBtn.textContent; copyReportBtn.textContent = '✅ تم النسخ'; setTimeout(function () { copyReportBtn.textContent = orig; }, 1600);
+      });
+      panel.appendChild(copyReportBtn);
+
+      var closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.textContent = 'إغلاق'; closeBtn.style.cssText = 'width:100%;background:#888;color:#fff;border:none;border-radius:6px;padding:9px;cursor:pointer;font-size:13px;';
+      closeBtn.addEventListener('click', function () { overlay.remove(); });
+      panel.appendChild(closeBtn);
+
+      overlay.appendChild(panel);
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) { overlay.remove(); } });
+      document.body.appendChild(overlay);
+    }
+
+    async function runMonthStats(btn) {
+      var orig = btn.textContent;
+      try {
+        btn.disabled = true;
+        var range = statsMonthRange();
+
+        var typeSelCheck = document.getElementById('type');
+        if (!typeSelCheck) { alert('تعذّر إيجاد قائمة "نوع السجل" بالصفحة.'); return; }
+
+        var receivedRes = await statsSearchByType('1', range, btn, 'مستلمة');
+        var notReceivedRes = await statsSearchByType('2', range, btn, 'غير مستلمة');
+
+        statsOpenSummaryDialog(range, receivedRes, notReceivedRes);
+      } catch (e) {
+        alert('حدث خطأ أثناء جمع الإحصائية:\n' + (e && e.message ? e.message : e));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+      }
+    }
+
+    // زر واحد فقط بهذه الصفحة يقوم بكل العملية — لا يوجد أي زر إضافي
+    // (مثل "نسخ القيد" أو "نسخ التقرير" القديم) على هذه الصفحة تحديداً
+    function statsAddBtn() {
+      if (document.getElementById('ws-stats-btn')) { return; }
+      var oldReportBtn = document.getElementById('ws-report-btn');
+      if (oldReportBtn) { oldReportBtn.remove(); }
+
+      var btn = document.createElement('button');
+      btn.id = 'ws-stats-btn';
+      btn.type = 'button';
+      btn.textContent = '💰 إحصائية الشهر الكامل';
+      btn.setAttribute('data-ws-btn', 'month-stats');
+      btn.style.cssText = 'background:#e67e22;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:13px;margin:0 4px;white-space:nowrap;font-weight:bold;';
+      btn.addEventListener('click', function () { runMonthStats(btn); });
+
+      var oldWalletBtn = document.getElementById('ws-wallet-btn');
+      if (oldWalletBtn) { oldWalletBtn.replaceWith(btn); return; }
+
+      var inp = document.querySelector('input[placeholder*="بحث"],input[placeholder*="ابحث"]') || Array.from(document.querySelectorAll('input')).find(function (i) {
+        var p = i.parentElement, d = 0;
+        while (p && d < 3) { if (p.textContent.indexOf('بحث') !== -1) { return true; } p = p.parentElement; d++; }
+        return false;
+      });
+      if (inp && inp.parentElement) { inp.parentElement.insertBefore(btn, inp); }
+      else { btn.style.cssText += 'position:fixed;top:10px;left:10px;z-index:99999;'; document.body.appendChild(btn); }
+    }
+
+    onReady(function () { setTimeout(function () { observeAndRun(statsAddBtn, 500); }, 900); });
+  }
+
   // ── editOrder ──
   if(PAGE.indexOf('/cs/editOrder')!==-1){var editParams=new URLSearchParams(location.search),editNum=editParams.get('ws_order');if(editNum){onReady(function(){waitFor('#search',function(inp){inp.value=editNum;inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));inp.focus();setTimeout(function(){var searchBtn=document.querySelector('#btn-text')||document.querySelector('button[type="submit"]')||document.querySelector('form button')||document.querySelector('input[type="submit"]');if(searchBtn){searchBtn.click();}},500);});});}}
 
@@ -1559,6 +3231,122 @@
   // ── view_search ──
   if(PAGE.indexOf('/cs/view_search')!==-1){var phoneSearchParams=new URLSearchParams(location.search),phoneSearchNum=phoneSearchParams.get('ws_phone'),phoneSearchType=phoneSearchParams.get('ws_search_type')||'2';if(phoneSearchNum){onReady(function(){waitFor('#search-type',function(sel){sel.value=phoneSearchType;sel.dispatchEvent(new Event('input',{bubbles:true}));sel.dispatchEvent(new Event('change',{bubbles:true}));waitFor('#order_id',function(inp){inp.value=phoneSearchNum;inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));inp.focus();setTimeout(function(){var btn=document.querySelector('#myBtn');if(btn){btn.click();}},400);});});});}}
 
+  // ══════════════════════════════════════════════════════════════
+  //  ⑦ صفحة "تقارير المدن" — زر كليشة أعلى المناديب واصلةً
+  //  (v4.3.0): بجانب زر البحث، عند الضغط يبني كليشة جاهزة للنسخ:
+  //  3 مراكز، كل مركز 3 أسماء (أعلى 9 مناديب حسب عمود "الواصلة")
+  // ══════════════════════════════════════════════════════════════
+  if (PAGE.indexOf('/cs/city/reports') !== -1) {
+    function getReportsTable() {
+      return document.querySelector('#example') || document.querySelector('table');
+    }
+    // يحدد رقم عمود "اسم المندوب" وعمود "الواصلة" ديناميكياً من رؤوس
+    // الجدول (بدل تثبيت رقم العمود) حتى يستمر يعمل لو تغيّر ترتيب الأعمدة
+    function getReportsColIndexes(table) {
+      var ths = table.querySelectorAll('thead th'), nameIdx = -1, waselIdx = -1;
+      ths.forEach(function (th, i) {
+        var t = th.textContent.trim();
+        if (nameIdx === -1 && t.indexOf('اسم المندوب') !== -1) { nameIdx = i; }
+        if (t.indexOf('الواصل') !== -1) { waselIdx = i; }
+      });
+      return { nameIdx: nameIdx, waselIdx: waselIdx };
+    }
+    // يستخرج الجزء العربي فقط من اسم المندوب (يحذف أي كلمات/حروف
+    // إنكليزية أو رموز مثل "MAN_C"، "P_"...الخ ويُبقي الاسم العربي فقط)
+    function extractArabicName(raw) {
+      var text = String(raw || '').replace(/[٠-٩۰-۹]/g, ' ').trim();
+      var arabicRuns = text.match(/[\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)*/g);
+      if (!arabicRuns || !arabicRuns.length) { return text.trim(); }
+      return arabicRuns.join(' ').replace(/\s+/g, ' ').trim();
+    }
+    function collectReportsRows() {
+      var table = getReportsTable();
+      if (!table) { return []; }
+      var idx = getReportsColIndexes(table);
+      if (idx.nameIdx === -1 || idx.waselIdx === -1) { return []; }
+      var out = [];
+      table.querySelectorAll('tbody tr').forEach(function (tr) {
+        var cells = tr.children;
+        if (!cells || cells.length <= Math.max(idx.nameIdx, idx.waselIdx)) { return; }
+        var rawName = (cells[idx.nameIdx].textContent || '').trim();
+        var name = extractArabicName(rawName);
+        var waselTxt = (cells[idx.waselIdx].textContent || '').trim();
+        var wasel = parseInt(waselTxt.replace(/[^\d\-]/g, ''), 10);
+        if (!name || isNaN(wasel)) { return; }
+        out.push({ name: name, wasel: wasel });
+      });
+      return out;
+    }
+    // يبني نص الكليشة: 3 مراكز، كل مركز 3 أسماء (الاسم العربي فقط)،
+    // مرتّبة تنازلياً حسب "الواصلة" (أعلى 9 مناديب مقسّمين لثلاث مجموعات)
+    // مع تنسيق واضح: أسماء غامقة (*الاسم* — تنسيق واتساب) وسمايلات
+    // تعبّر عن السرعة تميّز كل مركز عن الآخر
+    var TOP_WASEL_RANKS = [
+      { medal: '🥇', title: 'المركز الأول', speed: '🚀' },
+      { medal: '🥈', title: 'المركز الثاني', speed: '🏍️' },
+      { medal: '🥉', title: 'المركز الثالث', speed: '⚡' }
+    ];
+    function buildTopWaselCliche() {
+      var rows = collectReportsRows();
+      if (!rows.length) { return ''; }
+      rows.sort(function (a, b) { return b.wasel - a.wasel; });
+      var top9 = rows.slice(0, 9);
+      var lines = ['🏁 *الأعلى سرعة بالتوصيل* 🏁', '━━━━━━━━━━━━━━━'];
+      var any = false;
+      for (var g = 0; g < TOP_WASEL_RANKS.length; g++) {
+        var group = top9.slice(g * 3, g * 3 + 3);
+        if (!group.length) { break; }
+        any = true;
+        var r = TOP_WASEL_RANKS[g];
+        lines.push('');
+        lines.push(r.medal + ' *' + r.title + '* ' + r.speed);
+        group.forEach(function (item, i) {
+          lines.push(r.speed + ' ' + (i + 1) + '. *' + item.name + '* ➜ ' + item.wasel);
+        });
+      }
+      if (!any) { return ''; }
+      lines.push('');
+      lines.push('━━━━━━━━━━━━━━━');
+      return lines.join('\n');
+    }
+    function findReportsSearchInput() {
+      var dtInput = document.querySelector('.dataTables_filter input');
+      if (dtInput) { return dtInput; }
+      return Array.from(document.querySelectorAll('input')).find(function (i) {
+        var p = i.parentElement, d = 0;
+        while (p && d < 3) { if (p.textContent.indexOf('بحث') !== -1) { return true; } p = p.parentElement; d++; }
+        return false;
+      });
+    }
+    function addTopWaselBtn() {
+      if (document.getElementById('ws-top-wasel-btn')) { return; }
+      var table = getReportsTable();
+      if (!table || !table.querySelector('tbody tr')) { return; }
+      var btn = document.createElement('button');
+      btn.id = 'ws-top-wasel-btn';
+      btn.type = 'button';
+      btn.textContent = '🏆 كليشة الأعلى واصلة';
+      btn.setAttribute('data-ws-btn', 'top-wasel');
+      btn.style.cssText = 'background:#2e5bff;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:13px;margin:0 6px;white-space:nowrap;';
+      btn.addEventListener('click', function () {
+        var text = buildTopWaselCliche();
+        if (!text) { alert('تعذر إيجاد بيانات الجدول لبناء الكليشة.'); return; }
+        copyText(text);
+        var orig = btn.textContent;
+        btn.textContent = '✅ تم النسخ';
+        setTimeout(function () { btn.textContent = orig; }, 1400);
+      });
+      var inp = findReportsSearchInput();
+      if (inp && inp.parentElement) {
+        inp.parentElement.insertBefore(btn, inp);
+      } else {
+        btn.style.cssText += 'position:fixed;top:10px;left:10px;z-index:99999;';
+        document.body.appendChild(btn);
+      }
+    }
+    onReady(function () { setTimeout(function () { observeAndRun(addTopWaselBtn, 400); }, 900); });
+  }
+
 })();
 
 // ══════════════════════════════════════════════════════════════
@@ -1568,11 +3356,12 @@
 (function () {
     'use strict';
 
-    // ✅ الدمج: هذا الجزء خاص بصفحة "قيد التوصيل" فقط
-    if (location.href.indexOf('/cs/delivering-orders') === -1) return;
-
-    // ✅ إصلاح: منع ظهور لوحتين عند التحميل المزدوج
-    if (document.getElementById('dm-panel')) return;
+    // 🛡️ بوابة تحكم المدير: إيقاف كامل للسكربت، أو إيقاف "مراقب التوصيل"
+    // تحديداً لهذا الموظف، يمنع تشغيل هذا الجزء بالكامل.
+    if (typeof window !== 'undefined' && window.WSAdmin &&
+        (!window.WSAdmin.isEnabledForMe() || !window.WSAdmin.isDeliveryMonitorEnabledForMe())) {
+        return;
+    }
 
     const _hasGM = {
         get:    typeof GM_getValue     === 'function',
@@ -1686,6 +3475,210 @@
         return String(val) === 'true';
     }
     function gmSetBool(key, val) { gmSet(key, val ? 'true' : 'false'); }
+
+    // ══════════════════════════════════════════════════════════════
+    //  📡 المراقب الخلفي (4.1.5): يعمل بدون الحاجة لفتح صفحة "قيد
+    //  التوصيل" — أي تبويب مفتوح على موقع الوسيط (على أي صفحة) يجلب
+    //  محتوى صفحة قيد التوصيل عبر الشبكة كل بضع دقائق، ويحسب نفس
+    //  حسابات اللوحة الحيّة بالضبط (نفس مفاتيح التخزين، نفس منطق
+    //  التوقف/الموعد النهائي)، فتبقى الإعدادات والأرقام محفوظة سواء
+    //  فُتحت اللوحة يدوياً أو لا.
+    // ══════════════════════════════════════════════════════════════
+    const DELIVERING_ORDERS_PATH = '/cs/delivering-orders';
+    const BG_POLL_MIN_KEY   = 'dm_bg_poll_minutes';
+    const BG_LOCK_KEY       = 'dm_bg_lock_ts';
+    const LIVE_HEARTBEAT_KEY = 'dm_live_heartbeat_ts';
+    const LIVE_HEARTBEAT_FRESH_MS = 60 * 1000; // إذا فيه تبويب حيّ يفحص فعلياً خلال آخر دقيقة، الخلفي يتنحّى له
+
+    function groupCellOf(row) {
+        let cell = row.querySelector('td[colspan]');
+        if (cell) return cell;
+        if (/(^|\s)(group|dtrg)/.test(row.className || '')) return row.querySelector('td');
+        return null;
+    }
+    function extractNameFromRow(row) {
+        const cell = groupCellOf(row);
+        if (!cell) return null;
+        const text = cell.textContent.replace(/[٠-٩۰-۹]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!text || text.length < 2) return null;
+        const arabicRuns = text.match(/[\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)*/g);
+        if (!arabicRuns || arabicRuns.length === 0) return null;
+        const cleanName = arabicRuns.join(' ').replace(/\s+/g, ' ').trim();
+        return cleanName.length >= 2 ? cleanName : null;
+    }
+    function extractCountFromRow(row) {
+        const cell = groupCellOf(row);
+        if (!cell) return null;
+        const text = cell.textContent.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+        const match = text.match(/\((\d+)\)/);
+        return match ? parseInt(match[1]) : null;
+    }
+    function getRowsFromRoot(root) {
+        const rowSet = new Set();
+        root.querySelectorAll('table tbody tr').forEach(tr => { if (!tr.closest('#dm-panel')) rowSet.add(tr); });
+        if (rowSet.size === 0) root.querySelectorAll('tbody tr').forEach(tr => { if (!tr.closest('#dm-panel')) rowSet.add(tr); });
+        return Array.from(rowSet);
+    }
+
+    // ✅ نفس حساب اللوحة الحيّة تماماً (مرآة مطابقة لمنطق runCheck داخل الكلاس)
+    // يُطبَّق هنا على الحالة المحفوظة عبر GM مباشرة، بدون الحاجة للوحة مفتوحة
+    function processBackgroundRows(rows) {
+        let raw = gmGet(STORAGE_KEYS.STATE, null);
+        let state;
+        try { state = raw ? JSON.parse(raw) : null; } catch (e) { state = null; }
+        if (!state || typeof state !== 'object') state = { dateKey: todayKey(), mandoubs: {} };
+        if (state.dateKey !== todayKey()) {
+            // بداية يوم جديد: لا نؤرشف من هنا (تفادياً لتضارب الأرشفة مع اللوحة)؛ فقط نبدأ حالة نظيفة لليوم الجديد
+            state = { dateKey: todayKey(), mandoubs: {} };
+        }
+        if (!state.mandoubs) state.mandoubs = {};
+
+        const thresholdMinutes = parseInt(gmGet(STORAGE_KEYS.THRESHOLD_MIN, '10'), 10) || 10;
+        const deadlineHour     = parseInt(gmGet(STORAGE_KEYS.DEADLINE_HOUR, '18'), 10) || 18;
+        const preDeadlineWarn  = gmGetBool(STORAGE_KEYS.PRE_DEADLINE_WARN, true);
+
+        const now         = Date.now();
+        const thresholdMs = thresholdMinutes * 60 * 1000;
+        const seenNames    = new Set();
+        const newlyStopped = [];
+        let matchedCount   = 0;
+
+        rows.forEach(row => {
+            const name = extractNameFromRow(row);
+            if (!name) return;
+            const count = extractCountFromRow(row);
+            if (count === null) return;
+            matchedCount++;
+            seenNames.add(name);
+
+            let m = state.mandoubs[name];
+            if (!m) {
+                state.mandoubs[name] = {
+                    first: count, current: count,
+                    lastProgressTs: now, firstSeenTs: now, lastUpdateTs: now,
+                    notified: false, deadlineNotified: false, preDeadlineNotified: false,
+                    present: true, stopCount: 0, stalledAt: null, missedChecks: 0
+                };
+                return;
+            }
+            const wasAbsent = !m.present;
+            m.missedChecks = 0;
+            m.lastUpdateTs = now;
+            m.present = true;
+            if (wasAbsent) { m.deadlineNotified = false; m.preDeadlineNotified = false; }
+
+            if (count < m.current) {
+                m.current = count;
+                m.lastProgressTs = now;
+                if (m.notified) { m.notified = false; m.stalledAt = null; m.recoveredUntil = now + RECOVERY_DISPLAY_MS; }
+            } else if (count > m.current) {
+                m.current = count;
+            } else {
+                const elapsed = now - m.lastProgressTs;
+                if (elapsed >= thresholdMs && !m.notified) {
+                    m.notified = true;
+                    m.stalledAt = m.current;
+                    m.stopCount = (m.stopCount || 0) + 1;
+                    newlyStopped.push({ name, minutes: Math.round(elapsed / 60000) });
+                }
+            }
+        });
+
+        if (matchedCount === 0) {
+            console.warn('[Delivery Monitor BG] ' + rows.length + ' صف بالجدول لكن لم يتم التعرف على أي مندوب — تُرك الفحص بدون حفظ لتفادي طمس بيانات صحيحة سابقة.');
+            return;
+        }
+
+        const knownPresent = Object.values(state.mandoubs).filter(x => x.present).length;
+        const partialRead  = knownPresent >= 4 && matchedCount < knownPresent / 2;
+        if (!partialRead) {
+            Object.keys(state.mandoubs).forEach(name => {
+                const m = state.mandoubs[name];
+                if (seenNames.has(name)) return;
+                if (!m.present) return;
+                m.missedChecks = (m.missedChecks || 0) + 1;
+                if (m.missedChecks >= MISSED_CHECKS_BEFORE_DONE) { m.present = false; m.missedChecks = 0; }
+            });
+        }
+
+        newlyStopped.forEach(s => {
+            gmNotify({ title: `⚠️ المندوب ${s.name} متوقف`, text: `لم يتغيّر عدد طلباته منذ ${s.minutes} دقيقة (فحص خلفي بدون فتح الصفحة)`, timeout: 8000, onclick: () => window.focus() });
+        });
+
+        const d = new Date(now);
+        const deadlineTs = new Date(d.getFullYear(), d.getMonth(), d.getDate(), deadlineHour, 0, 0, 0).getTime();
+        const preWarnTs  = deadlineTs - 30 * 60 * 1000;
+        Object.entries(state.mandoubs).forEach(([name, m]) => {
+            if (!m.present || m.current === 0) {
+                m.deadlineNotified = true; m.preDeadlineNotified = true; return;
+            }
+            if (preDeadlineWarn && now >= preWarnTs && now < deadlineTs && !m.preDeadlineNotified) {
+                m.preDeadlineNotified = true;
+                gmNotify({ title: `⏳ ${name} — 30 دقيقة للموعد النهائي`, text: `الساعة ${deadlineHour}:00 تقترب وما زال لديه ${m.current} طلب (فحص خلفي)`, timeout: 8000, onclick: () => window.focus() });
+            }
+            if (now >= deadlineTs && !m.deadlineNotified) {
+                m.deadlineNotified = true;
+                gmNotify({ title: `⏰ ${name} تجاوز الموعد النهائي`, text: `الساعة ${deadlineHour}:00 وصلت وما زال لديه ${m.current} طلب (فحص خلفي)`, timeout: 8000, onclick: () => window.focus() });
+            }
+        });
+
+        gmSet(STORAGE_KEYS.STATE, JSON.stringify(state));
+        console.log(`[Delivery Monitor BG] ✅ فحص خلفي — ${matchedCount} مندوب من ${rows.length} صف، ${newlyStopped.length} متوقف جديد`);
+    }
+
+    function runBackgroundDeliveryCheck() {
+        if (typeof GM_xmlhttpRequest === 'undefined') return; // بيئة بدون صلاحية الجلب عبر GM — لا يمكن العمل بالخلفية
+        if (!gmGetBool(STORAGE_KEYS.STOP_CHECK_ON, true)) return; // المراقب موقوف كلياً من الإعدادات الرئيسية
+
+        // إذا فيه تبويب حيّ يراقب صفحة "قيد التوصيل" فعلياً الآن (نبض حديث)، نتنحّى له تفادياً لازدواج الفحص
+        const heartbeat = parseInt(gmGet(LIVE_HEARTBEAT_KEY, '0'), 10) || 0;
+        if (Date.now() - heartbeat < LIVE_HEARTBEAT_FRESH_MS) return;
+
+        // قفل بسيط بين التبويبات: تبويب واحد بس يقوم فعلياً بالجلب بكل دورة، الباقي يتجاهل
+        const pollMinutes = parseInt(gmGet(BG_POLL_MIN_KEY, '5'), 10) || 5;
+        const pollMs = Math.max(2, pollMinutes) * 60 * 1000;
+        const lockTs = parseInt(gmGet(BG_LOCK_KEY, '0'), 10) || 0;
+        if (Date.now() - lockTs < pollMs - 5000) return;
+        gmSet(BG_LOCK_KEY, String(Date.now()));
+
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: location.origin + DELIVERING_ORDERS_PATH,
+            onload: function (res) {
+                try {
+                    const doc  = new DOMParser().parseFromString(res.responseText, 'text/html');
+                    const rows = getRowsFromRoot(doc);
+                    if (!rows.length) {
+                        console.warn('[Delivery Monitor BG] لم يتم العثور على صفوف بالصفحة المجلوبة — تأكد من تسجيل الدخول، أو قد يكون شكل الصفحة تغيّر.');
+                        return;
+                    }
+                    processBackgroundRows(rows);
+                } catch (e) {
+                    console.error('[Delivery Monitor BG] خطأ أثناء تحليل الصفحة المجلوبة:', e);
+                }
+            },
+            onerror: function () {
+                console.warn('[Delivery Monitor BG] فشل الجلب الخلفي لصفحة "قيد التوصيل" (شبكة/جلسة).');
+            }
+        });
+    }
+
+    function startBackgroundPoller() {
+        // فحص أول بعد فارق زمني عشوائي قصير — يمنع تدافع كل التبويبات المفتوحة بنفس اللحظة
+        setTimeout(runBackgroundDeliveryCheck, 4000 + Math.floor(Math.random() * 4000));
+        // نتحقق كل دقيقة إن كان قد حان دور الفحص الفعلي؛ الفاصل الحقيقي بين عمليات الجلب يحدده القفل + الإعداد بالأعلى
+        setInterval(runBackgroundDeliveryCheck, 60 * 1000);
+    }
+
+    // ✅ الدمج: بناء اللوحة الكاملة فقط بصفحة "قيد التوصيل"؛ أي صفحة أخرى
+    // على موقع الوسيط تكتفي بتشغيل المراقب الخلفي أعلاه بدون أي واجهة
+    if (location.href.indexOf(DELIVERING_ORDERS_PATH) === -1) {
+        startBackgroundPoller();
+        return;
+    }
+
+    // ✅ إصلاح: منع ظهور لوحتين عند التحميل المزدوج
+    if (document.getElementById('dm-panel')) return;
 
     class DeliveryMonitor {
         constructor() {
@@ -1964,6 +3957,7 @@
             this.checkDeadline(now);
 
             this.lastCheckTs = now;
+            gmSet(LIVE_HEARTBEAT_KEY, String(now)); // ✅ (4.1.5): إعلام أي مراقب خلفي بوجود تبويب حي يفحص فعلياً الآن
             this.persistState();
             this.renderTable();
             this.updateStatsUI();
