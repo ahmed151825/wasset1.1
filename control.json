@@ -1,1 +1,26 @@
-
+{
+  "globalEnabled": true,
+  "updatedAt": "2026-08-26T08:45:55.135Z",
+  "employees": {
+    "باقر صلاح": {
+      "enabled": true,
+      "overrides": {
+        "showStory": true,
+        "showFees": true,
+        "showEdit": true,
+        "showWsMerchant": true,
+        "showWsCustomer": true,
+        "showSms": true,
+        "showPhoneSearch": true,
+        "showDelayCheck": true,
+        "showCopyReport": true,
+        "showCopyReps": true,
+        "showRepRating": true,
+        "showDeferred": true,
+        "showReceivedCounter": false,
+        "smartDecisionEnabled": true,
+        "deliveryMonitorEnabled": true
+      }
+    }
+  }
+}
