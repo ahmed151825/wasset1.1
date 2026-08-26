@@ -1,6 +1,6 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-08-26T10:53:59.357Z",
+  "updatedAt": "2026-08-26T10:54:06.821Z",
   "employees": {
     "باقر صلاح علي": {
       "enabled": true,
@@ -45,21 +45,21 @@
     "سلام معين عبدالامير": {
       "enabled": true,
       "overrides": {
-        "showStory": true,
-        "showFees": true,
-        "showEdit": true,
-        "showWsMerchant": true,
-        "showWsCustomer": true,
-        "showSms": true,
-        "showPhoneSearch": true,
-        "showDelayCheck": true,
-        "showCopyReport": true,
-        "showCopyReps": true,
-        "showRepRating": true,
-        "showDeferred": true,
-        "showReceivedCounter": true,
-        "smartDecisionEnabled": true,
-        "deliveryMonitorEnabled": true
+        "showStory": false,
+        "showFees": false,
+        "showEdit": false,
+        "showWsMerchant": false,
+        "showWsCustomer": false,
+        "showSms": false,
+        "showPhoneSearch": false,
+        "showDelayCheck": false,
+        "showCopyReport": false,
+        "showCopyReps": false,
+        "showRepRating": false,
+        "showDeferred": false,
+        "showReceivedCounter": false,
+        "smartDecisionEnabled": false,
+        "deliveryMonitorEnabled": false
       }
     }
   }
