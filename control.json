@@ -1,6 +1,6 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-08-26T08:45:55.135Z",
+  "updatedAt": "2026-08-26T08:50:01.100Z",
   "employees": {
     "باقر صلاح": {
       "enabled": true,
@@ -18,6 +18,26 @@
         "showRepRating": true,
         "showDeferred": true,
         "showReceivedCounter": false,
+        "smartDecisionEnabled": true,
+        "deliveryMonitorEnabled": true
+      }
+    },
+    "احمد محمد كريم": {
+      "enabled": true,
+      "overrides": {
+        "showStory": false,
+        "showFees": true,
+        "showEdit": true,
+        "showWsMerchant": true,
+        "showWsCustomer": true,
+        "showSms": true,
+        "showPhoneSearch": true,
+        "showDelayCheck": true,
+        "showCopyReport": true,
+        "showCopyReps": true,
+        "showRepRating": true,
+        "showDeferred": true,
+        "showReceivedCounter": true,
         "smartDecisionEnabled": true,
         "deliveryMonitorEnabled": true
       }
