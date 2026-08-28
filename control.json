@@ -1,6 +1,6 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-08-27T09:59:37.514Z",
+  "updatedAt": "2026-08-28T15:52:21.244Z",
   "employees": {
     "عقيل مسلم علي": {
       "enabled": true,
@@ -24,6 +24,26 @@
     },
     "حسين علي صباح": {
       "enabled": true,
+      "overrides": {
+        "showStory": true,
+        "showFees": true,
+        "showEdit": true,
+        "showWsMerchant": true,
+        "showWsCustomer": true,
+        "showSms": true,
+        "showPhoneSearch": true,
+        "showDelayCheck": true,
+        "showCopyReport": true,
+        "showCopyReps": true,
+        "showRepRating": true,
+        "showDeferred": true,
+        "showReceivedCounter": true,
+        "smartDecisionEnabled": true,
+        "deliveryMonitorEnabled": true
+      }
+    },
+    "حيدر عدن عبدالحسن": {
+      "enabled": false,
       "overrides": {
         "showStory": true,
         "showFees": true,
