@@ -1,6 +1,6 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-08-28T16:02:34.882Z",
+  "updatedAt": "2026-08-28T16:04:59.358Z",
   "employees": {
     "عقيل مسلم علي": {
       "enabled": true,
@@ -63,7 +63,7 @@
       }
     },
     "عبدالله فارس جعفر": {
-      "enabled": false,
+      "enabled": true,
       "overrides": {
         "showStory": true,
         "showFees": true,
