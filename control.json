@@ -1,69 +1,9 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-08-28T16:04:59.358Z",
+  "updatedAt": "2026-09-02T11:58:26.858Z",
   "employees": {
-    "عقيل مسلم علي": {
-      "enabled": true,
-      "overrides": {
-        "showStory": true,
-        "showFees": true,
-        "showEdit": true,
-        "showWsMerchant": true,
-        "showWsCustomer": true,
-        "showSms": true,
-        "showPhoneSearch": true,
-        "showDelayCheck": true,
-        "showCopyReport": true,
-        "showCopyReps": true,
-        "showRepRating": true,
-        "showDeferred": true,
-        "showReceivedCounter": true,
-        "smartDecisionEnabled": true,
-        "deliveryMonitorEnabled": true
-      }
-    },
-    "حسين علي صباح": {
-      "enabled": true,
-      "overrides": {
-        "showStory": true,
-        "showFees": true,
-        "showEdit": true,
-        "showWsMerchant": true,
-        "showWsCustomer": true,
-        "showSms": true,
-        "showPhoneSearch": true,
-        "showDelayCheck": true,
-        "showCopyReport": true,
-        "showCopyReps": true,
-        "showRepRating": true,
-        "showDeferred": true,
-        "showReceivedCounter": true,
-        "smartDecisionEnabled": true,
-        "deliveryMonitorEnabled": true
-      }
-    },
-    "حيدر عدن عبدالحسن": {
-      "enabled": true,
-      "overrides": {
-        "showStory": true,
-        "showFees": true,
-        "showEdit": true,
-        "showWsMerchant": true,
-        "showWsCustomer": true,
-        "showSms": true,
-        "showPhoneSearch": true,
-        "showDelayCheck": true,
-        "showCopyReport": true,
-        "showCopyReps": true,
-        "showRepRating": true,
-        "showDeferred": true,
-        "showReceivedCounter": true,
-        "smartDecisionEnabled": true,
-        "deliveryMonitorEnabled": true
-      }
-    },
-    "عبدالله فارس جعفر": {
-      "enabled": true,
+    "سلام معين عبدالامير": {
+      "enabled": false,
       "overrides": {
         "showStory": true,
         "showFees": true,
