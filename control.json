@@ -1,9 +1,9 @@
 {
   "globalEnabled": true,
-  "updatedAt": "2026-09-02T11:58:26.858Z",
+  "updatedAt": "2026-09-02T12:04:12.093Z",
   "employees": {
     "سلام معين عبدالامير": {
-      "enabled": false,
+      "enabled": true,
       "overrides": {
         "showStory": true,
         "showFees": true,
