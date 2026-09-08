@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      5.0.0-settings-center
+// @version      5.0.1-settings-center-groq
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي + تحديد مواقع مجاني بالكامل (OpenStreetMap) + تقرير تيليجرام يومي صامت للمدير + مزامنة مركزية لقيدين لكل موظف (قيد التوصيل + البريد الكلي) عبر iframe مخفي، مع قراءة اسم مباشرة من DOM (لا ذاكرة مشتركة) وThrottle مستقل لكل حساب — يدعم الأجهزة التي يتناوب عليها أكثر من حساب دون تداخل + زر سحب وإرسال جماعي للكل أو فردي لموظف واحد إلى تيليجرام (للمدير فقط) + تسجيل تشخيصي كامل — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -18,7 +18,7 @@
 // @connect      api.github.com
 // @connect      frrbeujlravuzyzytpuh.supabase.co
 // @connect      alwaseet-iq.net
-// @connect      generativelanguage.googleapis.com
+// @connect      api.groq.com
 // @connect      nominatim.openstreetmap.org
 // @connect      api.telegram.org
 // @icon         data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">🚚</text></svg>
@@ -2572,12 +2572,12 @@
       }
     }, interval);
   }
-  var WS_AI_FIXED_API_KEY = "AQ.Ab8RN6LA6OqwsK_aUiJBR5ssZhU9QEI0oeSKI3UDN19gGtGK_Q";
+  var WS_AI_FIXED_API_KEY = "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";
   function wsAiConfigured() {
     return !!WS_AI_FIXED_API_KEY;
   }
-  var WS_AI_DEPRECATED_PATTERN = /no longer available|is not found for api version|update your code to use models\//i;
-  var WS_AI_FALLBACK_MODEL = "gemini-3.5-flash-lite";
+  var WS_AI_DEPRECATED_PATTERN = /no longer available|is not found for api version|update your code to use models\/|model_decommissioned|has been decommissioned/i;
+  var WS_AI_FALLBACK_MODEL = "openai/gpt-oss-20b";
   var WS_AI_RETRYABLE_CODES = [ 408, 429, 500, 502, 503, 504 ];
   var WS_AI_MAX_ATTEMPTS_PER_MODEL = 3;
   var WS_AI_BACKOFF_BASE_MS = 2e3;
@@ -2585,10 +2585,10 @@
     if (WS_AI_RETRYABLE_CODES.indexOf(httpCode) !== -1) {
       return true;
     }
-    if (errObj && (errObj.status === "UNAVAILABLE" || errObj.status === "RESOURCE_EXHAUSTED")) {
+    if (errObj && (errObj.type === "rate_limit_exceeded" || errObj.code === "rate_limit_exceeded" || errObj.type === "overloaded_error" || errObj.type === "server_error")) {
       return true;
     }
-    if (errObj && /overloaded|high demand|unavailable|resource has been exhausted/i.test(errObj.message || "")) {
+    if (errObj && /overloaded|high demand|unavailable|resource has been exhausted|rate limit/i.test(errObj.message || "")) {
       return true;
     }
     return false;
@@ -2607,35 +2607,38 @@
       cb("المتصفح/المدير لا يدعم GM_xmlhttpRequest.", null);
       return;
     }
-    var url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + encodeURIComponent(WS_AI_FIXED_API_KEY);
+    var url = "https://api.groq.com/openai/v1/models";
     GM_xmlhttpRequest({
       method: "GET",
       url: url,
+      headers: {
+        "Authorization": "Bearer " + WS_AI_FIXED_API_KEY
+      },
       timeout: 2e4,
       onload: function(res) {
         var json;
         try {
           json = JSON.parse(res.responseText);
         } catch (e) {
-          cb("رد غير مفهوم من Google عند جلب قائمة الموديلات.", null);
+          cb("رد غير مفهوم من Groq عند جلب قائمة الموديلات.", null);
           return;
         }
         if (json && json.error) {
           cb("تعذّر جلب قائمة الموديلات: " + (json.error.message || "غير معروف"), null);
           return;
         }
-        var list = (json && json.models ? json.models : []).filter(function(m) {
-          return m && m.supportedGenerationMethods && m.supportedGenerationMethods.indexOf("generateContent") !== -1;
+        var list = (json && json.data ? json.data : []).filter(function(m) {
+          return m && m.id && m.active !== false;
         }).map(function(m) {
           return {
-            name: (m.name || "").replace(/^models\//, ""),
-            displayName: m.displayName || (m.name || "").replace(/^models\//, "")
+            name: m.id,
+            displayName: m.id
           };
         });
         cb(null, list);
       },
       onerror: function() {
-        cb("تعذّر الاتصال بـ Google لجلب قائمة الموديلات (تحقق من الإنترنت).", null);
+        cb("تعذّر الاتصال بـ Groq لجلب قائمة الموديلات (تحقق من الإنترنت).", null);
       },
       ontimeout: function() {
         cb("انتهت مهلة جلب قائمة الموديلات.", null);
@@ -2847,41 +2850,35 @@
       cb("المتصفح/المدير لا يدعم GM_xmlhttpRequest.", null);
       return;
     }
-    var model = _state.usedFallback ? WS_AI_FALLBACK_MODEL : wsSettings.aiModel || "gemini-3.6-flash";
-    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(WS_AI_FIXED_API_KEY);
-    var contents = [];
+    var model = _state.usedFallback ? WS_AI_FALLBACK_MODEL : wsSettings.aiModel || "openai/gpt-oss-120b";
+    var url = "https://api.groq.com/openai/v1/chat/completions";
+    var messages = [];
+    if (opts.system) {
+      messages.push({
+        role: "system",
+        content: String(opts.system)
+      });
+    }
     if (opts.history && opts.history.length) {
       opts.history.forEach(function(turn) {
         if (!turn || !turn.content) {
           return;
         }
-        contents.push({
-          role: turn.role === "assistant" ? "model" : "user",
-          parts: [ {
-            text: String(turn.content)
-          } ]
+        messages.push({
+          role: turn.role === "assistant" ? "assistant" : "user",
+          content: String(turn.content)
         });
       });
     }
-    contents.push({
+    messages.push({
       role: "user",
-      parts: [ {
-        text: String(opts.prompt || "")
-      } ]
+      content: String(opts.prompt || "")
     });
     var body = {
-      contents: contents,
-      generationConfig: {
-        maxOutputTokens: opts.maxTokens || 600
-      }
+      model: model,
+      messages: messages,
+      max_completion_tokens: opts.maxTokens || 600
     };
-    if (opts.system) {
-      body.systemInstruction = {
-        parts: [ {
-          text: opts.system
-        } ]
-      };
-    }
     function finish(err, text, modelUsed) {
       if (_state.calledBack) {
         return;
@@ -2932,7 +2929,8 @@
       method: "POST",
       url: url,
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + WS_AI_FIXED_API_KEY
       },
       data: JSON.stringify(body),
       timeout: 3e4,
@@ -2950,7 +2948,7 @@
           return;
         }
         if (json && json.error) {
-          var code = json.error.code || res.status;
+          var code = res.status;
           if (wsAiIsRetryableError(code, json.error)) {
             retryOrFallback(code, json.error.message);
             return;
@@ -2962,17 +2960,10 @@
         var text = "";
         var truncated = false;
         try {
-          var cand = (json.candidates || [])[0];
-          var parts = cand && cand.content && cand.content.parts ? cand.content.parts : [];
-          parts.forEach(function(p) {
-            if (p.text) {
-              text += p.text;
-            }
-          });
-          if (cand && cand.finishReason === "MAX_TOKENS") {
-            if (!text) {
-              text = "";
-            } else {
+          var choice = (json.choices || [])[0];
+          text = choice && choice.message && choice.message.content ? String(choice.message.content) : "";
+          if (choice && choice.finish_reason === "length") {
+            if (text) {
               truncated = true;
             }
           }
@@ -2983,11 +2974,11 @@
         }
         if (WS_AI_DEPRECATED_PATTERN.test(text)) {
           wsAiLog(model, 200, "نهائي (موديل متوقف)", "deprecated model text pattern matched", "-");
-          finish("🤖 موديل AI الحالي (" + model + ') لم يعد مدعوماً من Google. افتح ⚙️ الإعدادات → قسم المساعد الذكي وحدّث اسم الموديل، أو اضغط "إعادة الكل للوضع الافتراضي".', null);
+          finish("🤖 موديل AI الحالي (" + model + ') لم يعد مدعوماً من Groq. افتح ⚙️ الإعدادات → قسم المساعد الذكي وحدّث اسم الموديل، أو اضغط "إعادة الكل للوضع الافتراضي".', null);
           return;
         }
         if (truncated) {
-          wsAiLog(model, 200, "نهائي (مقتطع MAX_TOKENS)", "response truncated at maxOutputTokens", "-");
+          wsAiLog(model, 200, "نهائي (مقتطع length)", "response truncated at max_completion_tokens", "-");
           text += '\n\n⚠️ (الجواب طويل وانقطع هنا — اكتب "أكمل" لإكمال الجواب)';
         }
         finish(null, text, model);
@@ -3126,7 +3117,7 @@
     showReceivedCounter: true,
     smartDecisionEnabled: false,
     aiApiKey: "",
-    aiModel: "gemini-3.6-flash",
+    aiModel: "openai/gpt-oss-120b",
     aiSmartNotesEnabled: false,
     showAiChat: false,
     aiLauncherPos: null,
@@ -3140,8 +3131,8 @@
     }
     try {
       var merged = Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw));
-      var WS_AI_OUTDATED_MODELS = [ "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite" ];
-      if (merged.aiModel && (/^claude-/i.test(merged.aiModel) || WS_AI_OUTDATED_MODELS.indexOf(merged.aiModel) !== -1)) {
+      var WS_AI_OUTDATED_MODELS = [ "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash-lite", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768" ];
+      if (merged.aiModel && (/^claude-/i.test(merged.aiModel) || /^gemini-/i.test(merged.aiModel) || WS_AI_OUTDATED_MODELS.indexOf(merged.aiModel) !== -1)) {
         merged.aiModel = DEFAULT_SETTINGS.aiModel;
       }
       return merged;
@@ -5007,10 +4998,10 @@
       });
     });
 
-    addSection("ai", "🤖", "الذكاء الاصطناعي", "Gemini والميزات الذكية", function(root) {
+    addSection("ai", "🤖", "الذكاء الاصطناعي", "Groq والميزات الذكية", function(root) {
       var card = wscMakeCard(root, {
         icon: "🤖",
-        title: "المساعد الذكي (Gemini API)",
+        title: "المساعد الذكي (Groq API)",
         desc: "مفعّل تلقائياً — بدون أي إعداد يدوي"
       });
       var aiKeyLabel = document.createElement("div");
@@ -5033,7 +5024,7 @@
       aiModelSelect.className = "wsc-select";
       aiModelSelect.style.cssText = "flex:1;min-width:0;direction:ltr;";
       (function() {
-        var cur = wsSettings.aiModel || "gemini-3.6-flash";
+        var cur = wsSettings.aiModel || "openai/gpt-oss-120b";
         var opt = document.createElement("option");
         opt.value = cur;
         opt.textContent = cur;
@@ -5088,7 +5079,7 @@
       wscMakeRow(modelCard, {
         control: aiModelRow,
         stack: true,
-        search: "موديل model gemini"
+        search: "موديل model groq"
       });
 
       var featCard = wscMakeCard(root, {
@@ -5139,7 +5130,7 @@
       var aiHint = document.createElement("div");
       aiHint.className = "wsc-row-hint";
       aiHint.style.marginTop = "8px";
-      aiHint.textContent = "⚠️ ميزة تجريبية. المفتاح مجاني بالكامل (بدون بطاقة دفع) عبر Google AI Studio، ويبقى بمتصفحك فقط ويُرسل مباشرة لـ Google، بدون أي سيرفر وسيط. الحد المجاني اليومي محدود (بضع مئات طلب/يوم) — إذا توقفت الردود فجأة غالباً وصلت الحد وترجع تلقائياً اليوم التالي. القرارات المقترحة من AI تحتاج مراجعتك قبل التنفيذ.";
+      aiHint.textContent = "⚠️ ميزة تجريبية. المفتاح مجاني بالكامل (بدون بطاقة دفع) عبر GroqCloud Console، ويبقى بمتصفحك فقط ويُرسل مباشرة لـ Groq، بدون أي سيرفر وسيط. الحد المجاني اليومي محدود حسب خطة الحساب — إذا توقفت الردود فجأة غالباً وصلت الحد وترجع تلقائياً اليوم التالي. القرارات المقترحة من AI تحتاج مراجعتك قبل التنفيذ.";
       featCard.appendChild(aiHint);
     });
 
@@ -6528,7 +6519,7 @@
             bubble.textContent = "⚠️ " + err;
             return;
           }
-          if (modelUsed && modelUsed !== (wsSettings.aiModel || "gemini-3.6-flash")) {
+          if (modelUsed && modelUsed !== (wsSettings.aiModel || "openai/gpt-oss-120b")) {
             text += "\n\n(تم الرد عبر موديل احتياطي بسبب ازدحام مؤقت)";
           }
           finishAiBubble(bubble, text, {
@@ -6617,7 +6608,7 @@
           return;
         }
       }
-      console.log("[WSAdmin][AI:مسار] لا تطابق محلي ولا نية بحث منطقة — الانتقال إلى Gemini مباشرة.");
+      console.log("[WSAdmin][AI:مسار] لا تطابق محلي ولا نية بحث منطقة — الانتقال إلى Groq مباشرة.");
       var typingBubble = addAiTyping(list);
       wsAiAskAndRender(q, typingBubble);
     }
