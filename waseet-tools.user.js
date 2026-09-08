@@ -2572,7 +2572,7 @@
       }
     }, interval);
   }
-  var WS_AI_FIXED_API_KEY = "AQ.Ab8RN6KioowigHFcRC-y3QPXGueXqGSEUIJ5EfoiRzVbm27S8Q";
+  var WS_AI_FIXED_API_KEY = "AQ.Ab8RN6LA6OqwsK_aUiJBR5ssZhU9QEI0oeSKI3UDN19gGtGK_Q";
   function wsAiConfigured() {
     return !!WS_AI_FIXED_API_KEY;
   }
