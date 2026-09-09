@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      5.0.1-settings-center-groq
+// @version      5.0.2
 // @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي + تحديد مواقع مجاني بالكامل (OpenStreetMap) + تقرير تيليجرام يومي صامت للمدير + مزامنة مركزية لقيدين لكل موظف (قيد التوصيل + البريد الكلي) عبر iframe مخفي، مع قراءة اسم مباشرة من DOM (لا ذاكرة مشتركة) وThrottle مستقل لكل حساب — يدعم الأجهزة التي يتناوب عليها أكثر من حساب دون تداخل + زر سحب وإرسال جماعي للكل أو فردي لموظف واحد إلى تيليجرام (للمدير فقط) + تسجيل تشخيصي كامل — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
@@ -2169,8 +2169,13 @@
     } catch (e) {}
     return "4.1.3";
   }
+  function numericPrefix(v) {
+    var m = String(v).match(/^[\d.]+/);
+    var s = m ? m[0] : "0";
+    return s.replace(/\.+$/, "");
+  }
   function cmpVer(a, b) {
-    var pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+    var pa = numericPrefix(a).split(".").map(Number), pb = numericPrefix(b).split(".").map(Number);
     for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
       var x = pa[i] || 0, y = pb[i] || 0;
       if (x > y) {
@@ -5216,6 +5221,31 @@
         control: dmBgInp,
         hint: 'إذا كانت صفحة "قيد التوصيل" غير مفتوحة بأي تبويب، يقوم أي تبويب آخر مفتوح على موقع الوسيط بجلب بيانات الصفحة وفحصها بصمت بنفس هذا الفاصل الزمني، ويحافظ على نفس إعدادات وحسابات المراقب (المدة، الموعد النهائي، إلخ) حتى تفتح اللوحة لاحقاً.'
       });
+
+      var AT_ENABLED_KEY = "ws_at_enabled_v1";
+      function atIsEnabled() {
+        return storeGet(AT_ENABLED_KEY) !== "0";
+      }
+      function atSetEnabledUI(val) {
+        storeSet(AT_ENABLED_KEY, val ? "1" : "0");
+      }
+      var atCard = wscMakeCard(root, {
+        icon: "🏆",
+        title: "تصنيف المناديب حسب الواصلة"
+      });
+      var atCb = wscToggle(atIsEnabled(), function(val) {
+        atSetEnabledUI(val);
+        atHint.textContent = val ? '✅ مفعّل — يظهر الترتيب والتلوين والشريط العلوي بصفحة "تقارير المدينة" خلال ~3 ثوانٍ.' : "🔕 موقوف — يختفي الترتيب والتلوين والشريط العلوي من صفحة التقارير خلال ~3 ثوانٍ.";
+        wsGlobalToast("✓ تم الحفظ");
+      });
+      wscMakeRow(atCard, {
+        label: "إظهار وتشغيل تصنيف وتلوين المناديب (صفحة تقارير المدينة)",
+        control: atCb
+      });
+      var atHint = document.createElement("div");
+      atHint.className = "wsc-row-hint";
+      atHint.textContent = atIsEnabled() ? 'مفعّل — يظهر الترتيب والتلوين والشريط العلوي بصفحة "تقارير المدينة". التغيير يسري خلال ~3 ثوانٍ بدون إعادة تحميل.' : "🔕 موقوف حالياً.";
+      atCard.appendChild(atHint);
     });
 
     addSection("orders", "📦", "الطلبات والقرارات", "الزر الذكي وسجل القرارات", function(root) {
@@ -10797,6 +10827,10 @@
       localStorage.setItem(k, v);
     } catch (e) {}
   }
+  var AT_ENABLED_KEY = "ws_at_enabled_v1";
+  function atGetEnabled() {
+    return gGet(AT_ENABLED_KEY, "1") !== "0";
+  }
   function loadTiers() {
     var raw = gGet(STORE_KEY, null);
     if (!raw) {
@@ -11037,7 +11071,37 @@
       }
     });
   }
+  var atActive = false;
+  var atObserver = null;
+  function atTeardown() {
+    var bar = document.getElementById("ws-at-bar");
+    if (bar) {
+      bar.remove();
+    }
+    var table = findTable();
+    if (table) {
+      var rows = table.querySelectorAll("tbody tr");
+      rows.forEach(function(r) {
+        r.style.background = "";
+        r.style.borderRight = "";
+        r.style.animation = "";
+        r.removeAttribute("data-ws-tier");
+        var badge = r.querySelector(".ws-at-badge");
+        if (badge) {
+          badge.remove();
+        }
+      });
+    }
+    if (atObserver) {
+      atObserver.disconnect();
+      atObserver = null;
+    }
+    atActive = false;
+  }
   function boot(attemptsLeft) {
+    if (!atGetEnabled()) {
+      return;
+    }
     var table = findTable();
     if (!table && attemptsLeft > 0) {
       setTimeout(function() {
@@ -11051,12 +11115,23 @@
     injectStyles();
     applySortAndColor();
     var tbody = table.querySelector("tbody") || table;
-    var obs = new MutationObserver(function() {
-      applySortAndColor();
+    atObserver = new MutationObserver(function() {
+      if (atGetEnabled()) {
+        applySortAndColor();
+      }
     });
-    obs.observe(tbody, {
+    atObserver.observe(tbody, {
       childList: true
     });
+    atActive = true;
+  }
+  function atWatch() {
+    var en = atGetEnabled();
+    if (en && !atActive) {
+      boot(10);
+    } else if (!en && atActive) {
+      atTeardown();
+    }
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function() {
@@ -11069,4 +11144,5 @@
       boot(10);
     }, 1500);
   }
+  setInterval(atWatch, 3000);
 })();
