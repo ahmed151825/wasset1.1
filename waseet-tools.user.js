@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      5.0.2
-// @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي + تحديد مواقع مجاني بالكامل (OpenStreetMap) + تقرير تيليجرام يومي صامت للمدير + مزامنة مركزية لقيدين لكل موظف (قيد التوصيل + البريد الكلي) عبر iframe مخفي، مع قراءة اسم مباشرة من DOM (لا ذاكرة مشتركة) وThrottle مستقل لكل حساب — يدعم الأجهزة التي يتناوب عليها أكثر من حساب دون تداخل + زر سحب وإرسال جماعي للكل أو فردي لموظف واحد إلى تيليجرام (للمدير فقط) + تسجيل تشخيصي كامل — ملف موحد مع فحص تحديثات تلقائي من GitHub
+// @version      5.1.6
+// @description   GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
 // @match        *://*.alwaseet-iq.net/*
@@ -2128,6 +2128,224 @@
       unsafeWindow.__wsEmployeeCountSyncOpenModal = renderCountsModal;
     }
   } catch (e) {}
+  var TG_MENU_TOKEN = "8838931573:AAGxWtL4yZ5TKPOiP1zVh9kyNuPwwGULAXo";
+  var TG_MENU_CHAT_ID = "38491931";
+  var TG_POLL_OFFSET_KEY = "ws_tg_bot_offset_v1";
+  var TG_POLL_LOCK_KEY = "ws_tg_bot_poll_lock_v1";
+  var TG_POLL_LOCK_TTL = 8000;
+  var TG_POLL_INTERVAL_MS = 4000;
+  var tgTabId = String(Date.now()) + "_" + Math.random().toString(36).slice(2);
+  var tgLastPickModel = null;
+  function tgApi(method, params, cb) {
+    if (typeof GM_xmlhttpRequest === "undefined") {
+      if (cb) {
+        cb(null, "GM_xmlhttpRequest غير متاح");
+      }
+      return;
+    }
+    GM_xmlhttpRequest({
+      method: "POST",
+      url: "https://api.telegram.org/bot" + TG_MENU_TOKEN + "/" + method,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      data: JSON.stringify(params || {}),
+      onload: function(res) {
+        var j = null;
+        try {
+          j = JSON.parse(res.responseText);
+        } catch (e) {}
+        if (cb) {
+          cb(j && j.ok ? j.result : null, j && !j.ok ? j.description : j ? null : "استجابة غير صالحة");
+        }
+      },
+      onerror: function() {
+        if (cb) {
+          cb(null, "خطأ شبكة");
+        }
+      }
+    });
+  }
+  function tgSendMenu() {
+    tgApi("sendMessage", {
+      chat_id: TG_MENU_CHAT_ID,
+      text: "⚡ إرسال قيد سريع\nاختر نوع الإرسال:",
+      reply_markup: {
+        inline_keyboard: [ [ {
+          text: "📋 قيد جماعي لكل الموظفين",
+          callback_data: "qs_group"
+        } ], [ {
+          text: "👤 قيد موظف معين",
+          callback_data: "qs_single"
+        } ] ]
+      }
+    });
+  }
+  function tgSendGroupReport(callbackId) {
+    fetchAllEmployeeCounts(function(data, err) {
+      if (err) {
+        tgApi("sendMessage", {
+          chat_id: TG_MENU_CHAT_ID,
+          text: "❌ " + err
+        });
+      } else {
+        var model = buildReportModel(data);
+        if (!model.rows.length) {
+          tgApi("sendMessage", {
+            chat_id: TG_MENU_CHAT_ID,
+            text: "⚠️ لا يوجد أي موظف مسجّل بعد."
+          });
+        } else {
+          tgApi("sendMessage", {
+            chat_id: TG_MENU_CHAT_ID,
+            text: buildTelegramReport(model)
+          });
+        }
+      }
+      if (callbackId) {
+        tgApi("answerCallbackQuery", {
+          callback_query_id: callbackId,
+          text: "تم"
+        });
+      }
+    });
+  }
+  function tgSendEmployeeList(callbackId) {
+    fetchAllEmployeeCounts(function(data) {
+      var model = buildReportModel(data);
+      var rows = model.rows.filter(function(r) {
+        return r.status !== "missing";
+      });
+      tgLastPickModel = rows;
+      if (!rows.length) {
+        tgApi("sendMessage", {
+          chat_id: TG_MENU_CHAT_ID,
+          text: "⚠️ لا توجد بيانات متاحة حالياً لأي موظف."
+        });
+      } else {
+        var kb = rows.map(function(r, i) {
+          return [ {
+            text: r.name,
+            callback_data: "qs_emp:" + i
+          } ];
+        });
+        tgApi("sendMessage", {
+          chat_id: TG_MENU_CHAT_ID,
+          text: "👤 اختر الموظف:",
+          reply_markup: {
+            inline_keyboard: kb
+          }
+        });
+      }
+      if (callbackId) {
+        tgApi("answerCallbackQuery", {
+          callback_query_id: callbackId
+        });
+      }
+    });
+  }
+  function tgSendEmployeePick(idx, callbackId) {
+    var row = tgLastPickModel && tgLastPickModel[idx];
+    if (!row) {
+      tgApi("answerCallbackQuery", {
+        callback_query_id: callbackId,
+        text: "⚠️ انتهت صلاحية القائمة، اكتب قيد من جديد",
+        show_alert: true
+      });
+      return;
+    }
+    tgApi("sendMessage", {
+      chat_id: TG_MENU_CHAT_ID,
+      text: buildSingleEmployeeReport(row)
+    });
+    tgApi("answerCallbackQuery", {
+      callback_query_id: callbackId,
+      text: "تم إرسال قيد " + row.name
+    });
+  }
+  function handleTgUpdate(u) {
+    if (u.callback_query) {
+      var cq = u.callback_query;
+      var data = cq.data || "";
+      var cqChatId = cq.message && cq.message.chat && String(cq.message.chat.id);
+      if (cqChatId !== TG_MENU_CHAT_ID) {
+        return;
+      }
+      if (data === "qs_group") {
+        tgSendGroupReport(cq.id);
+      } else if (data === "qs_single") {
+        tgSendEmployeeList(cq.id);
+      } else if (data.indexOf("qs_emp:") === 0) {
+        tgSendEmployeePick(parseInt(data.slice(7), 10), cq.id);
+      } else {
+        tgApi("answerCallbackQuery", {
+          callback_query_id: cq.id
+        });
+      }
+      return;
+    }
+    if (u.message && u.message.text && u.message.chat && String(u.message.chat.id) === TG_MENU_CHAT_ID) {
+      var text = u.message.text.trim();
+      if (text === "/start" || text === "/menu" || text.indexOf("قيد") !== -1) {
+        tgSendMenu();
+      }
+    }
+  }
+  function tgAcquirePollLock() {
+    var raw = gGet(TG_POLL_LOCK_KEY, "");
+    var now = Date.now();
+    if (raw) {
+      var parts = raw.split("|");
+      var owner = parts[0], ts = parseInt(parts[1], 10) || 0;
+      if (owner !== tgTabId && now - ts < TG_POLL_LOCK_TTL) {
+        return false;
+      }
+    }
+    gSet(TG_POLL_LOCK_KEY, tgTabId + "|" + now);
+    return true;
+  }
+  function pollTgUpdates() {
+    if (!isAdminUser() || !tgAcquirePollLock()) {
+      return;
+    }
+    var offset = parseInt(gGet(TG_POLL_OFFSET_KEY, "0"), 10) || 0;
+    tgApi("getUpdates", {
+      offset: offset,
+      timeout: 0,
+      allowed_updates: [ "message", "callback_query" ]
+    }, function(result) {
+      if (!result || !Array.isArray(result) || !result.length) {
+        return;
+      }
+      var maxId = offset - 1;
+      result.forEach(function(u) {
+        if (u.update_id > maxId) {
+          maxId = u.update_id;
+        }
+        try {
+          handleTgUpdate(u);
+        } catch (e) {
+          wsWarn("بوت:تحديث", "خطأ بمعالجة تحديث", e && e.message);
+        }
+      });
+      if (maxId >= offset) {
+        gSet(TG_POLL_OFFSET_KEY, String(maxId + 1));
+      }
+    });
+  }
+  setTimeout(function() {
+    if (!isAdminUser()) {
+      return;
+    }
+    tgApi("setMyCommands", {
+      commands: [ {
+        command: "menu",
+        description: "إرسال قيد سريع"
+      } ]
+    });
+    pollTgUpdates();
+    setInterval(pollTgUpdates, TG_POLL_INTERVAL_MS);
+  }, 6e3);
 })();
 
 (function() {
@@ -3459,15 +3677,25 @@
       3e3: wsSettings.walletFee3000 != null ? wsSettings.walletFee3000 : 150,
       2e3: wsSettings.walletFee2000 != null ? wsSettings.walletFee2000 : 100
     };
+    var monthData = loadWalletMonth(empName, ym);
+    var existing = monthData[today];
+    // لا يتم إنقاص العدد المحفوظ تلقائياً — إذا سُحبت/حوسبت الطلبات واختفت من
+    // الجدول يبقى الرقم كما هو، ونأخذ الأكبر بين المحفوظ سابقاً والمحتسب حالياً
+    // لكل فئة. الحذف الفعلي لا يتم إلا يدوياً عبر زر 🗑️ في نافذة المحفظة.
+    var mergedTotals = {};
+    [ 5e3, 4e3, 3e3, 2e3 ].forEach(function(fee) {
+      var newCount = totals[fee] || 0;
+      var oldCount = existing && existing.totals ? existing.totals[fee] || 0 : 0;
+      mergedTotals[fee] = Math.max(newCount, oldCount);
+    });
     var amount = 0;
     [ 5e3, 4e3, 3e3, 2e3 ].forEach(function(fee) {
-      amount += (totals[fee] || 0) * (feeMap[fee] || 0);
+      amount += (mergedTotals[fee] || 0) * (feeMap[fee] || 0);
     });
-    var monthData = loadWalletMonth(empName, ym);
     monthData[today] = {
       date: today,
       day: dayOfWeek,
-      totals: totals,
+      totals: mergedTotals,
       amount: amount,
       savedAt: Date.now()
     };
@@ -6032,7 +6260,7 @@
       var sector = e[0], note = e[1] || "", contact = e[2], phone = e[3];
       var cleaned = note.replace(/^متابعة\s*/, "").replace(/^محطة\s*/, "");
       cleaned.split("/").forEach(function(part) {
-        part.split("-").forEach(function(sub) {
+        part.split(/[-+]/).forEach(function(sub) {
           var name = sub.trim();
           if (name) {
             idx.push({
@@ -6048,7 +6276,7 @@
     });
     (typeof CONTACTS_RUSAFA !== "undefined" ? CONTACTS_RUSAFA : []).forEach(function(e) {
       var note = e[0] || "", contact = e[1], phone = e[2];
-      note.split("-").forEach(function(sub) {
+      note.split(/[-+]/).forEach(function(sub) {
         var name = sub.trim();
         if (name) {
           idx.push({
@@ -6727,9 +6955,51 @@
   }
   var CONTACTS_CALLCENTER = [ [ "07744441010", "الخط الأول" ], [ "07744441414", "الخط الثاني" ] ];
   var CONTACTS_INQUIRY = [ [ "بغداد", "07744441010" ], [ "المسيب", "07744442929" ], [ "كركوك", "07744440707" ], [ "خانقين", "07744441717" ], [ "النجف", "07744442323" ], [ "الديوانية", "07744440505" ], [ "البصرة", "07744444040" ], [ "الرمادي", "07744449898" ], [ "سامراء", "07744447373" ], [ "الناصرية", "07744446868" ], [ "الكوت", "07744447676" ], [ "ديالى", "07744441515" ], [ "الحلة", "07744442929" ], [ "كربلاء", "07744446464" ], [ "أربيل", "07744443434" ], [ "الفلوجة", "07744449292" ], [ "السليمانية", "07744445757" ], [ "السماوة", "07744440808" ], [ "الموصل", "07744447878" ], [ "دهوك", "07504444353" ] ];
-  var CONTACTS_REPORTS = [ [ "البصرة", [ "07719492104", "07710756532", "07731637648" ] ], [ "الحلة", [ "07723320914", "07728759376" ] ], [ "الناصرية", [ "07723320915", "07732882784" ] ], [ "الأنبار", [ "07736479262", "07715767033" ] ], [ "النجف", [ "07704180484", "07728759372" ] ], [ "كربلاء", [ "07710759893", "07731336954" ] ], [ "ديالى", [ "07732882647" ] ], [ "الموصل", [ "07704182042", "07704372546", "07736478716" ] ], [ "أربيل", [ "07728759380" ] ], [ "السليمانية", [ "07736478724" ] ], [ "دهوك", [ "07707402819" ] ], [ "صلاح الدين", [ "07725378835" ] ], [ "السماوة", [ "07723320878" ] ], [ "الديوانية", [ "07736479263" ] ], [ "العمارة", [ "07736479241" ] ], [ "كركوك", [ "07736479178" ] ], [ "الكوت", [ "07736479212" ] ] ];
-  var CONTACTS_KARKH = [ [ "كرخ1", "متابعة البياع", "سلام معين عبدالامير", "07705964361" ], [ "كرخ2", "متابعة المنصور", "احمد محمد كريم", "07734721170" ], [ "كرخ3", "متابعة منصور2 / بياع2 اعلام", "علي وسام عبدالامير", "07779397566" ], [ "كرخ4", "متابعة الكاظمية", "عبدالرزاق عصام عبدالرزاق", "07704127792" ], [ "كرخ5", "متابعة علاوي / الطارمية", "محمد حسن نجم", "07779397609" ], [ "كرخ6", "متابعة اسكان / اليوسفية", "عبدالرحمن خالد قاسم", "07779397574" ], [ "كرخ7", "محطة التاجي", "محمدالامين ميثم محمد", "07734087361" ], [ "كرخ8", "محطة المحمودية", "عباس قاسم موجد", "07727921867" ], [ "كرخ9", "متابعة ابو غريب 1", "حمزه محمد حسن", "07779324967" ], [ "كرخ10", "متابعة العامرية", "مصطفى كريم خضير", "07744442471" ], [ "كرخ11", "متابعة حي الجهاد 1", "احمد ليث مجيد", "07735571353" ], [ "كرخ12", "متابعة حي الجهاد 2", "باقر صلاح علي", "07779397573" ], [ "كرخ13", "متابعة الغزالية", "مصطفى عبدالكريم ابراهيم", "07705964309" ], [ "كرخ14", "متابعة الحرية", "منير عبدالرحمن محمد", "07747249406" ], [ "كرخ15", "متابعة دورة 1", "مصطفى محمد عبدالحسن", "07715767027" ], [ "كرخ16", "متابعة الدورة 2", "مصطفى مأرب محمد علي", "07751143382" ], [ "كرخ17", "متابعة دورة 3", "عبدالله فارس جعفر", "07735571724" ], [ "كرخ18", "متابعة دورة 4", "مهدي مالك عبدالوهاب", "07779324989" ], [ "كرخ19", "متابعة السيدية", "مؤمل ستار حسين", "07744442436" ], [ "كرخ20", "متابعة الشعلة", "عبدالله عبدالعظيم حاتم", "07744443619" ], [ "كرخ21", "متابعة حي الجامعة", "مصطفى علي محمد", "07747249398" ], [ "كرخ22", "متابعة ابو غريب 2 / عامرية2 ايرموك", "حيدر عدن عبدالحسن", "07779324969" ] ];
-  var CONTACTS_RUSAFA = [ [ "مدينة الصدر 1", "مرتضى احمد حسين", "07732882659" ], [ "شعب", "علي هادي احمد", "07714096299" ], [ "زيونة", "مصطفى كريم حسين", "07779397552" ], [ "البلديات 1", "الحسن علي نعمة", "07734721123" ], [ "كرادة 1", "صدام عادل حامد", "07727921842" ], [ "زعفرانية", "عبدالله فراس عبد القادر", "07734088235" ], [ "الاعظمية 1", "حسين علي صباح", "07707244126" ], [ "شارع فلسطين", "علي ماجد عبد", "07704363068" ], [ "بنوك 1", "حسن فلاح عزيز", "07734088230" ], [ "حسينية", "مهند رحيم صاحب", "07744442832" ], [ "بغداد جديدة 1", "سيف الدين عبد حميد", "07744442468" ], [ "مدينة الصدر 2", "مصطفى كريم عبد انصيف", "07744443104" ], [ "اعظمية 2", "احمد عبد الكريم", "07735571105" ], [ "جسر ديالى - مدائن", "حسين ستار عباس", "07735571608" ], [ "بنوك 2 - كرادة 2", "احمد جمعة الشيخ", "07735572037" ], [ "بسماية + نهروان", "احمد خالد فيصل", "07779397537" ], [ "معامل + زعفرانية 2", "علي كريم خضير", "07779397610" ], [ "بلديات 2", "همام عويد صالح", "07779397578" ], [ "شعب 2", "حسين محمد علي مطر", "07779397592" ], [ "بغداد جديدة 2", "عمار عادل عبد الكريم", "07779397591" ], [ "اعظمية 3", "موسى راشد وني", "07707347481" ], [ "مدينة 3", "محمد فائز كاظم", "07744442438" ] ];
+  var CONTACTS_REPORTS = [
+    [ "البصرة", [ [ "07723969304", "عباس فاضل صميدح" ], [ "07744443197", "يوسف محمد زيدان" ], [ "07715767072", "كرار مهدي سكران" ], [ "07779330125", "عباس ياسين كريم" ], [ "07735571955", "ليث رائد عبد الجبار" ], [ "07731637648", "زين العابدين خالد كاظم" ], [ "07734088276", "كرار ظافر ابراهيم" ], [ "07744442391", "حسن رياض غالي" ], [ "07768343851", "عباس محمد حسين" ], [ "07735572538", "عبد الرحمن احمد محمود" ], [ "07710756532", "محمد عبد القادر احمد" ], [ "07779397563", "مرتضى عباس محي" ], [ "07735571458", "ضرغام حسين حياوي" ], [ "07719492104", "احمد هيثم احمد" ], [ "07779397593", "حسن ثامر حسن" ], [ "07779397576", "احمد علي صاحب" ] ] ],
+    [ "الحلة (بابل)", [ [ "07728759376", "مصطفى خالد ابراهيم" ], [ "07745586985", "ايمن وليد حسن" ], [ "07744442398", "عبدالله هلال حسين" ], [ "07705964398", "محمود شاكر محمود" ], [ "07735572757", "مصطفى خالد الياس" ], [ "07714157937", "حسنين مجيد سعدون" ], [ "07779397588", "حسن احمد جاسم" ] ] ],
+    [ "الناصرية", [ [ "07732882784", "إبراهيم محمود عبدالكريم (محافظة)" ], [ "07723320915", "ذياب عبد ذياب" ], [ "07751142671", "مرتضى حسين زبالة" ], [ "07714096495", "احمد عباس نجم" ], [ "07735571601", "عبد الرحمن جليل محمد" ], [ "07779397606", "احمد صادق جعفر" ], [ "07779397583", "علي رعد نجم" ], [ "07735570961", "علي راضي عبد" ] ] ],
+    [ "الأنبار", [ [ "07715733490", "محمود محمد نعمت" ], [ "07736479262", "علي عبد الكريم عبد" ], [ "07715767033", "محمد علي عباس" ], [ "07735571749", "محمد ماجد" ], [ "07779330121", "احمد حسام الدين" ], [ "07779397570", "عبد العزيز محمد احمد" ] ] ],
+    [ "النجف", [ [ "07779324988", "طه ياسين طه" ], [ "07724256024", "جعفر صادق عقيل جبار" ], [ "07735571742", "احمد نجاح جلاب" ], [ "07735571629", "عبدالحكيم محمد عبداللطيف" ], [ "07779324956", "مصطفى علي حسين" ], [ "07779397614", "مصطفى رائد حسين" ], [ "07779397596", "وميض محمود عبدالكريم" ] ] ],
+    [ "كربلاء", [ [ "07731336954", "مصطفى صلاح جبار" ], [ "07704676785", "علي لؤي عباس" ], [ "07779397536", "مصطفى محمد عباس" ], [ "07735571597", "حسين خضير عباس" ], [ "07779324970", "احمد باسل غايب" ], [ "07735571582", "حسين مهدي رسن" ] ] ],
+    [ "ديالى", [ [ "07732882647", "ابراهيم عباس كامل" ], [ "07734683534", "حارث مثنى علي" ], [ "07704182042", "عبد القادر محمد" ], [ "07779397595", "ياس خضر ايشوع" ], [ "07744442385", "مصطفى محسن عبيس" ] ] ],
+    [ "الموصل", [ [ "07704363064", "بكر رائد حمودي" ], [ "07736478716", "يحيى محمد عبدالجبار" ], [ "07779324973", "امير حميد لعيبي" ], [ "07779397524", "عمر هاشم محمد" ], [ "07704372546", "عبد القادر محمد قاسم" ] ] ],
+    [ "أربيل", [ [ "07728759380", "نوار سعيد حسين (محافظة)" ], [ "07747249436", "حسين هشام محمد" ], [ "07779397530", "محمد علاء محمد" ], [ "07735572586", "محمد شاكر رحيم" ] ] ],
+    [ "السليمانية", [ [ "07736478724", "احمد حسين زغير (محافظة)" ], [ "07735572582", "حسين كريم مهدي" ] ] ],
+    [ "دهوك", [ [ "07707402819", "حمزة امير طاهر (محافظة)" ], [ "07735571729", "حسين نصير محمد" ] ] ],
+    [ "صلاح الدين", [ [ "07704676936", "محمد خالد هادي (محافظة)" ], [ "07725378835", "امير علاء صدام" ], [ "07756659490", "محمد فاضل حسن" ], [ "07779397558", "سجاد محمد قيس" ], [ "07779397585", "محمد سلمان جمعة" ] ] ],
+    [ "السماوة", [ [ "07747249378", "كرار رحيم نعمة" ], [ "07779324954", "احمد خالد احمد" ], [ "07723320878", "علي عبد الازل احسان" ], [ "07779330122", "تلفون دعم السماوة" ] ] ],
+    [ "الديوانية", [ [ "07744599873", "محمد مهدي منفي" ], [ "07735571598", "عبدالله حسين عباس" ], [ "07779397600", "علي وليد خالد" ], [ "07736479263", "مصطفى ثائر فتحي" ] ] ],
+    [ "العمارة", [ [ "07735572567", "ضياء سالم جبر" ], [ "07779324975", "عبدالرحمن باسم عبد" ], [ "07736479241", "داود محمد داود" ], [ "07707729432", "محمد الحسن خليل" ] ] ],
+    [ "كركوك", [ [ "07736479178", "حسين علي ياسين" ], [ "07781159205", "سيف اسعد عبدالحسن" ], [ "07735572185", "علي سامر خليل" ], [ "07706626408", "علي مكي كامل" ] ] ],
+    [ "الكوت", [ [ "07744599870", "محمد سيد مطر" ], [ "07764202363", "محمد عبدالرزاق جليوي" ], [ "07779397597", "حسين علي نجم" ], [ "07735571959", "تلفون دعم الكوت" ] ] ],
+    [ "الكوت / الصويرة", [ [ "07736479212", "محمد كمال حمزة" ], [ "07779324976", "مرتضى كريم ناجي" ] ] ]
+  ];
+  var CONTACTS_KARKH = [ [ "كرخ1", "متابعة البياع", "سلام معين عبدالامير", "07705964361" ], [ "كرخ2", "متابعة المنصور", "احمد محمد كريم", "07734721170" ], [ "كرخ3", "متابعة منصور2 / بياع2 اعلام", "عبدالله فارس جعفر", "07779397566" ], [ "كرخ4", "متابعة الكاظمية", "عبدالرزاق عصام عبدالرزاق", "07704127792" ], [ "كرخ5", "متابعة علاوي / الطارمية", "محمد حسن نجم", "07779397609" ], [ "كرخ6", "متابعة اسكان / اليوسفية", "عبدالرحمن خالد قاسم", "07779397574" ], [ "كرخ7", "محطة التاجي", "محمدالامين ميثم محمد", "07734087361" ], [ "كرخ8", "محطة المحمودية", "عباس قاسم موجد", "07727921867" ], [ "كرخ9", "متابعة ابو غريب 1", "حمزه محمد حسن", "07779324967" ], [ "كرخ10", "متابعة العامرية", "طه عامر سليم", "07744442471" ], [ "كرخ11", "متابعة حي الجهاد 1", "عقيل مسلم علي", "07735571353" ], [ "كرخ12", "متابعة حي الجهاد 2", "باقر صلاح علي", "07779397573" ], [ "كرخ13", "متابعة الغزالية", "مصطفى عبدالكريم ابراهيم", "07705964309" ], [ "كرخ14", "متابعة الحرية", "سجاد جعفر صادق", "07747249406" ], [ "كرخ15", "متابعة دورة 1", "مصطفى محمد عبدالحسن", "07715767027" ], [ "كرخ16", "متابعة الدورة 2", "مصطفى مأرب محمد علي", "07751143382" ], [ "كرخ17", "متابعة دورة 3", "محمد قاسم حسين", "07735571724" ], [ "كرخ18", "متابعة دورة 4", "مهدي مالك عبدالوهاب", "07779324989" ], [ "كرخ19", "متابعة السيدية", "مؤمل ستار حسين", "07744442436" ], [ "كرخ20", "متابعة الشعلة", "مصطفى كريم خضير", "07744443619" ], [ "كرخ21", "متابعة حي الجامعة", "مصطفى علي محمد", "07747249398" ], [ "كرخ22", "متابعة ابو غريب 2 / عامرية2 ايرموك", "حيدر عدن عبدالحسن", "07779324969" ] ];
+  var CONTACTS_RUSAFA = [
+    [ "مدينة الصدر 1", "سجاد جواد كاظم", "07732882659" ],
+    [ "شعب", "علي هادي احمد", "07714096299" ],
+    [ "نهروان - زيونة", "علي ماجد عبد", "07779397552" ],
+    [ "البلديات", "علي كريم خضير", "07734721123" ],
+    [ "كرادة 1", "صدام عادل حامد", "07727921842" ],
+    [ "زعفرانية", "عبدالله فراس عبد القادر", "07734088235" ],
+    [ "الاعظمية 1", "حسين علي صباح", "07707244126" ],
+    [ "شارع فلسطين - كرادة 2", "الحسن علي نعمة", "07704363068" ],
+    [ "بنوك + طالبية + معامل", "حسن فلاح حسن", "07734088230" ],
+    [ "حسينية", "احمد جمعة الشيخ", "07744442832" ],
+    [ "بغداد جديدة 1", "احمد خالد فيصل", "07744442468" ],
+    [ "مدينة الصدر 2", "مصطفى كريم عبد انصيف", "07744443104" ],
+    [ "اعظمية 2", "سيف الدين عبد حميد", "07735571105" ],
+    [ "جسر ديالى - مدائن - بغداد جديدة 2", "حسين ستار عباس", "07735571608" ],
+    [ "جزيرة - حي اور", "سجاد نعمان عبد الكريم", "07735572037" ],
+    [ "بسماية + عبيدي + فضيلية + كمالية", "حسين جاسم عكلة", "07779397537" ],
+    [ "معامل + زعفرانية 2", "علي كريم خضير", "07779397610" ],
+    [ "بلديات 2", "علي حسن احمد", "07779397578" ],
+    [ "شعب 2", "حسين محمد علي مطر", "07779397592" ],
+    [ "بغداد جديدة 2", "عمار عادل عبد الكريم", "07779397591" ],
+    [ "اعظمية 3", "منتضر مهدي جبر", "07707347481" ],
+    [ "مدينة 3", "اسلام عقيل عباس", "07744442438" ]
+  ];
   injectCss("#ws-contacts-btn{position:fixed;left:18px;bottom:20px;z-index:2147483646;border:0;cursor:pointer;width:62px;height:62px;border-radius:18px;background:linear-gradient(145deg,#17499d,#0b2d70);color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:28px;transition:.2s;}" + "#ws-contacts-btn:hover{transform:translateY(-3px) scale(1.04);}" + "#ws-contacts-overlay{position:fixed;inset:0;z-index:2147483647;background:rgba(7,20,43,.70);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:25px;direction:rtl;font-family:Tahoma,Arial,sans-serif;}" + ".ws-cd-modal{width:min(1200px,96vw);height:min(800px,92vh);background:#f7f9fd;border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.40);display:flex;flex-direction:column;animation:wsCdOpen .22s ease;}" + "@keyframes wsCdOpen{from{opacity:0;transform:scale(.94) translateY(15px);}to{opacity:1;transform:scale(1) translateY(0);}}" + ".ws-cd-header{background:linear-gradient(135deg,#123d87,#0b2d68);color:#fff;padding:22px 28px;position:relative;flex-shrink:0;}" + ".ws-cd-title{display:flex;align-items:center;justify-content:center;gap:12px;font-size:28px;font-weight:900;}" + ".ws-cd-subtitle{text-align:center;margin-top:6px;font-size:14px;opacity:.9;}" + ".ws-cd-close{position:absolute;right:20px;top:18px;width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.10);color:#fff;font-size:24px;cursor:pointer;line-height:1;}" + ".ws-cd-search{position:absolute;left:24px;top:24px;width:260px;height:42px;border:0;outline:0;border-radius:12px;padding:0 16px;font-size:13.5px;background:#fff;color:#16376d;box-sizing:border-box;}" + ".ws-cd-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 22px;background:#fff;border-bottom:1px solid #e2e8f2;flex-shrink:0;transition:.2s;}" + ".ws-cd-search-mode{display:none;text-align:center;background:#eaf1ff;color:#173d79;font-size:12.5px;font-weight:800;padding:9px;border-bottom:1px solid #dbe6f7;}" + ".ws-cd-search-mode.show{display:block;}" + ".ws-cd-tabs.searching .ws-cd-tab{opacity:.42;}" + ".ws-cd-tabs.searching .ws-cd-tab.active{background:none;color:#12386f;box-shadow:none;border-color:transparent;opacity:.42;}" + ".ws-cd-hl{background:#ffe58a;color:#5a3d00;border-radius:3px;padding:0 1px;}" + ".ws-cd-tab{height:50px;border-radius:12px;border:1px solid #dce4f0;background:#fff;color:#173b78;font-size:14.5px;font-weight:800;cursor:pointer;transition:.2s;font-family:inherit;}" + ".ws-cd-tab:hover{background:#f2f6fd;}" + ".ws-cd-tab.active{background:linear-gradient(135deg,#17499d,#0d357c);color:#fff;box-shadow:0 8px 20px rgba(19,64,140,.20);border-color:transparent;}" + ".ws-cd-content{flex:1;overflow:auto;padding:18px 22px 22px;}" + ".ws-cd-section-title{font-size:19px;font-weight:900;color:#12386f;margin:4px 0 14px;}" + ".ws-cd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}" + ".ws-cd-card{position:relative;background:#fff;border:1px solid #e0e7f2;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;min-height:70px;box-sizing:border-box;box-shadow:0 3px 10px rgba(21,52,95,.04);transition:.18s;}" + ".ws-cd-source-tag{position:absolute;top:-9px;right:12px;background:linear-gradient(135deg,#17499d,#0d357c);color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;box-shadow:0 3px 8px rgba(19,64,140,.25);}" + ".ws-cd-card:hover{border-color:#9eb9e8;transform:translateY(-1px);box-shadow:0 7px 18px rgba(21,52,95,.09);}" + ".ws-cd-info{flex:1;min-width:0;}" + ".ws-cd-name{font-size:15.5px;font-weight:900;color:#183c78;margin-bottom:4px;}" + ".ws-cd-phone{direction:ltr;unicode-bidi:embed;font-size:17px;font-weight:900;letter-spacing:.4px;color:#152f5e;}" + ".ws-cd-note{color:#65799b;font-size:12px;margin-top:4px;}" + ".ws-cd-region{display:inline-block;margin-top:6px;padding:3px 8px;border-radius:20px;background:#e5f6ea;color:#19864a;font-size:11px;font-weight:800;}" + ".ws-cd-areas{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}" + ".ws-cd-area-badge{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:700;}" + ".ws-cd-actions{flex:none;display:flex;flex-direction:column;gap:6px;align-items:stretch;}" + ".ws-cd-copy{border:1px solid #d8e1ee;background:#fff;color:#173d79;border-radius:9px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:800;transition:.18s;font-family:inherit;white-space:nowrap;}" + ".ws-cd-copy:hover{background:#edf4ff;border-color:#8eafe0;}" + ".ws-cd-copy.done{background:#dff5e6;color:#168044;border-color:#a9dfb9;}" + ".ws-cd-wa{border:1px solid #bbf0cf;background:#e9fbf1;color:#0f7a3d;border-radius:9px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:800;transition:.18s;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-block;text-align:center;}" + ".ws-cd-wa:hover{background:#d7f6e4;border-color:#8fe3b6;}" + ".ws-cd-empty{text-align:center;padding:60px 20px;color:#71809a;font-size:15px;}" + ".ws-cd-footer{text-align:center;background:#fff;border-top:1px solid #e1e7f0;padding:11px;color:#5d7194;font-size:12px;flex-shrink:0;}" + "#ws-cd-toast{position:fixed;left:50%;bottom:35px;transform:translateX(-50%) translateY(20px);z-index:2147483648;background:#143e7e;color:#fff;padding:11px 20px;border-radius:12px;font-size:13.5px;font-weight:800;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.25);}" + "#ws-cd-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}" + "@media(max-width:900px){.ws-cd-search{position:static;display:block;width:100%;margin-top:16px;}.ws-cd-tabs{grid-template-columns:repeat(3,1fr);}.ws-cd-grid{grid-template-columns:1fr;}.ws-cd-title{font-size:22px;}}" + "@media(max-width:550px){.ws-cd-modal{width:100%;height:94vh;border-radius:16px;}#ws-contacts-overlay{padding:8px;}.ws-cd-tabs{padding:10px;gap:6px;grid-template-columns:repeat(2,1fr);}.ws-cd-tab{font-size:12.5px;height:44px;}.ws-cd-content{padding:12px;}.ws-cd-card{flex-direction:column;align-items:stretch;}.ws-cd-actions{flex-direction:row;}.ws-cd-actions>*{flex:1;}}");
   function formatPhoneDisplay(p) {
     p = String(p).replace(/\s/g, "");
@@ -6763,14 +7033,33 @@
       return "الأستاذ الفاضل، تحية طيبة 🌹\n" + "موظف الـ CRM المسؤول عن منطقتكم: " + item.name + "\n" + "رقم التواصل المباشر: " + item.phone + "\n" + "مناطق التغطية: " + item.areas.join("، ") + "\n" + "يرجى التواصل لمتابعة طلبكم، ولكم فائق الشكر.";
     }
     if (item.kind === "report") {
-      return "الأستاذ الفاضل، تحية طيبة 🌹\n" + "لتقديم تبليغ بخصوص طلبكم في محافظة " + item.name + "\n" + "يرجى التواصل مع قسم التبليغات على الرقم: " + item.phone + "\n" + "وشكراً لتعاونكم.";
+      return "الأستاذ الفاضل، تحية طيبة 🌹\n" + "لتقديم تبليغ بخصوص طلبكم في محافظة " + (item.province || item.name) + "\n" + (item.employee ? "الموظف المختص: " + item.employee + "\n" : "") + "يرجى التواصل مع قسم التبليغات على الرقم: " + item.phone + "\n" + "وشكراً لتعاونكم.";
     }
     if (item.kind === "inquiry") {
       return "الأستاذ الفاضل، تحية طيبة 🌹\n" + "للاستفسار بخصوص طلبكم في محافظة " + item.name + "\n" + "يرجى التواصل على الرقم: " + item.phone + "\n" + "وشكراً لتعاونكم.";
     }
     return "الأستاذ الفاضل، تحية طيبة 🌹\n" + "للاستفسار العام يرجى التواصل مع الكول سنتر على الرقم: " + item.phone + "\n" + "وشكراً لتعاونكم.";
   }
-  var CONTACTS_CRM = [ [ "احمد جديد", "07779397611", [ "زعفرانية", "جسر ديالى", "كرغولية", "ابو غريب", "محمودية", "نهروان", "لطيفية", "بسماية", "مدائن", "رضوانية" ] ], [ "محمد شاكر", "07764032129", [ "باب المعظم", "الكفاح", "الوزيرية الصناعية", "السنك", "المتنبي", "حافظ القاضي", "المثنى", "باب الشرقي", "ساحة الطيران", "الشورجة" ] ], [ "نور بسام", "07724036165", [ "كاظمية", "طارمية", "سبع البور", "عبايجي", "مشاهدة", "جكوك", "شعلة", "حي الجوادين", "سلاميات", "الخطيب" ] ], [ "احمد محمد", "07730240405", [ "ناصرية", "الحرية", "الدولعي", "الوشاش", "الطوبجي", "الاسكان", "المنصور", "الحارثية", "كرادة مريم", "الجعيفر", "صالحية", "العلاوي", "شيخ معروف", "المنطقة الخضراء" ] ], [ "ايناس فرج", "07779397548", [ "عامرية", "غزالية", "حي الجامعة", "حي حطين", "اليرموك", "الداخلية", "القادسية", "حي الخضراء", "حي العامل", "حي العدل", "العطيفية", "شالجية", "علي الصالح" ] ], [ "حسن ماجد", "07735572754", [ "السيدية", "حي الاعلام التراث", "الري", "معالف", "الشرطة الرابعة", "الشرطة الخامسة", "سويب", "البياع", "حي الجهاد" ] ], [ "حوراء علاء", "07779397549", [ "الدورة", "كرادة داخل", "كرادة خارج", "العرصات", "السعدون", "شارع الصناعة", "الجادرية" ] ], [ "رفل ربيع", "07779397551", [ "الشعب", "البنوك", "حي اور", "سبع قصور", "حي البساتين", "الجزيرة", "كميرة", "ام الكبر والغزلان", "ثعالبة" ] ], [ "مريم عامر", "07779397550", [ "بلديات", "مدينة الصدر", "الحبيبية", "حسينية الرشادية", "جميلة", "طالبية", "سريدات", "بوب الشام" ] ], [ "مروة علاء", "07759150128", [ "شارع فلسطين", "شارع الربيعي", "الاعظمية", "زيونة", "القاهرة", "صليخ", "كريعات", "شارع المغرب", "سبع ابكار" ] ], [ "ميس", "07744441074", [ "بغداد الجديدة", "النعيرية", "الامين", "المشتل", "العبيدي", "الغدير", "ساحة ميسلون", "فضيلية", "كمالية", "معامل الحسينية" ] ], [ "عبير اسماعيل", "07735572761", [ "الموصل", "الديوانية", "كركوك" ] ], [ "سعاد خالد", "07744442929", [ "محافظة الحلة" ] ], [ "نهاد خالد", "07744442323", [ "محافظة النجف" ] ], [ "علي حسين", "07744441064", [ "كربلاء", "دهوك", "صلاح الدين", "السماوة", "العمارة" ] ], [ "كرار علي وادي", "07779397531", [ "البصرة", "الانبار", "الكوت" ] ], [ "فاطمة حسين", "07744441065", [ "اربيل", "ديالى", "السليمانية" ] ] ];
+  var CONTACTS_CRM = [
+    [ "موسى راشد", "07779397611", [ "زعفرانية", "جسر ديالى", "كرغولية", "ابو غريب", "نهروان", "محمودية", "لطيفية", "بسماية", "مدائن", "رضوانية" ] ],
+    [ "محمد شاكر", "07764032129", [ "باب المعظم", "الكفاح", "الوزيرية الصناعية", "السنك", "المتنبي", "حافظ القاضي", "باب الشرقي", "ساحة الطيران", "الشورجة" ] ],
+    [ "نور بسام", "07724036165", [ "كاظمية", "طارمية", "سبع البور", "عبايجي", "مشاهدة", "شعلة", "جكوك", "حي الجوادين", "سلاميات", "الخطيب" ] ],
+    [ "زهراء", "07730240405", [ "الحرية", "الدولعي", "الوشاش", "الطوبجي", "الاسكان", "المنصور", "الحارثية", "كرادة مريم", "الجعيفر", "صالحية", "العلاوي", "شيخ معروف", "شواكة", "المنطقة الخضراء" ] ],
+    [ "ايناس فرج", "07779397548", [ "عامرية", "غزالية", "حي الجامعة", "اليرموك", "حي حطين", "حي الداخلية", "القادسية", "الخضراء", "حي العامل", "حي العدل", "العطيفية", "شالجية", "علي الصالح" ] ],
+    [ "حسن ماجد", "07735572754", [ "السيدية", "حي الاعلام التراث", "الري", "معالف", "الشرطة الرابعة", "الشرطة الخامسة", "سويب", "البياع", "حي الجهاد" ] ],
+    [ "حوراء علاء", "07779397549", [ "الدورة", "كرادة داخل", "كرادة خارج", "العرصات", "السعدون", "شارع الصناعة", "الجادرية" ] ],
+    [ "رفل ربيع", "07779397551", [ "الشعب", "البنوك", "حي اور", "سبع قصور", "حي البساتين", "الجزيرة", "كميرة", "ام الكبر والغزلان", "ثعالبة" ] ],
+    [ "مريم عامر", "07779397550", [ "بلديات", "مدينة الصدر", "الحبيبية", "حسينية الرشادية", "جميلة", "طالبية", "سريدات", "بوب الشام" ] ],
+    [ "مروة علاء", "07759150128", [ "شارع فلسطين", "شارع الربيعي", "زيونة", "الاعظمية", "القاهرة", "صليخ", "كريعات", "شارع المغرب", "سبع ابكار" ] ],
+    [ "زينب", "07744441074", [ "بغداد الجديدة", "النعيرية", "الامين", "المشتل", "العبيدي", "الغدير", "ساحة ميسلون", "كمالية", "فضيلية", "معامل الحسينية" ] ],
+    [ "عبير اسماعيل", "07735572761", [ "الموصل", "الديوانية" ] ],
+    [ "سعاد خالد", "07741310424", [ "محافظة الحلة" ] ],
+    [ "نهاد خالد", "07744442323", [ "محافظة النجف" ] ],
+    [ "ردينة", "07744441064", [ "ناصرية", "كربلاء", "دهوك", "صلاح الدين", "العمارة" ] ],
+    [ "كرار علي وادي", "07779397531", [ "البصرة", "الانبار", "الكوت" ] ],
+    [ "فاطمة حسين", "07744441065", [ "اربيل", "ديالى" ] ],
+    [ "سحر", "07743741179", [ "سليمانية", "سماوة", "كركوك" ] ]
+  ];
   function buildContactsPanel() {
     if (document.getElementById("ws-contacts-overlay")) {
       return;
@@ -6792,10 +7081,12 @@
           kind: "inquiry"
         };
       }), [].concat.apply([], CONTACTS_REPORTS.map(function(e) {
-        return e[1].map(function(phone, i) {
+        return e[1].map(function(pe) {
           return {
-            name: e[0] + (i ? " " + (i + 1) : ""),
-            phone: phone,
+            name: e[0] + " — " + pe[1],
+            province: e[0],
+            employee: pe[1],
+            phone: pe[0],
             note: "تبليغات محافظة " + e[0],
             kind: "report"
           };
@@ -7986,6 +8277,11 @@
       if (!wsWalletSavedToday) {
         wsWalletSavedToday = true;
         saveWalletDay(empName, totals);
+        var savedMonth = loadWalletMonth(empName, getYearMonth(todayStr));
+        var savedRec = savedMonth[todayStr];
+        if (savedRec && savedRec.totals) {
+          wsWalletTodayTotals = savedRec.totals;
+        }
         updateWalletBtnLabel();
       }
     }
@@ -8256,7 +8552,38 @@
         setTimeout(resolve, ms);
       });
     }
-    function statsExtractCategoryBreakdownFromDOM(carryFee) {
+    function statsFindDateColIndex(table) {
+      var headers = table.querySelectorAll("thead th, thead td");
+      for (var i = 0; i < headers.length; i++) {
+        var t = headers[i].textContent || "";
+        if (t.indexOf("تاريخ") !== -1 || t.indexOf("الإنشاء") !== -1) {
+          return i;
+        }
+      }
+      return -1;
+    }
+    function statsRowDayOfWeek(cells, dateIdx) {
+      function parse(txt) {
+        var m = toWesternDigits(txt).match(/(\d{4})-(\d{2})-(\d{2})/);
+        return m ? new Date(+m[1], +m[2] - 1, +m[3]).getDay() : null;
+      }
+      var d;
+      if (dateIdx >= 0 && cells[dateIdx]) {
+        d = parse(cells[dateIdx].textContent);
+        if (d !== null) {
+          return d;
+        }
+      }
+      for (var i = 0; i < cells.length; i++) {
+        d = parse(cells[i].textContent);
+        if (d !== null) {
+          return d;
+        }
+      }
+      return null;
+    }
+    function statsExtractCategoryBreakdownFromDOM(carryFee, offDay) {
+      var hasOff = offDay !== null && offDay !== undefined;
       var table = statsGetTable();
       var result = {
         breakdown: {},
@@ -8269,6 +8596,7 @@
       if (!tbody) {
         return result;
       }
+      var dateIdx = hasOff ? statsFindDateColIndex(table) : -1;
       var currentFee = carryFee || null;
       Array.from(tbody.children).forEach(function(tr) {
         if (tr.classList.contains("dtrg-group")) {
@@ -8286,8 +8614,11 @@
                 normal: 0
               };
             }
-            result.breakdown[currentFee].count += cntM ? parseInt(cntM[1].replace(/,/g, ""), 10) : 0;
-            result.breakdown[currentFee].sum += sumM ? parseInt(sumM[1].replace(/,/g, ""), 10) : 0;
+            // عند استثناء يوم إجازة يُحسب العدد من الصفوف نفسها لا من رأس المجموعة
+            if (!hasOff) {
+              result.breakdown[currentFee].count += cntM ? parseInt(cntM[1].replace(/,/g, ""), 10) : 0;
+              result.breakdown[currentFee].sum += sumM ? parseInt(sumM[1].replace(/,/g, ""), 10) : 0;
+            }
           }
           return;
         }
@@ -8301,6 +8632,9 @@
         if (cells.length < 3) {
           return;
         }
+        if (hasOff && statsRowDayOfWeek(cells, dateIdx) === offDay) {
+          return; // يوم الإجازة — لا يُحتسب
+        }
         var repName = cells[2].textContent.trim();
         if (!result.breakdown[currentFee]) {
           result.breakdown[currentFee] = {
@@ -8309,6 +8643,10 @@
             vip: 0,
             normal: 0
           };
+        }
+        if (hasOff) {
+          result.breakdown[currentFee].count++;
+          result.breakdown[currentFee].sum += currentFee;
         }
         if (/[a-zA-Z]/.test(repName)) {
           result.breakdown[currentFee].vip++;
@@ -8336,7 +8674,7 @@
       });
       return target;
     }
-    async function statsCollectBreakdownAllPages(btn, label) {
+    async function statsCollectBreakdownAllPages(btn, label, offDay) {
       var infoEl = statsGetInfoEl();
       var prevText = infoEl ? infoEl.textContent.trim() : "";
       var didShowAll = statsEnsureShowAll();
@@ -8354,14 +8692,14 @@
         } catch (e) {}
       }
       if (isShowingAll || !statsFindNextBtn()) {
-        var res = statsExtractCategoryBreakdownFromDOM(null);
+        var res = statsExtractCategoryBreakdownFromDOM(null, offDay);
         return res.breakdown;
       }
       var merged = {};
       var carry = null;
       var safe = 0;
       while (safe++ < 200) {
-        var res2 = statsExtractCategoryBreakdownFromDOM(carry);
+        var res2 = statsExtractCategoryBreakdownFromDOM(carry, offDay);
         statsMergeBreakdown(merged, res2.breakdown);
         carry = res2.lastFee;
         var nb = statsFindNextBtn();
@@ -8394,16 +8732,35 @@
       });
       return total;
     }
-    function statsMonthRange() {
+    function statsCurrentYm() {
       var now = new Date;
-      var first = new Date(now.getFullYear(), now.getMonth(), 1);
+      return now.getFullYear() + "-" + pad2(now.getMonth() + 1);
+    }
+    function statsBuildMonthOptions() {
+      var months = [];
+      var now = new Date;
+      for (var mi = 0; mi < 24; mi++) {
+        var d = new Date(now.getFullYear(), now.getMonth() - mi, 1);
+        months.push(d.getFullYear() + "-" + pad2(d.getMonth() + 1));
+      }
+      return months;
+    }
+    function statsMonthRange(ym) {
+      var now = new Date;
+      var currentYm = statsCurrentYm();
+      var targetYm = ym && /^\d{4}-\d{2}$/.test(ym) ? ym : currentYm;
+      var parts = targetYm.split("-");
+      var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1;
+      var first = new Date(y, m, 1);
+      var lastOfMonth = new Date(y, m + 1, 0);
+      var to = targetYm === currentYm ? now : lastOfMonth;
       function fmt(d) {
         return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
       }
       return {
         from: fmt(first),
-        to: fmt(now),
-        label: getMonthLabel(fmt(first).slice(0, 7))
+        to: fmt(to),
+        label: getMonthLabel(targetYm)
       };
     }
     async function statsSearchByType(typeValue, range, btn, label) {
@@ -8433,8 +8790,8 @@
       }
       searchBtn.click();
       await statsWaitSearchComplete(prevInfoText, 25e3);
-      var breakdown = await statsCollectBreakdownAllPages(btn, label);
-      var totalCount = statsGetTotalCount();
+      var breakdown = await statsCollectBreakdownAllPages(btn, label, range.offDay);
+      var totalCount = range.offDay != null ? null : statsGetTotalCount();
       if (totalCount == null) {
         totalCount = Object.keys(breakdown).reduce(function(s, k) {
           return s + breakdown[k].count;
@@ -8479,6 +8836,12 @@
       monthLbl.textContent = "📅 " + range.label + " (" + range.from + " → " + range.to + ")";
       monthLbl.style.cssText = "font-size:12px;color:#555;margin-bottom:10px;";
       panel.appendChild(monthLbl);
+      if (range.offDayLabel) {
+        var offNote = document.createElement("div");
+        offNote.textContent = "🚫 تم استثناء يوم الإجازة: " + range.offDayLabel;
+        offNote.style.cssText = "font-size:11.5px;color:#c2410c;background:#fff7ed;border-radius:6px;padding:5px 8px;margin-bottom:10px;";
+        panel.appendChild(offNote);
+      }
       if (!tiers.length) {
         var emptyNote = document.createElement("div");
         emptyNote.style.cssText = "text-align:center;color:#999;padding:14px 0;font-size:12px;";
@@ -8616,11 +8979,14 @@
       });
       document.body.appendChild(overlay);
     }
-    async function runMonthStats(btn) {
+    async function runMonthStats(btn, ym, offDayVal) {
       var orig = btn.textContent;
       try {
         btn.disabled = true;
-        var range = statsMonthRange();
+        var range = statsMonthRange(ym);
+        var hasOff = offDayVal !== "" && offDayVal != null;
+        range.offDay = hasOff ? parseInt(offDayVal, 10) : null;
+        range.offDayLabel = hasOff ? DAYS_AR[range.offDay] : "";
         var typeSelCheck = document.getElementById("type");
         if (!typeSelCheck) {
           alert('تعذّر إيجاد قائمة "نوع السجل" بالصفحة.');
@@ -8644,17 +9010,51 @@
       if (oldReportBtn) {
         oldReportBtn.remove();
       }
+      var currentYm = statsCurrentYm();
+      var monthSelect = document.createElement("select");
+      monthSelect.id = "ws-stats-month-select";
+      monthSelect.style.cssText = "padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;margin:0 4px;max-width:120px;";
+      statsBuildMonthOptions().forEach(function(ym) {
+        var opt = document.createElement("option");
+        opt.value = ym;
+        opt.textContent = getMonthLabel(ym) + (ym === currentYm ? " (الحالي)" : "");
+        monthSelect.appendChild(opt);
+      });
+      monthSelect.addEventListener("click", function(e) {
+        e.stopPropagation();
+      });
+
+      var offSelect = document.createElement("select");
+      offSelect.id = "ws-stats-offday-select";
+      offSelect.title = "يوم الإجازة — لا يُحتسب من المجموع";
+      offSelect.style.cssText = "padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;margin:0 4px;max-width:130px;";
+      var noneOpt = document.createElement("option");
+      noneOpt.value = "";
+      noneOpt.textContent = "🚫 بدون يوم إجازة";
+      offSelect.appendChild(noneOpt);
+      DAYS_AR.forEach(function(dayName, idx) {
+        var o = document.createElement("option");
+        o.value = String(idx);
+        o.textContent = "إجازة: " + dayName;
+        offSelect.appendChild(o);
+      });
+      offSelect.addEventListener("click", function(e) {
+        e.stopPropagation();
+      });
+
       var btn = document.createElement("button");
       btn.id = "ws-stats-btn";
       btn.type = "button";
-      btn.textContent = "💰 إحصائية الشهر الكامل";
+      btn.textContent = "💰 إحصائية الشهر";
       btn.setAttribute("data-ws-btn", "month-stats");
       btn.style.cssText = "background:#e67e22;color:#fff;border:none;border-radius:4px;padding:6px 12px;cursor:pointer;font-size:13px;margin:0 4px;white-space:nowrap;font-weight:bold;";
       btn.addEventListener("click", function() {
-        runMonthStats(btn);
+        runMonthStats(btn, monthSelect.value, offSelect.value);
       });
       var oldWalletBtn = document.getElementById("ws-wallet-btn");
       if (oldWalletBtn) {
+        oldWalletBtn.insertAdjacentElement("beforebegin", monthSelect);
+        oldWalletBtn.insertAdjacentElement("beforebegin", offSelect);
         oldWalletBtn.replaceWith(btn);
         return;
       }
@@ -8670,9 +9070,15 @@
         return false;
       });
       if (inp && inp.parentElement) {
+        inp.parentElement.insertBefore(monthSelect, inp);
+        inp.parentElement.insertBefore(offSelect, inp);
         inp.parentElement.insertBefore(btn, inp);
       } else {
-        btn.style.cssText += "position:fixed;top:10px;left:10px;z-index:99999;";
+        monthSelect.style.cssText += "position:fixed;top:10px;left:10px;z-index:99999;";
+        offSelect.style.cssText += "position:fixed;top:10px;left:135px;z-index:99999;";
+        btn.style.cssText += "position:fixed;top:10px;left:275px;z-index:99999;";
+        document.body.appendChild(monthSelect);
+        document.body.appendChild(offSelect);
         document.body.appendChild(btn);
       }
     }
@@ -9234,6 +9640,36 @@
                 btn.click();
               }
             }, 400);
+          });
+        });
+      });
+    }
+    var orderLookupNum = phoneSearchParams.get("ws_order_number");
+    if (orderLookupNum) {
+      onReady(function() {
+        waitFor("#search-type", function(sel) {
+          sel.value = "1";
+          sel.dispatchEvent(new Event("input", {
+            bubbles: true
+          }));
+          sel.dispatchEvent(new Event("change", {
+            bubbles: true
+          }));
+          waitFor("#order_id", function(inp) {
+            inp.value = orderLookupNum;
+            inp.dispatchEvent(new Event("input", {
+              bubbles: true
+            }));
+            inp.dispatchEvent(new Event("change", {
+              bubbles: true
+            }));
+            inp.focus();
+            setTimeout(function() {
+              var btn = document.querySelector("#myBtn");
+              if (btn) {
+                btn.click();
+              }
+            }, 150);
           });
         });
       });
@@ -11145,4 +11581,294 @@
     }, 1500);
   }
   setInterval(atWatch, 3000);
+
 })();
+
+  // ===================== وحدة استعلام رقم الطلب عن بُعد (لصفحة خارجية) =====================
+  // تراقب جدول ws_order_lookup_requests في Supabase من أي تبويب مفتوح على الموقع،
+  // وعند وجود طلب استعلام معلّق تفتح /cs/view_search بإطار مخفي وتسحب بيانات الطلب وترفعها.
+  (function() {
+    "use strict";
+    if (typeof GM_xmlhttpRequest === "undefined") {
+      return;
+    }
+    var SUPABASE_URL = "https://frrbeujlravuzyzytpuh.supabase.co";
+    var SUPABASE_ANON_KEY = "sb_publishable_KxIE454ntfTsy8jw_vL72g_1Ak5w6Gd";
+    var BASE_URL = "https://alwaseet-iq.net";
+    function supabaseHeaders(extra) {
+      var h = {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: "Bearer " + SUPABASE_ANON_KEY
+      };
+      if (extra) {
+        for (var k in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, k)) {
+            h[k] = extra[k];
+          }
+        }
+      }
+      return h;
+    }
+    function wsLog(tag, msg, data) {
+      try {
+        console.log("%c[WSAdmin][" + tag + "]", "color:#0088cc;font-weight:bold;", msg, data !== undefined ? data : "");
+      } catch (e) {}
+    }
+    function wsWarn(tag, msg, data) {
+      try {
+        console.warn("%c[WSAdmin][" + tag + "]", "color:#c0392b;font-weight:bold;", msg, data !== undefined ? data : "");
+      } catch (e) {}
+    }
+    var LOOKUP_TABLE = "ws_order_lookup_requests";
+    wsLog("استعلام‌طلب", "✅ الوحدة تم تحميلها بنجاح — بانتظار طلبات الاستعلام");
+    try {
+      unsafeWindow.wsOrderLookupPing = function() {
+        return "الوحدة تعمل — busy=" + lookupBusy;
+      };
+    } catch (e) {}
+    var LOOKUP_POLL_MS = 2000;
+    var LOOKUP_TIMEOUT_MS = 20000;
+    var lookupBusy = false;
+
+    function lookupFetchPending(cb) {
+      GM_xmlhttpRequest({
+        method: "GET",
+        url: SUPABASE_URL + "/rest/v1/" + LOOKUP_TABLE + "?status=eq.pending&select=id,order_number,search_type&order=created_at.asc&limit=1",
+        headers: supabaseHeaders(),
+        onload: function(res) {
+          try {
+            var rows = JSON.parse(res.responseText || "[]");
+            cb(Array.isArray(rows) && rows.length ? rows[0] : null);
+          } catch (e) {
+            cb(null);
+          }
+        },
+        onerror: function() {
+          cb(null);
+        }
+      });
+    }
+
+    function lookupCleanupOld() {
+      var cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      GM_xmlhttpRequest({
+        method: "DELETE",
+        url: SUPABASE_URL + "/rest/v1/" + LOOKUP_TABLE + "?created_at=lt." + encodeURIComponent(cutoff),
+        headers: supabaseHeaders(),
+        onload: function() {
+          wsLog("استعلام‌طلب", "تم تنظيف الطلبات الأقدم من 24 ساعة");
+        },
+        onerror: function() {}
+      });
+    }
+
+    function lookupClaim(id, cb) {
+      GM_xmlhttpRequest({
+        method: "PATCH",
+        url: SUPABASE_URL + "/rest/v1/" + LOOKUP_TABLE + "?id=eq." + encodeURIComponent(id) + "&status=eq.pending",
+        headers: supabaseHeaders({
+          "Content-Type": "application/json",
+          Prefer: "return=representation"
+        }),
+        data: JSON.stringify({
+          status: "processing",
+          updated_at: new Date().toISOString()
+        }),
+        onload: function(res) {
+          try {
+            var rows = JSON.parse(res.responseText || "[]");
+            cb(Array.isArray(rows) && rows.length > 0);
+          } catch (e) {
+            cb(false);
+          }
+        },
+        onerror: function() {
+          cb(false);
+        }
+      });
+    }
+
+    function lookupFinish(id, status, result) {
+      GM_xmlhttpRequest({
+        method: "PATCH",
+        url: SUPABASE_URL + "/rest/v1/" + LOOKUP_TABLE + "?id=eq." + encodeURIComponent(id),
+        headers: supabaseHeaders({
+          "Content-Type": "application/json"
+        }),
+        data: JSON.stringify({
+          status: status,
+          result: result || null,
+          updated_at: new Date().toISOString()
+        }),
+        onload: function() {
+          wsLog("استعلام‌طلب", "تم إنهاء الاستعلام #" + id + " بحالة " + status);
+        },
+        onerror: function() {
+          wsWarn("استعلام‌طلب", "فشل تحديث حالة الاستعلام #" + id);
+        }
+      });
+    }
+
+    function digitsOnly(s) {
+      return String(s || "").replace(/[^0-9]/g, "");
+    }
+    function phoneTail(s) {
+      var d = digitsOnly(s);
+      return d.length > 9 ? d.slice(-9) : d;
+    }
+
+    function extractOrderInfo(doc, expectedValue, searchType) {
+      var container = doc.querySelector("#order_info");
+      if (!container) {
+        return null;
+      }
+      var rows = container.querySelectorAll(".form-group.row");
+      if (!rows.length) {
+        return null;
+      }
+      var fields = [];
+      var firstValue = null;
+      rows.forEach(function(row, idx) {
+        var label = row.querySelector("label");
+        var input = row.querySelector("input");
+        if (!label || !input) {
+          return;
+        }
+        var key = label.textContent.replace(/\s+/g, " ").trim();
+        var val = (input.value || "").trim();
+        if (idx === 0) {
+          firstValue = val;
+        }
+        if (key) {
+          fields.push({
+            label: key,
+            value: val
+          });
+        }
+      });
+      if (!fields.length) {
+        return null;
+      }
+      var matched = false;
+      if (searchType === "phone") {
+        var expectedTail = phoneTail(expectedValue);
+        matched = expectedTail.length >= 6 && fields.some(function(f) {
+          return f.label.indexOf("رقم الزبون") !== -1 && phoneTail(f.value) === expectedTail;
+        });
+      } else {
+        matched = !!firstValue && firstValue === String(expectedValue).trim();
+      }
+      if (!matched) {
+        return null;
+      }
+      return {
+        order_number: firstValue,
+        fields: fields
+      };
+    }
+
+    function fetchOrderViaHiddenFrame(url, extract, cb) {
+      var done = false;
+      var iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
+      var pollTimer = null, hardTimeout = null;
+      function finish(val) {
+        if (done) {
+          return;
+        }
+        done = true;
+        if (pollTimer) {
+          clearInterval(pollTimer);
+        }
+        if (hardTimeout) {
+          clearTimeout(hardTimeout);
+        }
+        try {
+          iframe.remove();
+        } catch (e) {}
+        cb(val);
+      }
+      function tryExtract() {
+        try {
+          var doc = iframe.contentDocument || iframe.contentWindow && iframe.contentWindow.document;
+          if (!doc) {
+            return false;
+          }
+          var val = extract(doc);
+          if (val) {
+            finish(val);
+            return true;
+          }
+        } catch (e) {}
+        return false;
+      }
+      iframe.addEventListener("load", function() {
+        var attempts = 0;
+        pollTimer = setInterval(function() {
+          attempts++;
+          if (tryExtract() || attempts >= 65) {
+            if (pollTimer) {
+              clearInterval(pollTimer);
+              pollTimer = null;
+            }
+            if (!done) {
+              finish(null);
+            }
+          }
+        }, 300);
+      });
+      iframe.addEventListener("error", function() {
+        finish(null);
+      });
+      hardTimeout = setTimeout(function() {
+        finish(null);
+      }, LOOKUP_TIMEOUT_MS);
+      try {
+        iframe.src = url;
+        document.body.appendChild(iframe);
+      } catch (e) {
+        finish(null);
+      }
+    }
+
+    function processLookup(row) {
+      var searchType = row.search_type === "phone" ? "phone" : "order";
+      lookupClaim(row.id, function(claimed) {
+        if (!claimed) {
+          return;
+        }
+        var url = searchType === "phone" ?
+          BASE_URL + "/cs/view_search?ws_phone=" + encodeURIComponent(row.order_number) + "&ws_search_type=2&_=" + Date.now() :
+          BASE_URL + "/cs/view_search?ws_order_number=" + encodeURIComponent(row.order_number) + "&_=" + Date.now();
+        fetchOrderViaHiddenFrame(url, function(doc) {
+          return extractOrderInfo(doc, row.order_number, searchType);
+        }, function(result) {
+          if (result) {
+            lookupFinish(row.id, "done", result);
+          } else {
+            lookupFinish(row.id, "error", {
+              message: searchType === "phone" ? "لم يتم العثور على طلب بهذا الرقم أو انتهت مهلة الاستعلام" : "لم يتم العثور على الطلب أو انتهت مهلة الاستعلام"
+            });
+          }
+        });
+      });
+    }
+
+    function lookupTick() {
+      if (lookupBusy) {
+        return;
+      }
+      lookupBusy = true;
+      lookupFetchPending(function(row) {
+        lookupBusy = false;
+        if (row) {
+          processLookup(row);
+        }
+      });
+    }
+
+    setInterval(lookupTick, LOOKUP_POLL_MS);
+    setTimeout(lookupTick, 800);
+    setInterval(lookupCleanupOld, 30 * 60 * 1000);
+    setTimeout(lookupCleanupOld, 10000);
+  })();
