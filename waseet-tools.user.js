@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name          4احمد محمد كريم
 // @namespace    waseet-tools
-// @version      5.1.6
-// @description   GitHub
+// @version      5.2.0
+// @description  أدوات مركز خدمة العملاء + مراقب التوصيل الاحترافي + تحديد مواقع مجاني بالكامل (OpenStreetMap) + تقرير تيليجرام يومي صامت للمدير + مزامنة مركزية لقيدين لكل موظف (قيد التوصيل + البريد الكلي) عبر iframe مخفي، مع قراءة اسم مباشرة من DOM (لا ذاكرة مشتركة) وThrottle مستقل لكل حساب — يدعم الأجهزة التي يتناوب عليها أكثر من حساب دون تداخل + زر سحب وإرسال جماعي للكل أو فردي لموظف واحد إلى تيليجرام (للمدير فقط) + تسجيل تشخيصي كامل + وحدة استعلام رقم الطلب عن بُعد لصفحة خارجية عبر Supabase — ملف موحد مع فحص تحديثات تلقائي من GitHub
 // @author       Ahmed Mohammed Kareem
 // @match        *://alwaseet-iq.net/*
 // @match        *://*.alwaseet-iq.net/*
@@ -1179,8 +1179,12 @@
       sendTelegramMessage("الموظف ( " + username + " ) متبقي لديه " + count + " طلب");
     } catch (e) {}
   }
-  setTimeout(maybeSendDailyReport, 8e3);
-  setInterval(maybeSendDailyReport, CHECK_EVERY_MS);
+  // [5.2.0] تم إلغاء الإرسال التلقائي اليومي (الساعة 6) إلى تيليجرام — الإرسال متاح يدوياً فقط من زر "📊 إرسال قيود الموظفين"
+  var AUTO_DAILY_REPORT_ENABLED = false;
+  if (AUTO_DAILY_REPORT_ENABLED) {
+    setTimeout(maybeSendDailyReport, 8e3);
+    setInterval(maybeSendDailyReport, CHECK_EVERY_MS);
+  }
 })();
 
 (function() {
@@ -5487,7 +5491,7 @@
         smartStatePill.textContent = on ? "مفعّل" : "معطّل";
       }
       paintSmartPill(!!wsSettings.smartDecisionEnabled);
-      var smartHintOn = 'مفعّل — الزر يتغيّر تلقائياً حسب حالة الطلب الحالية (مؤجل/الغاء/لم يطلب/...الخ) ويأكّد نفس القرار بضغطة واحدة. مستثنى دائماً: "رفض الطلب" و"العنوان غير دقيق" و"تغيير سعر" (الزر يتعطّل لهم).';
+      var smartHintOn = 'مفعّل — الزر يتغيّر تلقائياً حسب حالة الطلب الحالية (مؤجل/الغاء/لم يطلب/...الخ) ويأكّد نفس القرار بضغطة واحدة. "رفض الطلب" يعمل الآن: يأخذ ملاحظة المندوب ويصيغها بشكل احترافي بالذكاء الاصطناعي ثم يعرضها للتأكيد والتعديل قبل التنفيذ. مستثنى دائماً: "العنوان غير دقيق" و"تغيير سعر" (الزر يتعطّل لهم).';
       var smartHintOff = '🔕 معطّل حالياً — الزر يبقى بسيط ويسوي فقط "تأجيل الطلب" (مؤجل + ملاحظة "غدا") دايماً، بغض النظر عن حالة الطلب.';
       var smartCb = wscToggle(wsSettings.smartDecisionEnabled, function(val) {
         wsSettings.smartDecisionEnabled = val;
@@ -7483,7 +7487,7 @@
       var r = wsDelayResults.get(orderId);
       return !!(r && r.late === true);
     }
-    var WS_STATUS_EXCLUDED_VALUES = [ "32", "38" ];
+    var WS_STATUS_EXCLUDED_VALUES = [ "38" ];
     var WS_STATUS_EXCLUDED_TEXT_PATTERNS = [ /تغيير\s*سعر/ ];
     function isExcludedStatus(statusText, cfg) {
       if (cfg && WS_STATUS_EXCLUDED_VALUES.indexOf(cfg.value) !== -1) {
@@ -7637,16 +7641,32 @@
       var overlay = document.createElement("div");
       overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:center;justify-content:center;direction:rtl;";
       var box = document.createElement("div");
-      box.style.cssText = "background:#fff;border-radius:10px;padding:18px;width:320px;max-width:92vw;box-shadow:0 6px 24px rgba(0,0,0,.3);font-family:Tahoma,Arial,sans-serif;";
+      box.style.cssText = "background:#fff;border-radius:10px;padding:18px;width:340px;max-width:92vw;box-shadow:0 6px 24px rgba(0,0,0,.3);font-family:Tahoma,Arial,sans-serif;";
       var title = document.createElement("div");
-      title.textContent = "🤖 اقتراح AI للطلب " + info.order;
+      title.textContent = (info.title || "🤖 اقتراح AI للطلب ") + info.order;
       title.style.cssText = "font-size:14px;font-weight:bold;color:#222;margin-bottom:10px;";
       var notesBox = document.createElement("div");
       notesBox.style.cssText = "background:#f8fafc;border-radius:8px;padding:8px;font-size:12px;color:#555;margin-bottom:8px;line-height:1.6;";
       notesBox.textContent = "ملاحظة المندوب: " + (info.notes || "(لا توجد)");
       var decisionBox = document.createElement("div");
       decisionBox.style.cssText = "background:#eef2ff;border-radius:8px;padding:8px;font-size:12.5px;color:#333;margin-bottom:14px;line-height:1.7;";
-      decisionBox.innerHTML = "<b>القرار المقترح:</b> " + info.label + "<br><b>الملاحظة المقترحة:</b> " + (info.note || "(بدون)");
+      var lbl = document.createElement("div");
+      var lblB = document.createElement("b");
+      lblB.textContent = "القرار المقترح: ";
+      lbl.appendChild(lblB);
+      lbl.appendChild(document.createTextNode(info.label));
+      var noteLbl = document.createElement("div");
+      noteLbl.style.cssText = "margin-top:6px;";
+      var noteLblB = document.createElement("b");
+      noteLblB.textContent = "الملاحظة (يمكنك تعديلها):";
+      noteLbl.appendChild(noteLblB);
+      var noteTa = document.createElement("textarea");
+      noteTa.value = info.note || "";
+      noteTa.rows = 3;
+      noteTa.style.cssText = "width:100%;box-sizing:border-box;margin-top:4px;border:1px solid #c7d2fe;border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit;line-height:1.6;resize:vertical;direction:rtl;";
+      decisionBox.appendChild(lbl);
+      decisionBox.appendChild(noteLbl);
+      decisionBox.appendChild(noteTa);
       var btnRow = document.createElement("div");
       btnRow.style.cssText = "display:flex;gap:8px;";
       var okBtn = document.createElement("button");
@@ -7658,8 +7678,9 @@
       cancelBtn.textContent = "إلغاء";
       cancelBtn.style.cssText = "flex:1;background:#888;color:#fff;border:none;border-radius:6px;padding:9px;cursor:pointer;font-size:13px;";
       okBtn.addEventListener("click", function() {
+        var finalNote = noteTa.value;
         overlay.remove();
-        onConfirm();
+        onConfirm(finalNote);
       });
       cancelBtn.addEventListener("click", function() {
         overlay.remove();
@@ -7677,6 +7698,11 @@
         }
       });
       document.body.appendChild(overlay);
+      setTimeout(function() {
+        try {
+          noteTa.focus();
+        } catch (e) {}
+      }, 50);
     }
     function aiSuggestDecisionFromNotes(displayOrderNum, rowEl, triggerBtn, statusText) {
       var notes = getRowDeliverNotes(rowEl);
@@ -7725,9 +7751,77 @@
           notes: notes,
           label: cfg.label,
           note: note
-        }, function() {
-          executeOrderDecision(displayOrderNum, rowEl, triggerBtn, cfg.value, note, cfg.label);
+        }, function(finalNote) {
+          executeOrderDecision(displayOrderNum, rowEl, triggerBtn, cfg.value, typeof finalNote === "string" ? finalNote.trim() : note, cfg.label);
         });
+      });
+    }
+    function wsCleanRepNote(s) {
+      return String(s || "").replace(/\s+/g, " ").trim();
+    }
+    function wsFallbackRejectNote(raw) {
+      var t = wsCleanRepNote(raw);
+      return t.length > 160 ? t.slice(0, 157) + "..." : t;
+    }
+    function rejectOrderWithRepNote(displayOrderNum, rowEl, triggerBtn, cfg) {
+      var raw = wsCleanRepNote(getRowDeliverNotes(rowEl));
+      var origLabel = triggerBtn ? triggerBtn.textContent : "";
+      function restore() {
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.textContent = origLabel;
+        }
+      }
+      function showConfirm(note, fromAi) {
+        openAiDecisionConfirm({
+          title: "🚫 رفض الطلب ",
+          order: displayOrderNum,
+          notes: raw,
+          label: cfg.label,
+          note: note
+        }, function(finalNote) {
+          finalNote = wsCleanRepNote(finalNote);
+          if (!finalNote) {
+            wsGlobalToast("⚠️ اكتب سبب الرفض بالملاحظة أولاً");
+            return;
+          }
+          executeOrderDecision(displayOrderNum, rowEl, triggerBtn, cfg.value, finalNote, cfg.label);
+        });
+        if (!fromAi && raw) {
+          wsGlobalToast("ℹ️ تعذّرت الصياغة الذكية — استُخدمت ملاحظة المندوب كما هي، راجعها قبل التنفيذ");
+        }
+      }
+      if (!raw) {
+        wsGlobalToast("⚠️ لا توجد ملاحظة من المندوب — اكتب سبب الرفض يدوياً");
+        showConfirm("", false);
+        return;
+      }
+      if (!wsAiConfigured()) {
+        showConfirm(wsFallbackRejectNote(raw), false);
+        return;
+      }
+      if (triggerBtn) {
+        triggerBtn.disabled = true;
+        triggerBtn.textContent = "🤖…";
+      }
+      wsAiCall({
+        system: 'أنت موظف خدمة عملاء محترف في شركة توصيل عراقية. ستصلك ملاحظة كتبها المندوب (قد تكون بلهجة عامية أو بأخطاء إملائية أو اختصارات) تشرح سبب رفض الطلب. افهم السبب الحقيقي من كلام المندوب، ثم اكتب ملاحظة رسمية مهنية موجزة بالعربية الفصحى المبسطة (جملة أو جملتان، بحد أقصى 25 كلمة) تُسجَّل في النظام كسبب لرفض الطلب. لا تضف أي معلومة لم ترد في ملاحظة المندوب، ولا تذكر أرقام هواتف ولا أسماء، ولا تستخدم رموزاً تعبيرية. أجب حصراً بكائن JSON بالشكل: {"note":"<الملاحظة>"} بدون أي نص إضافي.',
+        prompt: "ملاحظة المندوب: " + raw,
+        maxTokens: 200
+      }, function(err, text) {
+        restore();
+        var note = "";
+        if (!err) {
+          var parsed = wsAiExtractJson(text);
+          if (parsed && typeof parsed.note === "string") {
+            note = wsCleanRepNote(parsed.note);
+          }
+        }
+        if (note) {
+          showConfirm(note, true);
+        } else {
+          showConfirm(wsFallbackRejectNote(raw), false);
+        }
       });
     }
     function onDeferredBtnClick(displayOrderNum, rowEl, triggerBtn) {
@@ -7752,6 +7846,10 @@
           return;
         }
         wsGlobalToast("⚠️ حالة غير معروفة للأتمتة: " + statusText);
+        return;
+      }
+      if (cfg.value === "32") {
+        rejectOrderWithRepNote(displayOrderNum, rowEl, triggerBtn, cfg);
         return;
       }
       var note = WS_STATUS_NOTE_OVERRIDES[cfg.value] !== undefined ? WS_STATUS_NOTE_OVERRIDES[cfg.value] : "";
@@ -7817,6 +7915,9 @@
             btn.dataset.wsMode = modeKey;
             btn.textContent = shortStatusLabel(cfg.label);
             btn.title = "تأكيد القرار: " + cfg.label + (isLateNote ? ' + ملاحظة "' + WS_LATE_NOTE_TEXT + '" (الطلب فُحص وظهر متأخر)' : "") + " (ضغطة واحدة تنفّذ القرار مباشرة)";
+            if (cfg.value === "32") {
+              btn.title = "رفض الطلب: يقرأ ملاحظة المندوب ويصيغها بشكل احترافي ثم يعرضها للتأكيد قبل التنفيذ";
+            }
             btn.style.background = WS_STATUS_COLOR_MAP[cfg.value] || "#16a085";
             btn.disabled = false;
           }
@@ -10170,12 +10271,448 @@
       }
     });
   }
+  const TICKETS_KEY = "ws_dm_tickets_v1";
+  const REPORTS_KEY = "ws_dm_reports_v1";
+  const CALL_CENTER_PATH = "/cs/call_center";
+  const REPORTS_PATH = "/cs/city/reports";
+  const EXT_STALE_MS = 5 * 60 * 1e3;
+  const PRICE_CHANGE_RE = /تغيي?ر\s*(?:ال)?\s*سعر/;
+  function dmArabicName(raw) {
+    const text = String(raw || "").replace(/[٠-٩۰-۹]/g, " ").replace(/\s+/g, " ").trim();
+    const runs = text.match(/[\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)*/g);
+    if (!runs || !runs.length) return null;
+    const n = runs.join(" ").replace(/\s+/g, " ").trim();
+    return n.length >= 2 ? n : null;
+  }
+  function dmToInt(s) {
+    const n = parseInt(String(s || "").replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/[^\d]/g, ""), 10);
+    return isNaN(n) ? 0 : n;
+  }
+  function dmShowAllRows(win) {
+    try {
+      const $ = win.jQuery;
+      if ($ && $.fn && $.fn.dataTable) {
+        const s = $.fn.dataTable.settings;
+        if (s && s.length) {
+          const api = new $.fn.dataTable.Api(s[0]);
+          if (api.page.len() !== -1) {
+            api.page.len(-1).draw(false);
+            return false;
+          }
+        }
+      }
+    } catch (e) {}
+    return true;
+  }
+  function dmTallyTickets(doc) {
+    const reps = {};
+    let cur = null, orderRows = 0, anyTable = !!doc.querySelector("table");
+    doc.querySelectorAll("table tbody tr").forEach(tr => {
+      if (tr.closest && tr.closest("#dm-panel")) return;
+      if (/(^|\s)child(\s|$)/.test(tr.className || "")) return;
+      const statusEl = tr.querySelector('[id^="status-"]');
+      const ticketBtn = tr.querySelector('button[onclick^="openTicket("]');
+      if (!statusEl && !ticketBtn) {
+        const cell = tr.querySelector("td[colspan]") || (/(^|\s)(group|dtrg)/.test(tr.className || "") ? tr.querySelector("td") : null);
+        if (cell) {
+          const n = dmArabicName(cell.textContent);
+          if (n) cur = n;
+        }
+        return;
+      }
+      if (!cur) return;
+      orderRows++;
+      let oid = "";
+      tr.querySelectorAll("td").forEach(td => {
+        if (oid) return;
+        let s = "";
+        td.childNodes.forEach(n => {
+          if (n.nodeType === 3) s += n.textContent;
+        });
+        s = s.trim().replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+        if (/^\d{6,}$/.test(s) && !/^(0|964)/.test(s)) oid = s;
+      });
+      if (!oid && ticketBtn) {
+        const m = (ticketBtn.getAttribute("onclick") || "").match(/openTicket\((\d+)\)/);
+        if (m) oid = "t" + m[1];
+      }
+      if (!oid) {
+        const tx = (tr.textContent || "").replace(/\s+/g, " ").trim();
+        let hh = 0;
+        for (let i = 0; i < tx.length; i++) hh = hh * 31 + tx.charCodeAt(i) | 0;
+        oid = "h" + (hh >>> 0).toString(36);
+      }
+      const st = statusEl ? statusEl.textContent : "";
+      const r = reps[cur] || (reps[cur] = {
+        ids: [],
+        excluded: []
+      });
+      if (PRICE_CHANGE_RE.test(st)) r.excluded.push(oid); else r.ids.push(oid);
+    });
+    const empty = !!doc.querySelector("td.dataTables_empty");
+    return {
+      reps: reps,
+      orderRows: orderRows,
+      loaded: anyTable && (orderRows > 0 || empty)
+    };
+  }
+  function dmLoadTickets() {
+    let o = null;
+    try {
+      const raw = gmGet(TICKETS_KEY, null);
+      o = raw ? typeof raw === "string" ? JSON.parse(raw) : raw : null;
+    } catch (e) {
+      o = null;
+    }
+    if (!o || o.dateKey !== todayKey() || !o.reps) return {
+      dateKey: todayKey(),
+      reps: {},
+      ts: 0
+    };
+    return o;
+  }
+  function dmMergeTickets(tally) {
+    const store = dmLoadTickets();
+    let changed = false;
+    Object.keys(tally.reps).forEach(name => {
+      const t = tally.reps[name];
+      const e = store.reps[name] || (store.reps[name] = {
+        ids: {},
+        ex: {}
+      });
+      t.ids.forEach(id => {
+        if (!e.ex[id] && !e.ids[id]) {
+          e.ids[id] = 1;
+          changed = true;
+        }
+      });
+      t.excluded.forEach(id => {
+        if (!e.ex[id]) {
+          e.ex[id] = 1;
+          changed = true;
+        }
+        if (e.ids[id]) {
+          delete e.ids[id];
+          changed = true;
+        }
+      });
+    });
+    store.ts = Date.now();
+    gmSet(TICKETS_KEY, JSON.stringify(store));
+    try {
+      dmSyncMonthFromDaily(store);
+    } catch (e) {}
+    return store;
+  }
+  function dmParseReports(doc) {
+    const table = doc.querySelector("#example") || doc.querySelector("table");
+    if (!table) return null;
+    let nameIdx = -1, waselIdx = -1, totalIdx = -1;
+    table.querySelectorAll("thead th").forEach((th, i) => {
+      const t = th.textContent.trim();
+      if (nameIdx === -1 && t.indexOf("اسم المندوب") !== -1) nameIdx = i;
+      if (waselIdx === -1 && t.indexOf("الواصل") !== -1) waselIdx = i;
+      if (totalIdx === -1 && t.indexOf("مجموع الطلبات") !== -1) totalIdx = i;
+    });
+    if (nameIdx === -1 || waselIdx === -1) return null;
+    const reps = {};
+    let rows = 0;
+    table.querySelectorAll("tbody tr").forEach(tr => {
+      const cells = tr.children;
+      if (!cells || cells.length <= Math.max(nameIdx, waselIdx)) return;
+      const name = dmArabicName(cells[nameIdx].textContent);
+      if (!name) return;
+      reps[name] = {
+        wasel: dmToInt(cells[waselIdx].textContent),
+        total: totalIdx !== -1 && cells[totalIdx] ? dmToInt(cells[totalIdx].textContent) : null
+      };
+      rows++;
+    });
+    return {
+      reps: reps,
+      rows: rows
+    };
+  }
+  function dmLoadReports() {
+    let o = null;
+    try {
+      const raw = gmGet(REPORTS_KEY, null);
+      o = raw ? typeof raw === "string" ? JSON.parse(raw) : raw : null;
+    } catch (e) {
+      o = null;
+    }
+    if (!o || o.dateKey !== todayKey() || !o.reps) return {
+      dateKey: todayKey(),
+      reps: {},
+      ts: 0
+    };
+    return o;
+  }
+  function dmSaveReports(parsed) {
+    const store = {
+      dateKey: todayKey(),
+      reps: parsed.reps,
+      ts: Date.now()
+    };
+    gmSet(REPORTS_KEY, JSON.stringify(store));
+    return store;
+  }
+  function dmFetchFrame(url, extract, cb, timeoutMs) {
+    let done = false, poll = null, hard = null, attempts = 0, lastSig = null, stable = 0;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1200px;height:800px;opacity:0;pointer-events:none;border:0;";
+    iframe.setAttribute("aria-hidden", "true");
+    const finish = v => {
+      if (done) return;
+      done = true;
+      if (poll) clearInterval(poll);
+      if (hard) clearTimeout(hard);
+      try {
+        iframe.remove();
+      } catch (e) {}
+      cb(v);
+    };
+    iframe.addEventListener("load", () => {
+      poll = setInterval(() => {
+        attempts++;
+        let res = null;
+        try {
+          const doc = iframe.contentDocument;
+          if (doc) res = extract(doc, iframe.contentWindow);
+        } catch (e) {}
+        if (res && res.ready) {
+          if (res.sig === lastSig) stable++; else {
+            stable = 0;
+            lastSig = res.sig;
+          }
+          if (stable >= 1) {
+            finish(res.value);
+            return;
+          }
+        }
+        if (attempts >= 40) finish(null);
+      }, 500);
+    });
+    iframe.addEventListener("error", () => finish(null));
+    hard = setTimeout(() => finish(null), timeoutMs || 25e3);
+    try {
+      iframe.src = url;
+      document.body.appendChild(iframe);
+    } catch (e) {
+      finish(null);
+    }
+  }
+  function dmExtractTicketsFrame(doc, win) {
+    if (!dmShowAllRows(win)) return null;
+    const t = dmTallyTickets(doc);
+    if (!t.loaded) return null;
+    return {
+      ready: true,
+      sig: t.orderRows + ":" + Object.keys(t.reps).length,
+      value: t
+    };
+  }
+  function dmExtractReportsFrame(doc, win) {
+    if (!dmShowAllRows(win)) return null;
+    const p = dmParseReports(doc);
+    if (!p || p.rows === 0) return null;
+    return {
+      ready: true,
+      sig: p.rows + ":" + JSON.stringify(p.reps).length,
+      value: p
+    };
+  }
+  function dmStartTicketCollector() {
+    let lastSig = "";
+    function tick() {
+      try {
+        const t = dmTallyTickets(document);
+        if (!t.loaded) return;
+        const sig = Object.keys(t.reps).map(n => n + ":" + t.reps[n].ids.length + ":" + t.reps[n].excluded.length).join("|");
+        if (sig === lastSig) return;
+        lastSig = sig;
+        dmMergeTickets(t);
+        try {
+          window.dispatchEvent(new CustomEvent("dm-tickets-updated"));
+        } catch (e) {}
+      } catch (e) {}
+    }
+    setTimeout(tick, 1500);
+    setInterval(tick, 8e3);
+  }
+
+  function dmReadTotalEntries(doc) {
+    let el = doc.querySelector("#example_info") || doc.querySelector(".dataTables_info");
+    if (!el) return null;
+    const text = el.textContent.replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+    const m = text.match(/من\s*[اأ]صل\s*([\d,]+)/);
+    if (m) return parseInt(m[1].replace(/,/g, ""), 10);
+    const nums = text.match(/[\d,]+/g);
+    if (nums && nums.length) return parseInt(nums[nums.length - 1].replace(/,/g, ""), 10);
+    return null;
+  }
+  function dmHasGroupCounts(rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const cell = rows[i].querySelector("td[colspan]");
+      if (cell && /\(\s*[\d٠-٩]+\s*\)/.test(cell.textContent) && /[\u0600-\u06FF]{2,}/.test(cell.textContent)) return true;
+    }
+    return false;
+  }
+  function dmExtractDeliveringFrame(doc, win) {
+    if (!dmShowAllRows(win)) return null;
+    const rows = getRowsFromRoot(doc);
+    if (!rows.length || !dmHasGroupCounts(rows)) return null;
+    return {
+      ready: true,
+      sig: rows.length + ":" + (dmReadTotalEntries(doc) || 0),
+      value: {
+        rows: rows,
+        total: dmReadTotalEntries(doc)
+      }
+    };
+  }
+
+  function dmHeadlessDeliveryCheck() {
+    try {
+      if (!gmGetBool(STORAGE_KEYS.STOP_CHECK_ON, true)) return;
+      const heartbeat = parseInt(gmGet(LIVE_HEARTBEAT_KEY, "0"), 10) || 0;
+      if (Date.now() - heartbeat < LIVE_HEARTBEAT_FRESH_MS) return;
+      const lockTs = parseInt(gmGet(BG_LOCK_KEY, "0"), 10) || 0;
+      if (Date.now() - lockTs < 35e3) return;
+      gmSet(BG_LOCK_KEY, String(Date.now()));
+    } catch (e) {
+      return;
+    }
+    const apply = rows => {
+      try {
+        processBackgroundRows(rows);
+      } catch (e) {
+        console.warn("[Delivery Monitor CC] تعذّرت معالجة الصفوف:", e);
+      }
+    };
+    const viaFrame = () => {
+      dmFetchFrame(location.origin + DELIVERING_ORDERS_PATH, dmExtractDeliveringFrame, res => {
+        if (res) apply(res.rows);
+      }, 3e4);
+    };
+    if (typeof GM_xmlhttpRequest === "undefined") {
+      viaFrame();
+      return;
+    }
+    try {
+      GM_xmlhttpRequest({
+        method: "GET",
+        url: location.origin + DELIVERING_ORDERS_PATH,
+        onload: res => {
+          try {
+            const doc = (new DOMParser).parseFromString(res.responseText, "text/html");
+            const rows = getRowsFromRoot(doc);
+            if (rows.length && dmHasGroupCounts(rows)) {
+              apply(rows);
+              return;
+            }
+          } catch (e) {}
+          viaFrame();
+        },
+        onerror: viaFrame,
+        ontimeout: viaFrame
+      });
+    } catch (e) {
+      viaFrame();
+    }
+  }
+  function dmStartHeadlessMonitor() {
+    setTimeout(dmHeadlessDeliveryCheck, 2500);
+    setInterval(dmHeadlessDeliveryCheck, 45e3);
+  }
+
+  const TK_MONTHS_KEY = "ws_dm_tk_months_v1";
+  const TK_MONTH_PREFIX = "ws_dm_tk_month_";
+  const AR_MONTHS = [ "كانون الثاني", "شباط", "آذار", "نيسان", "أيار", "حزيران", "تموز", "آب", "أيلول", "تشرين الأول", "تشرين الثاني", "كانون الأول" ];
+  function dmMonthKeyOf(dateKey) {
+    return String(dateKey || todayKey()).slice(0, 7);
+  }
+  function dmMonthLabel(mk) {
+    const p = String(mk).split("-");
+    const mi = parseInt(p[1], 10) - 1;
+    return (AR_MONTHS[mi] || p[1]) + " " + p[0];
+  }
+  function dmLoadMonth(mk) {
+    try {
+      const raw = gmGet(TK_MONTH_PREFIX + mk, null);
+      const o = raw ? typeof raw === "string" ? JSON.parse(raw) : raw : null;
+      if (o && o.reps) return o;
+    } catch (e) {}
+    return {
+      month: mk,
+      reps: {}
+    };
+  }
+  function dmListMonths() {
+    try {
+      const raw = gmGet(TK_MONTHS_KEY, "[]");
+      const a = typeof raw === "string" ? JSON.parse(raw) : raw;
+      return Array.isArray(a) ? a : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function dmSyncMonthFromDaily(daily) {
+    if (!daily || !daily.reps || !daily.dateKey) return;
+    const mk = dmMonthKeyOf(daily.dateKey);
+    const day = parseInt(String(daily.dateKey).slice(8, 10), 10) || 0;
+    const mo = dmLoadMonth(mk);
+    let changed = false;
+    Object.keys(daily.reps).forEach(name => {
+      const d = daily.reps[name];
+      const e = mo.reps[name] || (mo.reps[name] = {
+        ids: {},
+        ex: {}
+      });
+      Object.keys(d.ex || {}).forEach(id => {
+        if (e.ex[id] === undefined) {
+          e.ex[id] = day;
+          changed = true;
+        }
+        if (e.ids[id] !== undefined) {
+          delete e.ids[id];
+          changed = true;
+        }
+      });
+      Object.keys(d.ids || {}).forEach(id => {
+        if (e.ex[id] === undefined && e.ids[id] === undefined) {
+          e.ids[id] = day;
+          changed = true;
+        }
+      });
+    });
+    if (!changed) return;
+    gmSet(TK_MONTH_PREFIX + mk, JSON.stringify(mo));
+    let months = dmListMonths();
+    if (months.indexOf(mk) === -1) {
+      months.push(mk);
+      months.sort().reverse();
+      months.slice(12).forEach(k => {
+        try {
+          gmDelete(TK_MONTH_PREFIX + k);
+        } catch (e) {}
+      });
+      months = months.slice(0, 12);
+      gmSet(TK_MONTHS_KEY, JSON.stringify(months));
+    }
+  }
   function startBackgroundPoller() {
     setTimeout(runBackgroundDeliveryCheck, 4e3 + Math.floor(Math.random() * 4e3));
     setInterval(runBackgroundDeliveryCheck, 60 * 1e3);
   }
+  if (window.top !== window.self) return;
   if (location.href.indexOf(DELIVERING_ORDERS_PATH) === -1) {
-    startBackgroundPoller();
+    if (location.pathname.indexOf(CALL_CENTER_PATH) !== -1) {
+      dmStartTicketCollector();
+      dmStartHeadlessMonitor();
+    } else {
+      startBackgroundPoller();
+    }
     return;
   }
   if (document.getElementById("dm-panel")) return;
@@ -10212,6 +10749,8 @@
         this.applyMonitorState();
       }
       setInterval(() => this.applyMonitorState(), 3e3);
+      setTimeout(() => this.refreshExternal(false), 2500);
+      setInterval(() => this.refreshExternal(false), 60 * 1e3);
     }
     loadOrInitState() {
       let raw = gmGet(STORAGE_KEYS.STATE, null);
@@ -10643,7 +11182,90 @@
       this.addStyles();
       const panel = document.createElement("div");
       panel.id = "dm-panel";
-      panel.innerHTML = `\n                <div class="dm-header" id="dm-header">\n                    <div class="dm-header-left">\n                        <span class="dm-dot" id="dm-dot"></span>\n                        <span class="dm-title">مراقب التوصيل</span>\n                    </div>\n                    <div class="dm-header-right">\n                        <button id="dm-size-down" class="dm-icon-btn" title="تصغير اللوحة">−</button>\n                        <button id="dm-size-up"   class="dm-icon-btn" title="تكبير اللوحة">+</button>\n                        <button id="dm-run-toggle" class="dm-run-btn">إيقاف</button>\n                        <button id="dm-collapse" class="dm-icon-btn" title="طي/فتح">‹</button>\n                    </div>\n                </div>\n\n                <div class="dm-body">\n                    <div id="dm-warning" class="dm-warning" style="display:none">\n                        ⚠️ لم يتم العثور على بيانات بالجدول\n                    </div>\n\n                    <div class="dm-summary">\n                        <div class="dm-sum-item">\n                            <span id="dm-sum-total"   class="dm-sum-num">0</span>\n                            <span class="dm-sum-label">الإجمالي</span>\n                        </div>\n                        <div class="dm-sum-item">\n                            <span id="dm-sum-stopped" class="dm-sum-num dm-c-red">0</span>\n                            <span class="dm-sum-label">متوقف</span>\n                        </div>\n                        <div class="dm-sum-item">\n                            <span id="dm-sum-done"    class="dm-sum-num dm-c-blue">0</span>\n                            <span class="dm-sum-label">تم التختيم</span>\n                        </div>\n                        <div class="dm-sum-item">\n                            <span id="dm-sum-qaid" class="dm-sum-num dm-c-green">—</span>\n                            <span class="dm-sum-label">القيد</span>\n                        </div>\n                    </div>\n\n                    <div class="dm-meta-bar">\n                        <span id="dm-last-check" class="dm-meta-txt"></span>\n                        <span id="dm-countdown"  class="dm-meta-txt dm-c-orange"></span>\n                    </div>\n\n                    <div class="dm-tabs">\n                        <button class="dm-tab active" data-tab="live">📋 المراقبة</button>\n                        <button class="dm-tab" data-tab="settings">⚙️ الإعدادات</button>\n                        <button class="dm-tab" data-tab="archive">📊 الأرشيف</button>\n                    </div>\n\n                    \x3c!-- تبويب المراقبة --\x3e\n                    <div class="dm-panel-tab" id="dm-tab-live">\n                        <div class="dm-search-row">\n                            <input type="text" id="dm-search" class="dm-search" placeholder="🔍 ابحث عن مندوب...">\n                            <label class="dm-hide-done-label" title="إخفاء المُختَّمين">\n                                <input type="checkbox" id="dm-hide-done-check" ${this.hideDone ? "checked" : ""}>\n                                إخفاء ✅\n                            </label>\n                        </div>\n                        <button id="dm-copy-stopped" class="dm-btn dm-btn-copy" title="نسخ أسماء المتوقفين للحافظة">\n                            📋 نسخ المتوقفين\n                        </button>\n                        <div class="dm-table-wrap">\n                            <table class="dm-live-table">\n                                <thead>\n                                    <tr>\n                                        <th class="dm-sort-th" data-col="name">المندوب <span class="dm-sort-icon"></span></th>\n                                        <th class="dm-sort-th" data-col="first">كان <span class="dm-sort-icon"></span></th>\n                                        <th class="dm-sort-th" data-col="current">الآن <span class="dm-sort-icon"></span></th>\n                                        <th class="dm-sort-th" data-col="status">الحالة <span class="dm-sort-icon"></span></th>\n                                    </tr>\n                                </thead>\n                                <tbody id="dm-live-tbody"></tbody>\n                            </table>\n                        </div>\n                    </div>\n\n                    \x3c!-- تبويب الإعدادات --\x3e\n                    <div class="dm-panel-tab" id="dm-tab-settings" style="display:none">\n                        <div class="dm-field">\n                            <label>مدة التوقف قبل التنبيه (دقيقة)</label>\n                            <div class="dm-field-row">\n                                <input type="number" id="dm-threshold-input" min="1" max="180" value="${this.thresholdMinutes}">\n                                <button id="dm-threshold-save" class="dm-btn dm-btn-sm">حفظ</button>\n                            </div>\n                            <p class="dm-hint">تُحسب من آخر نقصان فعلي بعدد الطلبات</p>\n                        </div>\n                        <div class="dm-field">\n                            <label>ساعة الموعد النهائي (0-23)</label>\n                            <div class="dm-field-row">\n                                <input type="number" id="dm-deadline-input" min="0" max="23" value="${this.deadlineHour}">\n                                <button id="dm-deadline-save" class="dm-btn dm-btn-sm">حفظ</button>\n                            </div>\n                            <p class="dm-hint">مثال: 18 = الساعة 6 عصرًا</p>\n                        </div>\n                        <div class="dm-field">\n                            <label class="dm-checkbox-label">\n                                <input type="checkbox" id="dm-autorefresh-check" ${this.autoRefreshOn ? "checked" : ""}>\n                                تحديث تلقائي للصفحة كل\n                                <input type="number" id="dm-autorefresh-min" min="1" max="120" value="${this.autoRefreshMinutes}" style="width:50px">\n                                دقيقة\n                            </label>\n                        </div>\n                        <div class="dm-field">\n                            <label class="dm-checkbox-label">\n                                <input type="checkbox" id="dm-sound-check" ${this.soundOn ? "checked" : ""}>\n                                تنبيه صوتي عند التوقف\n                            </label>\n                        </div>\n                        <div class="dm-field">\n                            <label class="dm-checkbox-label">\n                                <input type="checkbox" id="dm-predeadline-check" ${this.preDeadlineWarn ? "checked" : ""}>\n                                تحذير قبل 30 دقيقة من الموعد النهائي\n                            </label>\n                        </div>\n                        <div class="dm-field-row" style="gap:6px">\n                            <button id="dm-check-now" class="dm-btn dm-btn-sm">🔍 فحص الآن</button>\n                            <button id="dm-reset"     class="dm-btn dm-btn-sm dm-btn-danger">🗑️ تصفير اليوم</button>\n                        </div>\n                        <div class="dm-field" style="margin-top:10px">\n                            <button id="dm-backup-btn"  class="dm-btn dm-btn-sm dm-btn-ghost" style="width:100%;margin-bottom:6px">💾 نسخ احتياطي (JSON)</button>\n                            <label class="dm-btn dm-btn-sm dm-btn-ghost" style="width:100%;text-align:center;cursor:pointer">\n                                📂 استعادة نسخة احتياطية\n                                <input type="file" id="dm-restore-input" accept=".json" style="display:none">\n                            </label>\n                        </div>\n                        <div class="dm-field">\n                            <button id="dm-log-toggle" class="dm-btn dm-btn-sm dm-btn-ghost">📋 عرض سجل الأحداث</button>\n                            <div id="dm-log-content" class="dm-log-content" style="display:none"></div>\n                        </div>\n                    </div>\n\n                    \x3c!-- تبويب الأرشيف --\x3e\n                    <div class="dm-panel-tab" id="dm-tab-archive" style="display:none">\n                        <button id="dm-weekly-btn" class="dm-btn dm-btn-ghost" style="width:100%;margin-bottom:10px;font-size:11px">📅 إحصائيات الأسبوع</button>\n                        <div id="dm-weekly-content" style="display:none;margin-bottom:10px"></div>\n                        <div class="dm-field-row">\n                            <select id="dm-archive-select" class="dm-select"></select>\n                        </div>\n                        <div class="dm-field-row" style="margin-top:6px">\n                            <button id="dm-archive-export-csv"  class="dm-btn dm-btn-sm">⬇️ CSV</button>\n                            <button id="dm-archive-export-json" class="dm-btn dm-btn-sm dm-btn-ghost">⬇️ JSON</button>\n                        </div>\n                        <div id="dm-archive-stats" class="dm-archive-stats"></div>\n                        <div id="dm-archive-table-wrap"></div>\n                    </div>\n                </div>\n            `;
+      panel.innerHTML = `
+                <div class="dm-header" id="dm-header">
+                    <span class="dm-orb dm-orb1"></span><span class="dm-orb dm-orb2"></span>
+                    <div class="dm-header-left">
+                        <span class="dm-dot" id="dm-dot"></span>
+                        <div class="dm-title-wrap">
+                            <span class="dm-title">🚚 مراقب التوصيل</span>
+                            <span class="dm-subtitle"><i class="dm-live-pulse"></i> مباشر · يعمل بالخلفية من الكول سنتر</span>
+                        </div>
+                    </div>
+                    <div class="dm-header-right">
+                        <button id="dm-size-down" class="dm-icon-btn" title="تصغير اللوحة">−</button>
+                        <button id="dm-size-up"   class="dm-icon-btn" title="تكبير اللوحة">+</button>
+                        <button id="dm-run-toggle" class="dm-run-btn">إيقاف</button>
+                        <button id="dm-collapse" class="dm-icon-btn" title="طي/فتح">‹</button>
+                    </div>
+                </div>
+
+                <div class="dm-body">
+                    <div id="dm-warning" class="dm-warning" style="display:none">
+                        ⚠️ لم يتم العثور على بيانات بالجدول
+                    </div>
+
+                    <div class="dm-cards">
+                        <div class="dm-card"><span class="dm-card-ico">👥</span><b id="dm-sum-total" class="dm-card-num">0</b><span class="dm-card-lbl">عدد المناديب</span></div>
+                        <div class="dm-card dm-card-stop" id="dm-card-stopped"><span class="dm-card-ico">🔴</span><b id="dm-sum-stopped" class="dm-card-num dm-c-red">0</b><span class="dm-card-lbl">متوقفون الآن</span></div>
+                        <div class="dm-card dm-card-done"><span class="dm-card-ico">✅</span><b id="dm-sum-done" class="dm-card-num dm-c-blue">0</b><span class="dm-card-lbl">تم التختيم</span></div>
+                        <div class="dm-card dm-card-qaid"><span class="dm-card-ico">📑</span><b id="dm-sum-qaid" class="dm-card-num dm-c-green">—</b><span class="dm-card-lbl">القيد</span></div>
+                    </div>
+
+                    <div class="dm-overall">
+                        <div class="dm-overall-top"><span>📊 إنجاز التوصيل اليوم</span><span class="dm-overall-pct"><b id="dm-ring-pct">0</b>%</span></div>
+                        <div class="dm-overall-track"><i id="dm-overall-fill"></i></div>
+                    </div>
+
+
+                    <div class="dm-meta-bar">
+                        <span id="dm-last-check" class="dm-meta-txt"></span>
+                        <span id="dm-countdown"  class="dm-meta-txt dm-c-orange"></span>
+                    </div>
+
+
+                    <div class="dm-main">
+                    <div class="dm-rail">
+                        <span class="dm-tab-ind" id="dm-tab-ind"></span>
+                        <button class="dm-tab active" data-tab="live" title="المراقبة">📋</button>
+                        <button class="dm-tab" data-tab="settings" title="الإعدادات">⚙️</button>
+                        <button class="dm-tab" data-tab="archive" title="الأرشيف">📊</button>
+                    </div>
+                    <div class="dm-main-content">
+                    <div class="dm-panel-tab" id="dm-tab-live">
+                        <div class="dm-help">👆 اضغط على اسم المندوب لعرض تفاصيله</div>
+                        <div class="dm-search-row">
+                            <input type="text" id="dm-search" class="dm-search" placeholder="🔍 ابحث عن مندوب...">
+                            <label class="dm-hide-done-label" title="إخفاء المُختَّمين">
+                                <input type="checkbox" id="dm-hide-done-check" ${this.hideDone ? "checked" : ""}>
+                                إخفاء ✅
+                            </label>
+                        </div>
+                        <button id="dm-copy-stopped" class="dm-btn dm-btn-copy" title="نسخ أسماء المتوقفين للحافظة">
+                            📋 نسخ المتوقفين
+                        </button>
+                        <div class="dm-table-wrap">
+                            <table class="dm-live-table">
+                                <thead>
+                                    <tr>
+                                        <th class="dm-sort-th" data-col="name">المندوب <span class="dm-sort-icon"></span></th>
+                                        <th class="dm-sort-th" data-col="first" title="من «مجموع الطلبات» في صفحة التقارير">استلم <span class="dm-sort-icon"></span></th>
+                                        <th class="dm-sort-th" data-col="current">متبقي <span class="dm-sort-icon"></span></th>
+                                        <th class="dm-sort-th" data-col="status">الحالة <span class="dm-sort-icon"></span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dm-live-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="dm-panel-tab" id="dm-tab-settings" style="display:none">\n                        <div class="dm-field">\n                            <label>مدة التوقف قبل التنبيه (دقيقة)</label>\n                            <div class="dm-field-row">\n                                <input type="number" id="dm-threshold-input" min="1" max="180" value="${this.thresholdMinutes}">\n                                <button id="dm-threshold-save" class="dm-btn dm-btn-sm">حفظ</button>\n                            </div>\n                            <p class="dm-hint">تُحسب من آخر نقصان فعلي بعدد الطلبات</p>\n                        </div>\n                        <div class="dm-field">\n                            <label>ساعة الموعد النهائي (0-23)</label>\n                            <div class="dm-field-row">\n                                <input type="number" id="dm-deadline-input" min="0" max="23" value="${this.deadlineHour}">\n                                <button id="dm-deadline-save" class="dm-btn dm-btn-sm">حفظ</button>\n                            </div>\n                            <p class="dm-hint">مثال: 18 = الساعة 6 عصرًا</p>\n                        </div>\n                        <div class="dm-field">\n                            <label class="dm-checkbox-label">\n                                <input type="checkbox" id="dm-autorefresh-check" ${this.autoRefreshOn ? "checked" : ""}>\n                                تحديث تلقائي للصفحة كل\n                                <input type="number" id="dm-autorefresh-min" min="1" max="120" value="${this.autoRefreshMinutes}" style="width:50px">\n                                دقيقة\n                            </label>\n                        </div>\n                        <div class="dm-field">\n                            <label class="dm-checkbox-label">\n                                <input type="checkbox" id="dm-sound-check" ${this.soundOn ? "checked" : ""}>\n                                تنبيه صوتي عند التوقف\n                            </label>\n                        </div>\n                        <div class="dm-field">\n                            <label class="dm-checkbox-label">\n                                <input type="checkbox" id="dm-predeadline-check" ${this.preDeadlineWarn ? "checked" : ""}>\n                                تحذير قبل 30 دقيقة من الموعد النهائي\n                            </label>\n                        </div>\n                        <div class="dm-field-row" style="gap:6px">\n                            <button id="dm-check-now" class="dm-btn dm-btn-sm">🔍 فحص الآن</button>\n                            <button id="dm-reset"     class="dm-btn dm-btn-sm dm-btn-danger">🗑️ تصفير اليوم</button>\n                        </div>\n                        <div class="dm-field" style="margin-top:10px">\n                            <button id="dm-backup-btn"  class="dm-btn dm-btn-sm dm-btn-ghost" style="width:100%;margin-bottom:6px">💾 نسخ احتياطي (JSON)</button>\n                            <label class="dm-btn dm-btn-sm dm-btn-ghost" style="width:100%;text-align:center;cursor:pointer">\n                                📂 استعادة نسخة احتياطية\n                                <input type="file" id="dm-restore-input" accept=".json" style="display:none">\n                            </label>\n                        </div>\n                        <div class="dm-field">\n                            <button id="dm-log-toggle" class="dm-btn dm-btn-sm dm-btn-ghost">📋 عرض سجل الأحداث</button>\n                            <div id="dm-log-content" class="dm-log-content" style="display:none"></div>\n                        </div>\n                    </div>\n\n                    \x3c!-- تبويب الأرشيف --\x3e\n                    <div class="dm-panel-tab" id="dm-tab-archive" style="display:none">\n                        <button id="dm-month-btn" class="dm-btn dm-btn-ghost" style="width:100%;margin-bottom:10px;font-size:11px">🔔 تبليغات الشهر (أرشيف)</button><div id="dm-month-content" style="display:none;margin-bottom:10px"></div><button id="dm-weekly-btn" class="dm-btn dm-btn-ghost" style="width:100%;margin-bottom:10px;font-size:11px">📅 إحصائيات الأسبوع</button>\n                        <div id="dm-weekly-content" style="display:none;margin-bottom:10px"></div>\n                        <div class="dm-field-row">\n                            <select id="dm-archive-select" class="dm-select"></select>\n                        </div>\n                        <div class="dm-field-row" style="margin-top:6px">\n                            <button id="dm-archive-export-csv"  class="dm-btn dm-btn-sm">⬇️ CSV</button>\n                            <button id="dm-archive-export-json" class="dm-btn dm-btn-sm dm-btn-ghost">⬇️ JSON</button>\n                        </div>\n                        <div id="dm-archive-stats" class="dm-archive-stats"></div>\n                        <div id="dm-archive-table-wrap"></div>\n                    </div>
+                    </div>
+                    </div>
+                </div>
+                <div class="dm-scrim" id="dm-scrim"></div>
+                <div class="dm-drawer" id="dm-drawer"></div>
+            `;
       document.body.insertBefore(panel, document.body.firstChild);
       try {
         const savedPos = JSON.parse(gmGet(STORAGE_KEYS.PANEL_POS, "null"));
@@ -10655,6 +11277,46 @@
       this.applyPanelWidth();
     }
     attachEvents() {
+      const dmPanelEl = document.getElementById("dm-panel");
+      if (dmPanelEl) {
+        dmPanelEl.addEventListener("click", ev => {
+          const b = ev.target.closest && ev.target.closest(".dm-btn,.dm-run-btn,.dm-icon-btn,.dm-tab");
+          if (!b) return;
+          const sp = document.createElement("span");
+          sp.className = "dm-ripple";
+          b.appendChild(sp);
+          setTimeout(() => sp.remove(), 650);
+        });
+        document.addEventListener("keydown", ev => {
+          if (ev.key === "Escape") {
+            const dr = document.getElementById("dm-drawer"), sc = document.getElementById("dm-scrim");
+            if (dr) dr.classList.remove("open");
+            if (sc) sc.classList.remove("open");
+          }
+        });
+        window.addEventListener("resize", () => this.moveTabInd());
+        const dmInsEl = document.getElementById("dm-insight");
+        if (dmInsEl) dmInsEl.addEventListener("click", () => this.refreshExternal(true));
+        const dmMonthBtn = document.getElementById("dm-month-btn");
+        if (dmMonthBtn) dmMonthBtn.addEventListener("click", () => {
+          const mc = document.getElementById("dm-month-content");
+          if (!mc) return;
+          if (mc.style.display === "none") {
+            mc.style.display = "block";
+            this.renderMonthTickets();
+          } else {
+            mc.style.display = "none";
+          }
+        });
+        try {
+          window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+            this._thAt = 0;
+            this.applyTheme();
+          });
+        } catch (e) {}
+        setTimeout(() => this.moveTabInd(), 60);
+        setTimeout(() => this.moveTabInd(), 600);
+      }
       document.getElementById("dm-collapse").addEventListener("click", () => {
         const body = document.querySelector("#dm-panel .dm-body");
         const btn = document.getElementById("dm-collapse");
@@ -10678,6 +11340,7 @@
       document.getElementById("dm-check-now").addEventListener("click", () => {
         this.isRunning = true;
         this.check();
+        this.refreshExternal(true);
         this.updateRunButton();
       });
       document.getElementById("dm-reset").addEventListener("click", () => {
@@ -10689,6 +11352,7 @@
           document.querySelectorAll(".dm-panel-tab").forEach(p => p.style.display = "none");
           tab.classList.add("active");
           document.getElementById("dm-tab-" + tab.dataset.tab).style.display = "block";
+          this.moveTabInd();
           if (tab.dataset.tab === "archive") this.populateArchiveTab();
         });
       });
@@ -10855,9 +11519,505 @@
       if (nums && nums.length) return parseInt(nums[nums.length - 1].replace(/,/g, ""), 10);
       return null;
     }
+    dmReadShared(key) {
+      let v = null;
+      try {
+        if (_hasGM.get) v = GM_getValue(key, null);
+      } catch (e) {}
+      if (v === null || v === undefined) {
+        try {
+          v = localStorage.getItem(key);
+        } catch (e) {}
+      }
+      return v;
+    }
+    dmParse(v) {
+      if (v === null || v === undefined) return null;
+      if (typeof v === "object") return v;
+      try {
+        return JSON.parse(v);
+      } catch (e) {
+        return null;
+      }
+    }
+    dmNorm(s) {
+      return String(s || "").replace(/[\u064B-\u065F\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/[0-9٠-٩۰-۹]/g, " ").replace(/\s+/g, " ").trim();
+    }
+    dmWeekKey(date) {
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      d.setDate(d.getDate() - d.getDay());
+      const p = n => String(n).padStart(2, "0");
+      return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+    }
+    loadRatingsIndex() {
+      const nowTs = Date.now();
+      if (this._rtCache && nowTs - this._rtCache.ts < 4e3) return this._rtCache;
+      const all = this.dmParse(this.dmReadShared("waseet_rep_ratings_v1")) || {};
+      const st = this.dmParse(this.dmReadShared("waseet_ws_settings")) || {};
+      const num = (v, def) => v !== null && v !== undefined && !isNaN(Number(v)) ? Number(v) : def;
+      const sEx = num(st.ratingScoreExcellent, 3), sGo = num(st.ratingScoreGood, 1), sBa = num(st.ratingScoreBad, -2);
+      const wk = this.dmWeekKey(new Date);
+      const byRep = {};
+      Object.keys(all).forEach(id => {
+        const r = all[id];
+        if (!r || r.weekKey !== wk) return;
+        const key = this.dmNorm(r.repName);
+        if (!key) return;
+        const o = byRep[key] || (byRep[key] = {
+          name: r.repName,
+          excellent: 0,
+          good: 0,
+          bad: 0,
+          total: 0,
+          score: 0,
+          notes: []
+        });
+        if (r.rating === "excellent" || r.rating === "good" || r.rating === "bad") o[r.rating]++;
+        o.total++;
+        if (r.note) o.notes.push({
+          orderId: r.orderId,
+          rating: r.rating,
+          note: r.note,
+          ts: r.ts || 0
+        });
+      });
+      const keys = Object.keys(byRep);
+      keys.forEach(k => {
+        const o = byRep[k];
+        o.score = o.excellent * sEx + o.good * sGo + o.bad * sBa;
+        o.pe = o.total ? Math.round(o.excellent / o.total * 100) : 0;
+        o.pg = o.total ? Math.round(o.good / o.total * 100) : 0;
+        o.pb = o.total ? Math.round(o.bad / o.total * 100) : 0;
+        o.tier = o.pe >= 60 && o.pb <= 10 ? "elite" : o.pb >= 25 || o.score < 0 ? "watch" : "good";
+        o.notes.sort((a, b) => b.ts - a.ts);
+      });
+      const ranking = keys.slice().sort((a, b) => byRep[b].score - byRep[a].score || byRep[b].total - byRep[a].total);
+      ranking.forEach((k, i) => {
+        byRep[k].rank = i + 1;
+      });
+      this._rtCache = {
+        ts: nowTs,
+        byRep: byRep,
+        ranking: ranking,
+        weekKey: wk,
+        theme: st.uiTheme || "system"
+      };
+      return this._rtCache;
+    }
+    ratingFor(name) {
+      const idx = this.loadRatingsIndex();
+      const k = this.dmNorm(name);
+      if (idx.byRep[k]) return idx.byRep[k];
+      const toks = k.split(" ").filter(Boolean);
+      if (toks.length < 2) return null;
+      const keys = Object.keys(idx.byRep);
+      for (let i = 0; i < keys.length; i++) {
+        const kt = keys[i].split(" ").filter(Boolean);
+        const s = toks.length <= kt.length ? toks : kt, l = toks.length <= kt.length ? kt : toks;
+        if (s.length >= 2 && s.every(t => l.indexOf(t) !== -1)) return idx.byRep[keys[i]];
+      }
+      return null;
+    }
+    tierMeta(tier) {
+      return {
+        elite: {
+          ico: "🏅",
+          label: "نخبة"
+        },
+        good: {
+          ico: "👍",
+          label: "جيد"
+        },
+        watch: {
+          ico: "⚠️",
+          label: "يحتاج متابعة"
+        },
+        none: {
+          ico: "➖",
+          label: "بدون تقييم"
+        }
+      }[tier || "none"];
+    }
+    ratingCellHtml(rt) {
+      if (!rt) return `<div class="dm-rt dm-rt-none"><span class="dm-rt-ico">➖</span><span class="dm-rt-n">بدون تقييم</span></div>`;
+      const tm = this.tierMeta(rt.tier);
+      const sign = rt.score > 0 ? "+" : "";
+      const tip = `${tm.label} — ممتاز ${rt.excellent} / جيد ${rt.good} / سيئ ${rt.bad}`;
+      return `<div class="dm-rt dm-rt-${rt.tier}" title="${tip}"><div class="dm-rt-top"><span class="dm-rt-ico">${tm.ico}</span><b class="dm-rt-score">${sign}${rt.score}</b>${rt.rank <= 3 ? `<span class="dm-rt-rank">#${rt.rank}</span>` : ""}</div><div class="dm-rt-bars"><i class="e" style="width:${rt.pe}%"></i><i class="g" style="width:${rt.pg}%"></i><i class="b" style="width:${rt.pb}%"></i></div><div class="dm-rt-n">${rt.total} تقييم</div></div>`;
+    }
+    ratingMiniHtml(name) {
+      const rt = this.ratingFor(name);
+      if (!rt) return `<span class="dm-rt-mini dm-c-gray">—</span>`;
+      const tm = this.tierMeta(rt.tier);
+      return `<span class="dm-rt-mini dm-rt-${rt.tier}">${tm.ico} <b class="dm-rt-score">${rt.score > 0 ? "+" : ""}${rt.score}</b></span>`;
+    }
+    ticketsTotal() {
+      const st = this.extStores().tk;
+      let n = 0;
+      Object.keys(st.reps).forEach(k => {
+        n += Object.keys(st.reps[k].ids || {}).length;
+      });
+      return n;
+    }
+    updateStatsUI() {
+      const now = Date.now();
+      const thresholdMs = this.thresholdMinutes * 60 * 1e3;
+      const entries = Object.values(this.state.mandoubs);
+      const total = entries.length;
+      const stopped = entries.filter(m => this.computeStatus(m, now, thresholdMs) === "stopped").length;
+      const done = entries.filter(m => this.computeStatus(m, now, thresholdMs) === "done").length;
+      const qaid = this.readTotalEntries();
+      this.animateNum(document.getElementById("dm-sum-total"), total);
+      this.animateNum(document.getElementById("dm-sum-stopped"), stopped);
+      this.animateNum(document.getElementById("dm-sum-done"), done);
+      const q = document.getElementById("dm-sum-qaid");
+      if (q) {
+        if (qaid !== null) {
+          this.animateNum(q, qaid);
+        } else {
+          q.textContent = "—";
+          delete q.dataset.v;
+        }
+      }
+      const card = document.getElementById("dm-card-stopped");
+      if (card) card.classList.toggle("dm-alert", stopped > 0);
+      let sumFirst = 0, sumDone = 0;
+      Object.entries(this.state.mandoubs).forEach(([nm, mm]) => {
+        const rpi = this.reportInfo(nm);
+        if (rpi && rpi.total > 0) {
+          sumFirst += rpi.total;
+          sumDone += Math.min(rpi.wasel, rpi.total);
+        } else {
+          sumFirst += mm.first || 0;
+          sumDone += Math.max(0, (mm.first || 0) - (mm.current || 0));
+        }
+      });
+      const pct = sumFirst > 0 ? Math.min(100, Math.round(sumDone / sumFirst * 100)) : 0;
+      const fill = document.getElementById("dm-overall-fill");
+      if (fill) fill.style.width = pct + "%";
+      const txt = document.getElementById("dm-overall-txt");
+      if (txt) txt.textContent = sumFirst > 0 ? `تم تسليم ${sumDone} من أصل ${sumFirst} طلب استلمها المناديب اليوم` : "بانتظار بيانات المناديب…";
+      this.animateNum(document.getElementById("dm-ring-pct"), pct, 1100);
+      this.updateRunButton();
+      this.updateInsight();
+    }
+    updateInsight() {
+      const el = document.getElementById("dm-insight");
+      if (!el) return;
+      const st = this.extStores().tk;
+      let cls, html;
+      if (!st.ts) {
+        cls = "idle";
+        html = this._extBusy ? "⏳ جارٍ جلب التبليغات والواصلة…" : "🔔 لم تُجلب التبليغات بعد — اضغط هنا للتحديث" + " (أو افتح صفحة الكول سنتر مرة واحدة)";
+      } else {
+        cls = "ok";
+        html = `🔔 إجمالي تبليغات اليوم <b>${this.ticketsTotal()}</b> &nbsp;·&nbsp; آخر مزامنة ${fmtTime(st.ts)}${this._extBusy ? " ⏳" : " — اضغط للتحديث"}`;
+      }
+      const key = cls + "|" + html;
+      if (el.dataset.k === key) return;
+      el.dataset.k = key;
+      el.className = "dm-insight dm-insight-" + cls;
+      el.innerHTML = html;
+      el.classList.remove("dm-pop");
+      void el.offsetWidth;
+      el.classList.add("dm-pop");
+    }
+    avatarStyle(name) {
+      let h = 0;
+      for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+      return `background:linear-gradient(135deg,hsl(${h},72%,55%),hsl(${(h + 40) % 360},72%,45%))`;
+    }
+    animateNum(el, to, dur) {
+      if (!el) return;
+      dur = dur || 750;
+      const from = Number(el.dataset.v) || 0;
+      if (el._raf) cancelAnimationFrame(el._raf);
+      if (from === to) {
+        el.textContent = to;
+        el.dataset.v = to;
+        return;
+      }
+      el.classList.remove("dm-bump");
+      void el.offsetWidth;
+      el.classList.add("dm-bump");
+      const t0 = performance.now();
+      const step = t => {
+        const p = Math.min(1, (t - t0) / dur);
+        const e = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(from + (to - from) * e);
+        if (p < 1) {
+          el._raf = requestAnimationFrame(step);
+        } else {
+          el.dataset.v = to;
+        }
+      };
+      el._raf = requestAnimationFrame(step);
+      el.dataset.v = to;
+    }
+    applyTheme() {
+      const panel = document.getElementById("dm-panel");
+      if (!panel) return;
+      if (this._thAt && Date.now() - this._thAt < 3e3) return;
+      this._thAt = Date.now();
+      let t = "system";
+      try {
+        t = this.loadRatingsIndex().theme || "system";
+      } catch (e) {}
+      if (t === "system") {
+        try {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        } catch (e) {
+          t = "light";
+        }
+      }
+      panel.dataset.theme = t;
+    }
+    moveTabInd() {
+      const act = document.querySelector("#dm-panel .dm-tab.active");
+      const ind = document.getElementById("dm-tab-ind");
+      if (!act || !ind || !act.offsetHeight) return;
+      ind.style.height = act.offsetHeight + "px";
+      ind.style.transform = "translateY(" + act.offsetTop + "px)";
+    }
+    renderMonthTickets(mk) {
+      const el = document.getElementById("dm-month-content");
+      if (!el) return;
+      try {
+        dmSyncMonthFromDaily(dmLoadTickets());
+      } catch (e) {}
+      const cur = dmMonthKeyOf(todayKey());
+      const months = dmListMonths().slice();
+      if (months.indexOf(cur) === -1) months.unshift(cur);
+      mk = mk || this._monthSel || cur;
+      this._monthSel = mk;
+      const mo = dmLoadMonth(mk);
+      const groups = {};
+      Object.keys(mo.reps).forEach(name => {
+        const k = this.dmNorm(name) || name;
+        const g = groups[k] || (groups[k] = {
+          name: name,
+          ids: {},
+          ex: {}
+        });
+        Object.assign(g.ids, mo.reps[name].ids || {});
+        Object.assign(g.ex, mo.reps[name].ex || {});
+      });
+      const rows = Object.values(groups).map(g => ({
+        g: g,
+        name: g.name,
+        n: Object.keys(g.ids).length,
+        ex: Object.keys(g.ex).length
+      })).filter(r => r.n + r.ex > 0).sort((a, b) => b.n + b.ex - (a.n + a.ex));
+      const totN = rows.reduce((s, r) => s + r.n, 0), totEx = rows.reduce((s, r) => s + r.ex, 0);
+      const chips = (obj, cls) => Object.keys(obj).sort().slice(0, 80).map(id => `<span class="dm-mt-chip ${cls}">${escapeHtml(String(id))}<i>${obj[id] ? " · " + obj[id] : ""}</i></span>`).join("");
+      const body = rows.length ? rows.map(r => `<tr class="dm-mt-row" title="اضغط لعرض أرقام الطلبات"><td class="dm-name">${escapeHtml(r.name)}</td><td><b class="dm-c-orange">${r.n}</b></td><td><b style="color:#a855f7">${r.ex}</b></td><td><b>${r.n + r.ex}</b></td></tr><tr class="dm-mt-detail" style="display:none"><td colspan="4">${r.n ? `<div class="dm-mt-lbl">🔔 طلبات التبليغ (رقم الطلب · اليوم من الشهر)</div>${chips(r.g.ids, "")}` : ""}${r.ex ? `<div class="dm-mt-lbl">💲 طلبات تغيير السعر</div>${chips(r.g.ex, "pc")}` : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="dm-empty">لا توجد تبليغات مسجّلة لهذا الشهر بعد</td></tr>`;
+      el.innerHTML = `<div class="dm-field-row" style="margin-bottom:8px"><select id="dm-month-select" class="dm-select">${months.map(k => `<option value="${k}"${k === mk ? " selected" : ""}>${dmMonthLabel(k)}</option>`).join("")}</select><button id="dm-month-csv" class="dm-btn dm-btn-sm dm-btn-ghost" style="flex:none">⬇️ CSV</button></div><div class="dm-archive-stat-grid"><div class="dm-archive-stat"><span class="dm-sum-num dm-c-orange">${totN}</span><span class="dm-sum-label">🔔 طلب بُلّغ به</span></div><div class="dm-archive-stat"><span class="dm-sum-num" style="color:#a855f7">${totEx}</span><span class="dm-sum-label">💲 تغيير سعر</span></div><div class="dm-archive-stat"><span class="dm-sum-num">${rows.length}</span><span class="dm-sum-label">👥 مندوب</span></div></div><div class="dm-table-wrap" style="max-height:300px"><table class="dm-live-table"><thead><tr><th style="text-align:right;width:44%">المندوب</th><th>🔔 تبليغ</th><th>💲 تغيير سعر</th><th>المجموع</th></tr></thead><tbody>${body}</tbody></table></div><p class="dm-hint">كل طلب يُحسب مرة واحدة في الشهر. "تبليغ" لا يشمل تغيير السعر. يبدأ العدّ من تاريخ تفعيل هذه الميزة.</p>`;
+      el.querySelector("#dm-month-select").addEventListener("change", ev => this.renderMonthTickets(ev.target.value));
+      el.querySelectorAll(".dm-mt-row").forEach(tr => tr.addEventListener("click", () => {
+        const d = tr.nextElementSibling;
+        if (d) d.style.display = d.style.display === "none" ? "table-row" : "none";
+      }));
+      el.querySelector("#dm-month-csv").addEventListener("click", () => {
+        let csv = "\ufeff" + "المندوب,تبليغ (بدون تغيير سعر),تغيير سعر,المجموع\n";
+        rows.forEach(r => {
+          csv += `"${r.name.replace(/"/g, '""')}",${r.n},${r.ex},${r.n + r.ex}\n`;
+        });
+        const blob = new Blob([ csv ], {
+          type: "text/csv;charset=utf-8"
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "tickets-" + mk + ".csv";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(a.href);
+          a.remove();
+        }, 500);
+      });
+    }
+    receivedOf(name, m) {
+      const rp = this.reportInfo(name);
+      return rp && rp.total > 0 ? rp.total : m.first || 0;
+    }
+    lookupByName(map, name) {
+      const k = this.dmNorm(name);
+      const keys = Object.keys(map || {});
+      for (let i = 0; i < keys.length; i++) {
+        if (this.dmNorm(keys[i]) === k) return map[keys[i]];
+      }
+      const toks = k.split(" ").filter(Boolean);
+      if (toks.length < 2) return undefined;
+      for (let i = 0; i < keys.length; i++) {
+        const kt = this.dmNorm(keys[i]).split(" ").filter(Boolean);
+        const s = toks.length <= kt.length ? toks : kt, l = toks.length <= kt.length ? kt : toks;
+        if (s.length >= 2 && s.every(t => l.indexOf(t) !== -1)) return map[keys[i]];
+      }
+      return undefined;
+    }
+    extStores() {
+      const now = Date.now();
+      if (!this._extStores || now - this._extStoresTs > 3e3) {
+        this._extStores = {
+          tk: dmLoadTickets(),
+          rp: dmLoadReports()
+        };
+        this._extStoresTs = now;
+      }
+      return this._extStores;
+    }
+    ticketInfo(name) {
+      const st = this.extStores().tk;
+      if (!st.ts) return null;
+      const e = this.lookupByName(st.reps, name);
+      return e ? {
+        n: Object.keys(e.ids || {}).length,
+        ex: Object.keys(e.ex || {}).length
+      } : {
+        n: 0,
+        ex: 0
+      };
+    }
+    reportInfo(name) {
+      const st = this.extStores().rp;
+      if (!st.ts) return null;
+      return this.lookupByName(st.reps, name) || {
+        wasel: 0,
+        total: null
+      };
+    }
+    refreshExternal(force) {
+      if (this._extBusy) return;
+      const now = Date.now();
+      const tk = dmLoadTickets(), rp = dmLoadReports();
+      const needT = force || !tk.ts || now - tk.ts > EXT_STALE_MS;
+      const needR = force || !rp.ts || now - rp.ts > EXT_STALE_MS;
+      if (!needT && !needR) return;
+      if (!force && this._extLastTry && now - this._extLastTry < 9e4) return;
+      this._extLastTry = now;
+      this._extBusy = true;
+      this.extState = {
+        t: needT ? "loading" : "ok",
+        r: needR ? "loading" : "ok"
+      };
+      this.refreshExtUI();
+      const origin = location.origin;
+      const finish = () => {
+        this._extBusy = false;
+        this._extStores = null;
+        this.refreshExtUI();
+      };
+      const doReports = () => {
+        if (!needR) return finish();
+        dmFetchFrame(origin + REPORTS_PATH, dmExtractReportsFrame, res => {
+          if (res) {
+            dmSaveReports(res);
+            this.extState.r = "ok";
+          } else {
+            this.extState.r = "fail";
+          }
+          finish();
+        });
+      };
+      if (!needT) return doReports();
+      dmFetchFrame(origin + CALL_CENTER_PATH, dmExtractTicketsFrame, res => {
+        if (res) {
+          dmMergeTickets(res);
+          this.extState.t = "ok";
+        } else {
+          this.extState.t = "fail";
+        }
+        this._extStores = null;
+        this.renderTable();
+        doReports();
+      });
+    }
+    refreshExtUI() {
+      this._extStores = null;
+      this.renderTable();
+      this.updateInsight();
+      const dr = document.getElementById("dm-drawer");
+      if (dr && dr.classList.contains("open") && this._drawerName) this.renderDrawerContent(this._drawerName);
+    }
+    openRepDrawer(name) {
+      const m = this.state.mandoubs[name];
+      if (!m) return;
+      const drawer = document.getElementById("dm-drawer");
+      const scrim = document.getElementById("dm-scrim");
+      if (!drawer || !scrim) return;
+      this._drawerName = name;
+      this._drawerSig = "";
+      this.renderDrawerContent(name);
+      const close = () => {
+        drawer.classList.remove("open");
+        scrim.classList.remove("open");
+      };
+      scrim.onclick = close;
+      requestAnimationFrame(() => {
+        drawer.classList.add("open");
+        scrim.classList.add("open");
+      });
+      this.refreshExternal(false);
+    }
+    renderDrawerContent(name) {
+      const m = this.state.mandoubs[name];
+      const drawer = document.getElementById("dm-drawer");
+      if (!m || !drawer) return;
+      const now = Date.now();
+      const status = this.computeStatus(m, now, this.thresholdMinutes * 60 * 1e3);
+      const rt = this.ratingFor(name);
+      const idx = this.loadRatingsIndex();
+      const tk = this.ticketInfo(name);
+      const rp = this.reportInfo(name);
+      const stores = this.extStores();
+      const received = this.receivedOf(name, m);
+      const wasel = rp ? rp.wasel : null;
+      const pct = rp && received > 0 ? Math.min(100, Math.round(rp.wasel / received * 100)) : null;
+      const sig = [ name, status, received, m.current, m.stopCount || 0, tk ? tk.n + ":" + tk.ex : "-", rp ? rp.wasel : "-", rt ? rt.score + ":" + rt.total + ":" + rt.rank : "-", stores.tk.ts, stores.rp.ts, this._extBusy ? 1 : 0 ].join("|");
+      if (this._drawerSig === sig) return;
+      this._drawerSig = sig;
+      const delivered = Math.max(0, (m.first || 0) - m.current);
+      const statusTxt = {
+        stopped: "🔴 متوقف",
+        done: "✅ تم التختيم",
+        recovered: "🟡 استأنف التوصيل",
+        active: "🟢 نشط"
+      }[status];
+      const ini = escapeHtml(Array.from(name.trim())[0] || "؟");
+      const tm = this.tierMeta(rt ? rt.tier : "none");
+      const loadingMark = this._extBusy ? "…" : "—";
+      const tile = (ico, label, val, extra, cls, delay) => `<div class="dm-dr-cell" style="animation-delay:${delay}s"><b class="${cls || ""}" ${val === null ? "" : `data-to="${val}"`}>${val === null ? loadingMark : 0}</b><span>${ico} ${label}</span>${extra ? `<small class="dm-dr-extra">${extra}</small>` : ""}</div>`;
+      const rcTile = tile("📦", "استلم اليوم", received, rp && rp.total > 0 ? "من مجموع الطلبات" : "", "", .05);
+      const leftTile = tile("🚚", "متبقي بيده", m.current, "", m.current > 0 ? "dm-c-orange" : "dm-c-green", .1);
+      const wsTile = tile("✅", "واصل للزبون", wasel, "", "dm-c-green", .15);
+      const pcTile = tile("📈", "نسبة الوصول %", pct, "", pct !== null && pct >= 70 ? "dm-c-green" : pct !== null && pct < 40 ? "dm-c-red" : "dm-c-orange", .2);
+      const tkTile = tile("🔔", "تبليغات اليوم", tk ? tk.n : null, "بدون تغيير السعر", "dm-c-orange", .25);
+      const pcgTile = tile("💲", "تبليغ تغيير سعر", tk ? tk.ex : null, "غير محسوب ضمن التبليغات", "", .3);
+      const state = s => s === "loading" ? "جارٍ التحديث…" : s === "fail" ? "تعذّر الجلب" : "";
+      const tsTxt = (ts, st) => state(st) || (ts ? fmtTime(ts) : "لم تُجلب بعد");
+      const es = this.extState || {};
+      const syncLine = `🔔 التبليغات: ${tsTxt(stores.tk.ts, es.t)} · 📬 الواصلة: ${tsTxt(stores.rp.ts, es.r)}`;
+      let ratingHtml;
+      if (rt) {
+        const bar = (lbl, n, p, color) => `<div class="dm-dr-bar"><label>${lbl}</label><div class="dm-dr-track"><i style="width:${p}%;background:${color}"></i></div><em>${n}</em></div>`;
+        const notes = rt.notes.slice(0, 3).map(n => `<div class="dm-dr-note"><small>طلب ${escapeHtml(String(n.orderId))}</small>${escapeHtml(n.note)}</div>`).join("");
+        ratingHtml = `<div class="dm-dr-title">⭐ تقييم الأسبوع <span class="dm-dr-tier ${rt.tier}">${tm.ico} ${tm.label}</span></div>` + bar("ممتاز", rt.excellent, rt.pe, "#10b981") + bar("جيد", rt.good, rt.pg, "#3b82f6") + bar("سيئ", rt.bad, rt.pb, "#ef4444") + `<div class="dm-dr-sub" style="margin:8px 0 10px">النقاط: <b>${rt.score}</b> · المرتبة <b>${rt.rank}</b> من ${idx.ranking.length} · ${rt.total} تقييم</div>` + (notes ? `<div class="dm-dr-title">📝 آخر الملاحظات</div>${notes}` : "");
+      } else {
+        ratingHtml = `<div class="dm-dr-title">⭐ تقييم الأسبوع <span class="dm-dr-tier none">➖ بدون تقييم</span></div><div class="dm-dr-note">لا توجد تقييمات مسجّلة لهذا المندوب خلال الأسبوع الحالي. قيّمه من صفحة الطلبات (زر تقييم المندوب) وسيظهر هنا تلقائياً.</div>`;
+      }
+      drawer.innerHTML = `<div class="dm-dr-head"><span class="dm-avatar" style="${this.avatarStyle(name)}">${ini}</span><div style="flex:1;min-width:0"><div class="dm-dr-name">${escapeHtml(name)}</div><div class="dm-dr-sub">${statusTxt}${m.stopCount > 0 ? " · توقف " + m.stopCount + " مرة" : ""}</div></div><button class="dm-dr-close" id="dm-dr-close" title="إغلاق">✕</button></div>` + `<div class="dm-dr-grid">${rcTile}${leftTile}${wsTile}${pcTile}</div><div class="dm-dr-grid dm-dr-grid2">${tkTile}${pcgTile}</div>` + `<div class="dm-dr-prog" title="نسبة وصول الطلبات للزبون"><i style="width:${pct === null ? 0 : pct}%"></i></div>` + `<div class="dm-dr-chips"><span>🚚 سلّم حسب المراقب: <b>${delivered}</b></span></div>` + `<div class="dm-dr-sync"><span>${syncLine}</span><button class="dm-dr-refresh" id="dm-dr-refresh">🔄 تحديث</button></div>` + ratingHtml;
+      document.getElementById("dm-dr-close").addEventListener("click", () => {
+        drawer.classList.remove("open");
+        const sc = document.getElementById("dm-scrim");
+        if (sc) sc.classList.remove("open");
+      });
+      document.getElementById("dm-dr-refresh").addEventListener("click", () => this.refreshExternal(true));
+      drawer.querySelectorAll("[data-to]").forEach(el => this.animateNum(el, Number(el.dataset.to), 900));
+    }
     renderTable() {
       const tbody = document.getElementById("dm-live-tbody");
       if (!tbody) return;
+      this.applyTheme();
       const now = Date.now();
       const thresholdMs = this.thresholdMinutes * 60 * 1e3;
       const d = new Date(now);
@@ -10869,6 +12029,7 @@
         active: 2,
         done: 3
       };
+      if (!this._rowMap) this._rowMap = new Map;
       let entries = Object.entries(this.state.mandoubs);
       if (this.searchFilter) {
         const f = this.searchFilter.toLowerCase();
@@ -10878,9 +12039,14 @@
         entries = entries.filter(([, m]) => this.computeStatus(m, now, thresholdMs) !== "done");
       }
       if (entries.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="dm-empty">لا توجد بيانات</td></tr>`;
+        this._rowMap.clear();
+        tbody.innerHTML = `<tr class="dm-empty-row"><td colspan="4" class="dm-empty"><div class="dm-empty-ico">🛰️</div>لا توجد بيانات</td></tr>`;
+        this.updateInsight();
+        this.updateSortIcons();
         return;
       }
+      const emptyRow = tbody.querySelector(".dm-empty-row");
+      if (emptyRow) emptyRow.remove();
       entries.sort((a, b) => {
         const [nameA, mA] = a, [nameB, mB] = b;
         const sA = this.computeStatus(mA, now, thresholdMs);
@@ -10892,7 +12058,7 @@
           break;
 
          case "first":
-          cmp = mA.first - mB.first;
+          cmp = this.receivedOf(nameA, mA) - this.receivedOf(nameB, mB);
           break;
 
          case "current":
@@ -10907,37 +12073,73 @@
         }
         return cmp * this.sortDir;
       });
-      tbody.innerHTML = entries.map(([name, m]) => {
+      const seen = new Set;
+      let prev = null;
+      entries.forEach(([name, m], idx) => {
         const status = this.computeStatus(m, now, thresholdMs);
         const elapsed = now - m.lastProgressTs;
-        let badge;
-        if (status === "done") badge = `<span class="dm-badge dm-badge-blue">✅ تم التختيم</span>`; else if (status === "stopped") badge = `<span class="dm-badge dm-badge-red">🔴 متوقف ${fmtElapsed(elapsed)}</span>`; else if (status === "recovered") badge = `<span class="dm-badge dm-badge-yellow">🟡 كان متأخرًا - بدأ التوصيل</span>`; else badge = `<span class="dm-badge dm-badge-green">🟢 نشط</span>`;
-        if (status !== "done" && pastDeadline && m.current > 0) badge += ` <span class="dm-badge dm-badge-orange">⏰ متبقي ${m.current}</span>`;
-        const pct = m.first > 0 ? Math.min(100, Math.round((1 - m.current / m.first) * 100)) : 0;
-        const barColor = status === "stopped" ? "#ef4444" : status === "done" ? "#3b82f6" : "#22c55e";
-        const progressBar = `\n                    <div class="dm-progress-wrap">\n                        <div class="dm-progress-bar" style="width:${pct}%;background:${barColor}"></div>\n                    </div>`;
-        let stallNote = "";
-        if (status === "stopped" && m.stalledAt != null) {
-          const addedWhileStopped = m.current - m.stalledAt;
-          stallNote = `<div class="dm-stall-note">توقف عند ${m.stalledAt}${addedWhileStopped > 0 ? ` <span class="dm-c-orange">(+${addedWhileStopped} جديد)</span>` : ""}</div>`;
+        const rpi = this.reportInfo(name);
+        const received = this.receivedOf(name, m);
+        const pct = rpi && rpi.total > 0 ? Math.max(0, Math.min(100, Math.round(rpi.wasel / rpi.total * 100))) : m.first > 0 ? Math.max(0, Math.min(100, Math.round((1 - m.current / m.first) * 100))) : 0;
+        const sig = [ status, received, rpi ? rpi.wasel : "-", m.current, m.stopCount || 0, m.stalledAt, Math.floor(elapsed / 6e4), pastDeadline ? 1 : 0 ].join("|");
+        let tr = this._rowMap.get(name);
+        let isNew = false;
+        if (!tr) {
+          isNew = true;
+          tr = document.createElement("tr");
+          tr.className = "dm-row dm-row-enter";
+          tr.style.animationDelay = Math.min(idx, 12) * 45 + "ms";
+          tr.addEventListener("animationend", ev => {
+            if (ev.animationName === "dmRowIn") tr.classList.remove("dm-row-enter");
+          });
+          tr.addEventListener("click", () => this.openRepDrawer(name));
+          tr.title = "اضغط على المندوب لعرض تفاصيله وتقييمه";
+          this._rowMap.set(name, tr);
         }
-        return `<tr>\n                    <td class="dm-name">\n                        ${escapeHtml(name)}\n                        ${m.stopCount > 0 ? `<span class="dm-stop-count">${m.stopCount}x</span>` : ""}\n                        ${progressBar}\n                    </td>\n                    <td>${m.first}</td>\n                    <td>${m.current}${stallNote}</td>\n                    <td>${badge}</td>\n                </tr>`;
-      }).join("");
+        if (tr._sig !== sig) {
+          let badge;
+          if (status === "done") badge = `<span class="dm-badge dm-badge-blue">✅ تم التختيم</span>`; else if (status === "stopped") badge = `<span class="dm-badge dm-badge-red" title="متوقف منذ ${fmtElapsed(elapsed)}">🔴 متوقف ${fmtElapsed(elapsed)}</span>`; else if (status === "recovered") badge = `<span class="dm-badge dm-badge-yellow">🟡 رجع يوصّل</span>`; else badge = `<span class="dm-badge dm-badge-green">🟢 يوصّل</span>`;
+          if (status !== "done" && pastDeadline && m.current > 0) badge += ` <span class="dm-badge dm-badge-orange">⏰ متبقي ${m.current}</span>`;
+          let stallNote = "";
+          if (status === "stopped" && m.stalledAt != null) {
+            const added = m.current - m.stalledAt;
+            stallNote = `<div class="dm-stall-note">توقف عند ${m.stalledAt}${added > 0 ? ` <span class="dm-c-orange">(+${added} جديد)</span>` : ""}</div>`;
+          }
+          const ini = escapeHtml(Array.from(name.trim())[0] || "؟");
+          tr.innerHTML = `<td class="dm-name"><div class="dm-name-row"><span class="dm-avatar" style="${this.avatarStyle(name)}">${ini}</span><span class="dm-name-txt">${escapeHtml(name)}</span>${m.stopCount > 0 ? `<span class="dm-stop-count">${m.stopCount}x</span>` : ""}</div><div class="dm-progress-wrap"><div class="dm-progress-bar p-${status}" style="width:${tr._pct || 0}%"></div></div></td><td class="dm-num-cell">${received}</td><td class="dm-num-cell"><span class="dm-cur">${m.current}</span>${stallNote}</td><td>${badge}</td>`;
+          const bar = tr.querySelector(".dm-progress-bar");
+          if (bar) {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              bar.style.width = pct + "%";
+            }));
+          }
+          const curEl = tr.querySelector(".dm-cur");
+          if (curEl && !isNew && tr._cur !== undefined && tr._cur !== m.current) {
+            curEl.dataset.v = tr._cur;
+            this.animateNum(curEl, m.current, 800);
+            tr.classList.remove("dm-flash");
+            void tr.offsetWidth;
+            tr.classList.add("dm-flash");
+            setTimeout(() => tr.classList.remove("dm-flash"), 1300);
+          }
+          tr._pct = pct;
+          tr._cur = m.current;
+          tr._sig = sig;
+        }
+        tr.dataset.status = status;
+        const ref = prev ? prev.nextSibling : tbody.firstChild;
+        if (tr !== ref) tbody.insertBefore(tr, ref);
+        prev = tr;
+        seen.add(name);
+      });
+      this._rowMap.forEach((tr, name) => {
+        if (!seen.has(name)) {
+          tr.remove();
+          this._rowMap.delete(name);
+        }
+      });
+      this.updateInsight();
       this.updateSortIcons();
-    }
-    updateStatsUI() {
-      const now = Date.now();
-      const thresholdMs = this.thresholdMinutes * 60 * 1e3;
-      const entries = Object.values(this.state.mandoubs);
-      const total = entries.length;
-      const stopped = entries.filter(m => this.computeStatus(m, now, thresholdMs) === "stopped").length;
-      const done = entries.filter(m => this.computeStatus(m, now, thresholdMs) === "done").length;
-      const qaid = this.readTotalEntries();
-      document.getElementById("dm-sum-total").textContent = total;
-      document.getElementById("dm-sum-stopped").textContent = stopped;
-      document.getElementById("dm-sum-done").textContent = done;
-      document.getElementById("dm-sum-qaid").textContent = qaid !== null ? qaid : "—";
-      this.updateRunButton();
     }
     addLog(message) {
       const logContent = document.getElementById("dm-log-content");
@@ -11147,7 +12349,246 @@
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
     addStyles() {
-      const css = `\n                #dm-panel {\n                    position: fixed; top: 16px; left: 16px; z-index: 10000; width: 360px;\n                    background: #ffffff; border-radius: 14px; box-shadow: 0 8px 30px rgba(15,23,42,.15);\n                    font-family: -apple-system, "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl;\n                    border: 1px solid #eef0f4; overflow: hidden;\n                }\n                .dm-header { background: #4f46e5; color:#fff; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; }\n                .dm-header-left { display:flex; align-items:center; gap:8px; }\n                .dm-title { font-weight:700; font-size:14px; }\n                .dm-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }\n                .dm-dot-on  { background:#4ade80; box-shadow:0 0 0 3px rgba(74,222,128,.3); }\n                .dm-dot-off { background:#f87171; }\n                .dm-header-right { display:flex; align-items:center; gap:6px; }\n                .dm-run-btn { border:none; border-radius:8px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; }\n                .dm-run-on  { background:#ef4444; color:#fff; }\n                .dm-run-off { background:#22c55e; color:#fff; }\n                .dm-icon-btn { background:rgba(255,255,255,.18); border:none; color:#fff; width:26px; height:26px; border-radius:8px; cursor:pointer; font-size:14px; }\n                .dm-icon-btn:hover { background:rgba(255,255,255,.3); }\n\n                .dm-body { padding: 12px; max-height: 600px; overflow-y:auto; }\n                .dm-warning { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; border-radius:10px; padding:8px 10px; font-size:11px; margin-bottom:10px; }\n\n                .dm-summary { display:flex; gap:6px; margin-bottom:8px; }\n                .dm-sum-item { flex:1; background:#f8fafc; border-radius:10px; padding:6px 4px; text-align:center; }\n                .dm-sum-num { display:block; font-size:17px; font-weight:800; color:#334155; }\n                .dm-sum-label { display:block; font-size:9px; color:#94a3b8; margin-top:2px; }\n\n                .dm-meta-bar { display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; margin-bottom:8px; padding:0 2px; }\n                .dm-meta-txt { }\n\n                .dm-c-red    { color:#ef4444 !important; }\n                .dm-c-blue   { color:#3b82f6 !important; }\n                .dm-c-green  { color:#22c55e !important; }\n                .dm-c-orange { color:#f97316 !important; }\n                .dm-c-gray   { color:#94a3b8 !important; }\n\n                .dm-tabs { display:flex; background:#f1f5f9; border-radius:10px; padding:3px; margin-bottom:10px; }\n                .dm-tab  { flex:1; border:none; background:transparent; padding:7px 4px; font-size:11px; font-weight:700; color:#64748b; border-radius:8px; cursor:pointer; }\n                .dm-tab.active { background:#fff; color:#4f46e5; box-shadow:0 1px 3px rgba(0,0,0,.08); }\n\n                .dm-search-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }\n                .dm-search { flex:1; padding:8px 10px; border:1px solid #e2e8f0; border-radius:9px; font-size:12px; }\n                .dm-hide-done-label { display:flex; align-items:center; gap:4px; font-size:11px; color:#64748b; white-space:nowrap; cursor:pointer; }\n\n                .dm-table-wrap { max-height:320px; overflow-y:auto; border:1px solid #f1f5f9; border-radius:10px; }\n                .dm-live-table { width:100%; border-collapse:collapse; font-size:11.5px; }\n                .dm-live-table thead th { position:sticky; top:0; background:#f8fafc; padding:7px 6px; font-size:10.5px; color:#64748b; font-weight:700; }\n                .dm-sort-th { cursor:pointer; user-select:none; }\n                .dm-sort-th:hover { color:#4f46e5; }\n                .dm-sort-icon { font-size:9px; }\n                .dm-live-table td { padding:6px 6px 4px; text-align:center; border-top:1px solid #f4f6f8; vertical-align:middle; }\n                .dm-name { text-align:right !important; font-weight:700; color:#334155; }\n                .dm-stop-count { font-size:9px; background:#fee2e2; color:#dc2626; border-radius:4px; padding:1px 4px; margin-right:4px; vertical-align:middle; }\n                .dm-empty { text-align:center; padding:24px; color:#94a3b8; font-size:12px; }\n\n                .dm-stall-note { font-size:9px; color:#94a3b8; margin-top:2px; line-height:1.3; white-space:nowrap; }\n\n                .dm-progress-wrap { height:3px; background:#f1f5f9; border-radius:2px; margin-top:4px; overflow:hidden; }\n                .dm-progress-bar  { height:100%; border-radius:2px; transition:width .4s ease; }\n\n                .dm-badge { padding:3px 7px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; display:inline-block; }\n                .dm-badge-green  { background:#dcfce7; color:#16a34a; }\n                .dm-badge-red    { background:#fee2e2; color:#dc2626; }\n                .dm-badge-blue   { background:#dbeafe; color:#2563eb; }\n                .dm-badge-orange { background:#ffedd5; color:#ea580c; }\n                .dm-badge-yellow { background:#fef9c3; color:#a16207; }\n                .dm-badge-gray   { background:#f1f5f9; color:#64748b; }\n\n                .dm-field { margin-bottom:12px; }\n                .dm-field label { display:block; font-size:11.5px; color:#475569; font-weight:700; margin-bottom:5px; }\n                .dm-field-row { display:flex; gap:6px; align-items:center; }\n                .dm-field-row input[type=number] { width:70px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; font-size:12px; }\n                .dm-checkbox-label { display:flex; align-items:center; gap:6px; font-size:11.5px; color:#475569; font-weight:600; flex-wrap:wrap; }\n                .dm-hint   { font-size:10px; color:#94a3b8; margin-top:4px; }\n                .dm-select { flex:1; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; font-size:12px; }\n\n                .dm-btn         { padding:7px 12px; border:none; border-radius:8px; cursor:pointer; font-size:11.5px; font-weight:700; background:#4f46e5; color:#fff; transition:.15s; display:inline-block; text-align:center; }\n                .dm-btn:hover   { background:#4338ca; }\n                .dm-btn-sm      { flex:1; }\n                .dm-btn-danger  { background:#ef4444; } .dm-btn-danger:hover { background:#dc2626; }\n                .dm-btn-ghost   { background:#f1f5f9; color:#475569; }\n                .dm-btn-ghost:hover { background:#e2e8f0; }\n                .dm-btn-copy    { width:100%; margin-bottom:8px; background:#f97316; font-size:11px; padding:6px 10px; }\n                .dm-btn-copy:hover  { background:#ea580c; }\n                .dm-btn-copied  { background:#16a34a !important; }\n\n                .dm-log-content { max-height:150px; overflow-y:auto; background:#f8fafc; border-radius:8px; padding:8px; margin-top:8px; }\n                .dm-log-entry   { font-size:10.5px; padding:3px 0; border-bottom:1px solid #eef0f4; color:#475569; }\n                .dm-log-entry:last-child { border-bottom:none; }\n                .dm-time { color:#94a3b8; font-weight:700; margin-left:5px; }\n\n                .dm-archive-stat-grid { display:flex; gap:6px; margin-bottom:8px; }\n                .dm-archive-stat { flex:1; background:#f8fafc; border-radius:8px; padding:6px 4px; text-align:center; }\n                .dm-archive-best { font-size:11px; color:#475569; margin-bottom:8px; padding:6px 8px; background:#f0fdf4; border-radius:8px; }\n\n                @media (max-width:600px) {\n                    #dm-panel { width:94%; left:3%; }\n                }\n            `;
+      const css = `
+#dm-panel,#dm-panel *{box-sizing:border-box}
+#dm-panel{--dm-bg:#fff;--dm-bg2:#f3f5fb;--dm-card:#fff;--dm-text:#1e293b;--dm-sub:#64748b;--dm-mute:#94a3b8;--dm-line:#e6e9f2;--dm-p1:#6366f1;--dm-p2:#8b5cf6;--dm-p3:#06b6d4;--dm-shadow:0 22px 60px rgba(30,41,59,.28);position:fixed;top:16px;left:16px;z-index:10000;width:480px;background:var(--dm-bg);color:var(--dm-text);border-radius:22px;box-shadow:var(--dm-shadow);font-family:"Segoe UI",Tahoma,Arial,sans-serif;direction:rtl;border:1px solid var(--dm-line);overflow:hidden;animation:dmPanelIn .7s cubic-bezier(.2,.9,.25,1.12) both}
+#dm-panel[data-theme="dark"]{--dm-bg:#0e1322;--dm-bg2:#161c31;--dm-card:#1a2139;--dm-text:#e7eaf6;--dm-sub:#9ba6c6;--dm-mute:#66718f;--dm-line:#283050;--dm-shadow:0 22px 60px rgba(0,0,0,.6)}
+@keyframes dmPanelIn{from{opacity:0;transform:translateY(-24px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes dmGradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes dmFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(14px,10px) scale(1.15)}}
+@keyframes dmRowIn{from{opacity:0;transform:translateX(26px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes dmFlash{0%{background:rgba(99,102,241,.28)}100%{background:transparent}}
+@keyframes dmPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}70%{box-shadow:0 0 0 9px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+@keyframes dmPulseG{0%{box-shadow:0 0 0 0 rgba(74,222,128,.7)}70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+@keyframes dmShimmer{from{transform:translateX(120%)}to{transform:translateX(-120%)}}
+@keyframes dmGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes dmPop{0%{transform:scale(.8);opacity:.2}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes dmBump{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+@keyframes dmRipple{to{transform:scale(18);opacity:0}}
+@keyframes dmBodyIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes dmTabIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes dmBlink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes dmShake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+@keyframes dmRiskGlow{0%,100%{box-shadow:inset -3px 0 0 #ef4444,0 0 0 rgba(239,68,68,0)}50%{box-shadow:inset -3px 0 0 #ef4444,0 0 16px rgba(239,68,68,.35)}}
+.dm-header{position:relative;overflow:hidden;background:linear-gradient(120deg,#4f46e5,#7c3aed,#0891b2,#4f46e5);background-size:300% 300%;animation:dmGradient 12s ease infinite;color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.dm-orb{position:absolute;border-radius:50%;filter:blur(22px);opacity:.45;pointer-events:none;animation:dmFloat 7s ease-in-out infinite}
+.dm-orb1{width:90px;height:90px;background:#22d3ee;top:-34px;right:30px}
+.dm-orb2{width:70px;height:70px;background:#f0abfc;bottom:-30px;left:80px;animation-delay:-3s}
+.dm-header-left{position:relative;display:flex;align-items:center;gap:11px;z-index:1}
+.dm-title-wrap{display:flex;flex-direction:column;line-height:1.25}
+.dm-title{font-weight:800;font-size:15.5px;letter-spacing:.2px}
+.dm-subtitle{font-size:10px;opacity:.85;display:flex;align-items:center;gap:5px}
+.dm-live-pulse{width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;animation:dmBlink 1.6s infinite}
+.dm-dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0;border:2px solid rgba(255,255,255,.75)}
+.dm-dot-on{background:#4ade80;animation:dmPulseG 1.8s infinite}
+.dm-dot-off{background:#f87171}
+.dm-header-right{position:relative;z-index:1;display:flex;align-items:center;gap:6px}
+.dm-run-btn,.dm-icon-btn,.dm-btn,.dm-tab{position:relative;overflow:hidden;font-family:inherit}
+.dm-run-btn{border:none;border-radius:10px;padding:6px 13px;font-size:11px;font-weight:800;cursor:pointer;transition:transform .15s,filter .15s;color:#fff}
+.dm-run-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.dm-run-btn:active{transform:scale(.94)}
+.dm-run-on{background:linear-gradient(135deg,#f43f5e,#ef4444)}
+.dm-run-off{background:linear-gradient(135deg,#10b981,#22c55e)}
+.dm-icon-btn{background:rgba(255,255,255,.18);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.22);color:#fff;width:28px;height:28px;border-radius:9px;cursor:pointer;font-size:15px;line-height:1;transition:transform .18s,background .18s}
+.dm-icon-btn:hover{background:rgba(255,255,255,.32);transform:translateY(-1px) rotate(-4deg)}
+.dm-icon-btn:active{transform:scale(.88)}
+.dm-ripple{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);animation:dmRipple .6s ease-out forwards;pointer-events:none}
+.dm-tab .dm-ripple,.dm-btn-ghost .dm-ripple{background:rgba(99,102,241,.25)}
+.dm-body{padding:14px;max-height:620px;overflow-y:auto;background:var(--dm-bg);animation:dmBodyIn .4s ease both;scrollbar-width:thin}
+.dm-warning{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:12px;padding:9px 11px;font-size:11px;margin-bottom:10px;animation:dmPop .4s ease both}
+.dm-hero{display:flex;gap:12px;align-items:stretch;margin-bottom:10px}
+.dm-ring-wrap{position:relative;width:94px;height:94px;flex-shrink:0;border-radius:50%;background:var(--dm-bg2);display:flex;align-items:center;justify-content:center}
+.dm-ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.dm-ring circle{fill:none;stroke-width:7;stroke-linecap:round}
+.dm-ring-bg{stroke:var(--dm-line)}
+.dm-ring-fg{stroke-dasharray:213.6;stroke-dashoffset:213.6;transition:stroke-dashoffset 1.3s cubic-bezier(.3,.8,.2,1);filter:drop-shadow(0 0 4px rgba(99,102,241,.45))}
+.dm-ring-txt{position:relative;text-align:center;line-height:1;direction:ltr}
+.dm-ring-txt b{font-size:22px;font-weight:900;color:var(--dm-text)}
+.dm-ring-txt span{font-size:11px;font-weight:800;color:var(--dm-p1);margin-right:1px}
+.dm-ring-txt small{display:block;font-size:9px;color:var(--dm-mute);margin-top:3px;direction:rtl;font-weight:700}
+.dm-summary{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.dm-sum-item{position:relative;background:var(--dm-bg2);border:1px solid var(--dm-line);border-radius:13px;padding:7px 9px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.dm-sum-item:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(99,102,241,.14)}
+.dm-sum-item::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--dm-p1);opacity:.55}
+.dm-sum-item.s-stop::before{background:#ef4444}.dm-sum-item.s-done::before{background:#3b82f6}.dm-sum-item.s-qaid::before{background:#10b981}
+.dm-sum-item.dm-alert{animation:dmPulse 1.6s infinite;border-color:rgba(239,68,68,.45)}
+.dm-sum-num{display:block;font-size:19px;font-weight:900;color:var(--dm-text);line-height:1.15;font-variant-numeric:tabular-nums}
+.dm-sum-label{display:block;font-size:9.5px;color:var(--dm-sub);font-weight:700;margin-top:1px}
+.dm-bump{animation:dmBump .45s ease}
+.dm-meta-bar{display:flex;justify-content:space-between;font-size:10px;color:var(--dm-mute);margin-bottom:8px;padding:0 3px}
+.dm-insight{border-radius:12px;padding:8px 11px;font-size:11.5px;font-weight:700;margin-bottom:10px;line-height:1.6;border:1px solid transparent}
+.dm-insight.dm-pop{animation:dmPop .5s ease both}
+.dm-insight-warn{background:linear-gradient(90deg,rgba(239,68,68,.14),rgba(239,68,68,.04));color:#ef4444;border-color:rgba(239,68,68,.3)}
+.dm-insight-ok{background:linear-gradient(90deg,rgba(16,185,129,.14),rgba(16,185,129,.04));color:#10b981;border-color:rgba(16,185,129,.3)}
+.dm-insight-idle{background:var(--dm-bg2);color:var(--dm-sub);border-color:var(--dm-line);font-weight:600}
+.dm-c-red{color:#ef4444!important}.dm-c-blue{color:#3b82f6!important}.dm-c-green{color:#10b981!important}.dm-c-orange{color:#f97316!important}.dm-c-gray{color:var(--dm-mute)!important}
+.dm-tabs{position:relative;display:flex;background:var(--dm-bg2);border-radius:14px;padding:4px;margin-bottom:12px}
+.dm-tab-ind{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:11px;background:var(--dm-card);box-shadow:0 3px 10px rgba(99,102,241,.22);transition:transform .45s cubic-bezier(.3,1.35,.5,1),width .35s ease;z-index:0}
+.dm-tab{position:relative;z-index:1;flex:1;border:none;background:transparent;padding:8px 4px;font-size:11.5px;font-weight:800;color:var(--dm-sub);border-radius:11px;cursor:pointer;transition:color .25s}
+.dm-tab:hover{color:var(--dm-p1)}
+.dm-tab.active{color:var(--dm-p1)}
+.dm-panel-tab{animation:dmTabIn .4s cubic-bezier(.2,.9,.3,1) both}
+.dm-search-row{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.dm-search{flex:1;padding:9px 12px;border:1.5px solid var(--dm-line);border-radius:12px;font-size:12px;background:var(--dm-bg2);color:var(--dm-text);outline:none;transition:border-color .2s,box-shadow .2s,background .2s;font-family:inherit}
+.dm-search:focus{border-color:var(--dm-p1);box-shadow:0 0 0 4px rgba(99,102,241,.14);background:var(--dm-card)}
+.dm-hide-done-label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--dm-sub);white-space:nowrap;cursor:pointer;font-weight:700}
+.dm-table-wrap{max-height:340px;overflow-y:auto;border:1px solid var(--dm-line);border-radius:14px;background:var(--dm-card);scrollbar-width:thin}
+.dm-live-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11.5px;margin:0;table-layout:fixed}
+.dm-live-table thead th{position:sticky;top:0;z-index:2;background:var(--dm-bg2);padding:9px 5px;font-size:10px;color:var(--dm-sub);font-weight:800;border-bottom:1px solid var(--dm-line);text-align:center}
+.dm-live-table thead th:nth-child(1){width:47%;text-align:right;padding-right:10px}
+.dm-live-table thead th:nth-child(2){width:12%}.dm-live-table thead th:nth-child(3){width:15%}.dm-live-table thead th:nth-child(4){width:26%}
+.dm-sort-th{cursor:pointer;user-select:none;transition:color .2s}
+.dm-sort-th:hover{color:var(--dm-p1)!important}
+.dm-sort-icon{font-size:8px;color:var(--dm-p1)}
+.dm-live-table td{padding:7px 4px;text-align:center;border-top:1px solid var(--dm-line);vertical-align:middle;background:transparent;color:var(--dm-text);transition:background .25s}
+.dm-live-table tbody tr:first-child td{border-top:none}
+.dm-row{cursor:pointer;position:relative}
+.dm-row-enter{animation:dmRowIn .55s cubic-bezier(.2,.9,.3,1) both}
+.dm-row:hover td{background:rgba(99,102,241,.07)}
+.dm-row.dm-flash td{animation:dmFlash 1.2s ease}
+.dm-row[data-status="stopped"] td{background:rgba(239,68,68,.05)}
+.dm-row[data-status="done"]{opacity:.72}
+.dm-row.dm-row-risk td:first-child{animation:dmRiskGlow 2.2s ease-in-out infinite}
+.dm-name{text-align:right!important;padding-right:9px!important}
+.dm-name-row{display:flex;align-items:flex-start;gap:7px;min-width:0}
+.dm-avatar{width:22px;height:22px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-top:1px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,.18);transition:transform .25s}
+.dm-row:hover .dm-avatar{transform:rotate(-8deg) scale(1.1)}
+.dm-name-txt{font-weight:800;font-size:14.5px;color:var(--dm-text);white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.4;min-width:0;flex:0 1 auto}
+.dm-stop-count{font-size:9px;background:rgba(239,68,68,.14);color:#ef4444;border-radius:6px;padding:1px 5px;font-weight:800;flex-shrink:0}
+.dm-progress-wrap{height:5px;background:var(--dm-bg2);border-radius:5px;margin-top:6px;overflow:hidden}
+.dm-progress-bar{position:relative;height:100%;border-radius:5px;transition:width 1.1s cubic-bezier(.3,.8,.2,1);overflow:hidden;background:linear-gradient(90deg,#10b981,#34d399)}
+.dm-progress-bar.p-stopped{background:linear-gradient(90deg,#ef4444,#f87171)}
+.dm-progress-bar.p-done{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.dm-progress-bar.p-recovered{background:linear-gradient(90deg,#eab308,#facc15)}
+.dm-progress-bar.p-active::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);animation:dmShimmer 1.9s linear infinite}
+.dm-num-cell{font-weight:800;font-variant-numeric:tabular-nums;color:var(--dm-text)}
+.dm-stall-note{font-size:9px;color:var(--dm-mute);margin-top:2px;line-height:1.3;white-space:nowrap;font-weight:600}
+.dm-badge{padding:4px 8px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;display:inline-block}
+.dm-badge-green{background:rgba(16,185,129,.14);color:#10b981}
+.dm-badge-red{background:rgba(239,68,68,.14);color:#ef4444;animation:dmPulse 1.8s infinite}
+.dm-badge-blue{background:rgba(59,130,246,.14);color:#3b82f6}
+.dm-badge-orange{background:rgba(249,115,22,.15);color:#f97316}
+.dm-badge-yellow{background:rgba(234,179,8,.17);color:#ca8a04}
+.dm-badge-gray{background:var(--dm-bg2);color:var(--dm-sub)}
+.dm-risk{display:inline-block;margin-top:4px;font-size:9px;font-weight:900;color:#fff;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:8px;padding:2px 6px;animation:dmBlink 1.4s infinite}
+.dm-rt{display:flex;flex-direction:column;align-items:center;gap:3px}
+.dm-rt-top{display:flex;align-items:center;gap:4px}
+.dm-rt-ico{font-size:13px;display:inline-block}
+.dm-row:hover .dm-rt-ico{animation:dmShake .5s ease}
+.dm-rt-score{font-size:12.5px;font-weight:900;font-variant-numeric:tabular-nums}
+.dm-rt-elite .dm-rt-score{color:#10b981}.dm-rt-good .dm-rt-score{color:#3b82f6}.dm-rt-watch .dm-rt-score{color:#ef4444}
+.dm-rt-rank{font-size:9px;font-weight:900;color:#fff;background:linear-gradient(135deg,#f59e0b,#f97316);border-radius:6px;padding:1px 5px}
+.dm-rt-bars{display:flex;width:52px;height:5px;border-radius:5px;overflow:hidden;background:var(--dm-bg2)}
+.dm-rt-bars i{display:block;height:100%;transform-origin:right;animation:dmGrowX .9s cubic-bezier(.3,.8,.2,1) both}
+.dm-rt-bars i.e{background:#10b981}.dm-rt-bars i.g{background:#3b82f6}.dm-rt-bars i.b{background:#ef4444}
+.dm-rt-n{font-size:8.5px;color:var(--dm-mute);font-weight:700}
+.dm-rt-none{opacity:.65}
+.dm-rt-mini{display:inline-block;font-size:10.5px;font-weight:900;border-radius:8px;padding:2px 7px;background:var(--dm-bg2)}
+.dm-empty{text-align:center;padding:30px 10px!important;color:var(--dm-mute);font-size:12px;font-weight:700}
+.dm-empty-ico{font-size:30px;margin-bottom:6px;animation:dmFloat 3s ease-in-out infinite}
+.dm-field{margin-bottom:13px}
+.dm-field label{display:block;font-size:11.5px;color:var(--dm-text);font-weight:800;margin-bottom:6px}
+.dm-field-row{display:flex;gap:7px;align-items:center}
+.dm-field-row input[type=number],.dm-select{padding:7px 9px;border:1.5px solid var(--dm-line);border-radius:10px;font-size:12px;background:var(--dm-bg2);color:var(--dm-text);outline:none;transition:border-color .2s,box-shadow .2s;font-family:inherit}
+.dm-field-row input[type=number]{width:74px}
+.dm-select{flex:1}
+.dm-field-row input:focus,.dm-select:focus{border-color:var(--dm-p1);box-shadow:0 0 0 4px rgba(99,102,241,.14)}
+.dm-checkbox-label{display:flex!important;align-items:center;gap:7px;font-size:11.5px;color:var(--dm-text);font-weight:700;flex-wrap:wrap}
+.dm-hint{font-size:10px;color:var(--dm-mute);margin-top:5px}
+.dm-btn{padding:8px 13px;border:none;border-radius:11px;cursor:pointer;font-size:11.5px;font-weight:800;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;transition:transform .18s,box-shadow .18s,filter .18s;display:inline-block;text-align:center;box-shadow:0 5px 14px rgba(99,102,241,.3)}
+.dm-btn:hover{transform:translateY(-2px);box-shadow:0 9px 20px rgba(99,102,241,.38);filter:brightness(1.05)}
+.dm-btn:active{transform:scale(.95)}
+.dm-btn-sm{flex:1}
+.dm-btn-danger{background:linear-gradient(135deg,#f43f5e,#ef4444);box-shadow:0 5px 14px rgba(239,68,68,.3)}
+.dm-btn-ghost{background:var(--dm-bg2);color:var(--dm-text);box-shadow:none;border:1px solid var(--dm-line)}
+.dm-btn-ghost:hover{background:var(--dm-card);box-shadow:0 5px 14px rgba(0,0,0,.08)}
+.dm-btn-copy{width:100%;margin-bottom:9px;background:linear-gradient(135deg,#f97316,#fb923c);font-size:11px;padding:8px 10px;box-shadow:0 5px 14px rgba(249,115,22,.3)}
+.dm-btn-copied{background:linear-gradient(135deg,#16a34a,#22c55e)!important}
+.dm-log-content{max-height:150px;overflow-y:auto;background:var(--dm-bg2);border-radius:11px;padding:9px;margin-top:8px}
+.dm-log-entry{font-size:10.5px;padding:4px 0;border-bottom:1px solid var(--dm-line);color:var(--dm-sub);animation:dmTabIn .3s ease both}
+.dm-log-entry:last-child{border-bottom:none}
+.dm-time{color:var(--dm-mute);font-weight:800;margin-left:5px}
+.dm-archive-stat-grid{display:flex;gap:7px;margin-bottom:9px}
+.dm-archive-stat{flex:1;background:var(--dm-bg2);border:1px solid var(--dm-line);border-radius:12px;padding:8px 4px;text-align:center}
+.dm-archive-best{font-size:11px;color:var(--dm-text);margin-bottom:9px;padding:8px 10px;background:rgba(16,185,129,.12);border-radius:11px;font-weight:700}
+.dm-scrim{position:absolute;inset:0;background:rgba(10,14,30,.45);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .3s;z-index:4}
+.dm-scrim.open{opacity:1;pointer-events:auto}
+.dm-drawer{position:absolute;left:0;right:0;bottom:0;max-height:82%;overflow-y:auto;background:var(--dm-card);border-radius:24px 24px 0 0;box-shadow:0 -16px 44px rgba(0,0,0,.28);transform:translateY(108%);transition:transform .5s cubic-bezier(.2,.9,.25,1.08);z-index:5;padding:16px 16px 18px}
+.dm-drawer.open{transform:translateY(0)}
+.dm-dr-head{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.dm-dr-head .dm-avatar{width:42px;height:42px;font-size:19px;border-radius:14px}
+.dm-dr-name{font-size:15px;font-weight:900;color:var(--dm-text);flex:1}
+.dm-dr-sub{font-size:10.5px;color:var(--dm-sub);font-weight:700;margin-top:2px}
+.dm-dr-close{border:none;background:var(--dm-bg2);color:var(--dm-sub);width:30px;height:30px;border-radius:10px;cursor:pointer;font-size:16px;transition:transform .2s,background .2s}
+.dm-dr-close:hover{background:rgba(239,68,68,.15);color:#ef4444;transform:rotate(90deg)}
+.dm-dr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}
+.dm-dr-cell{background:var(--dm-bg2);border-radius:12px;padding:8px 4px;text-align:center;animation:dmPop .5s ease both}
+.dm-dr-cell b{display:block;font-size:17px;font-weight:900;color:var(--dm-text)}
+.dm-dr-cell span{font-size:9.5px;color:var(--dm-sub);font-weight:700}
+.dm-dr-title{font-size:12px;font-weight:900;color:var(--dm-text);margin:4px 0 9px;display:flex;align-items:center;gap:6px}
+.dm-dr-tier{font-size:10px;font-weight:900;border-radius:20px;padding:3px 9px;color:#fff}
+.dm-dr-tier.elite{background:linear-gradient(135deg,#10b981,#059669)}.dm-dr-tier.good{background:linear-gradient(135deg,#3b82f6,#2563eb)}.dm-dr-tier.watch{background:linear-gradient(135deg,#ef4444,#f97316)}.dm-dr-tier.none{background:var(--dm-mute)}
+.dm-dr-bar{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:11px;font-weight:800;color:var(--dm-text)}
+.dm-dr-bar label{width:44px;color:var(--dm-sub)}
+.dm-dr-track{flex:1;height:9px;background:var(--dm-bg2);border-radius:9px;overflow:hidden}
+.dm-dr-track i{display:block;height:100%;border-radius:9px;transform-origin:right;animation:dmGrowX 1s cubic-bezier(.3,.8,.2,1) both}
+.dm-dr-bar em{width:22px;text-align:left;font-style:normal;direction:ltr}
+.dm-dr-note{background:var(--dm-bg2);border-radius:11px;padding:8px 10px;font-size:11px;color:var(--dm-text);margin-bottom:6px;line-height:1.6;border-right:3px solid var(--dm-p1);animation:dmTabIn .4s ease both}
+.dm-dr-note small{display:block;color:var(--dm-mute);font-size:9.5px;font-weight:700;margin-bottom:1px}
+.dm-tk{display:inline-block;font-size:11px;font-weight:900;border-radius:20px;padding:3px 8px;background:var(--dm-bg2);color:var(--dm-sub);font-variant-numeric:tabular-nums;transition:transform .2s}
+.dm-tk.has{background:rgba(249,115,22,.15);color:#f97316}
+.dm-row:hover .dm-tk{transform:scale(1.12)}
+.dm-dr-extra{display:block;font-size:8.5px;color:var(--dm-mute);font-weight:700;margin-top:2px;line-height:1.3}
+.dm-dr-prog{height:8px;background:var(--dm-bg2);border-radius:8px;overflow:hidden;margin:-4px 0 10px}
+.dm-dr-prog i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#10b981,#06b6d4);transform-origin:right;animation:dmGrowX 1.1s cubic-bezier(.3,.8,.2,1) both}
+.dm-dr-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.dm-dr-chips span{background:var(--dm-bg2);border-radius:20px;padding:4px 10px;font-size:10.5px;font-weight:700;color:var(--dm-sub)}
+.dm-dr-chips b{color:var(--dm-text)}
+.dm-dr-sync{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--dm-mute);font-weight:700;margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--dm-line)}
+.dm-dr-refresh{border:none;background:var(--dm-bg2);color:var(--dm-p1);border-radius:9px;padding:4px 10px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .2s,background .2s}
+.dm-dr-refresh:hover{background:rgba(99,102,241,.15);transform:translateY(-1px)}
+.dm-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.dm-card{position:relative;background:var(--dm-bg2);border:1px solid var(--dm-line);border-radius:15px;padding:9px 4px 8px;text-align:center;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.dm-card:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(99,102,241,.16)}
+.dm-card::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--dm-p1);opacity:.7}
+.dm-card-stop::after{background:#ef4444}.dm-card-done::after{background:#3b82f6}.dm-card-qaid::after{background:#10b981}
+.dm-card.dm-alert{animation:dmPulse 1.6s infinite;border-color:rgba(239,68,68,.5)}
+.dm-card-ico{display:block;font-size:15px;margin-bottom:2px}
+.dm-card-num{display:block;font-size:23px;font-weight:900;line-height:1.1;color:var(--dm-text);font-variant-numeric:tabular-nums}
+#dm-sum-pc{color:#a855f7}
+.dm-card-lbl{display:block;font-size:10px;font-weight:800;color:var(--dm-sub);margin-top:3px}
+.dm-overall{background:var(--dm-bg2);border:1px solid var(--dm-line);border-radius:12px;padding:6px 10px;margin-bottom:6px}
+.dm-overall-top{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:800;color:var(--dm-text);margin-bottom:4px}
+.dm-overall-pct{color:var(--dm-p1);font-size:12px;font-weight:900;direction:ltr}
+.dm-overall-track{height:6px;background:var(--dm-line);border-radius:6px;overflow:hidden}
+.dm-overall-track i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#6366f1,#06b6d4);transition:width 1.3s cubic-bezier(.3,.8,.2,1);position:relative;overflow:hidden}
+.dm-overall-track i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);animation:dmShimmer 2.2s linear infinite}
+.dm-overall-txt{display:block;font-size:10px;color:var(--dm-sub);font-weight:700;margin-top:6px}
+.dm-sub-stats{font-size:11px;color:var(--dm-sub);font-weight:700;text-align:center;margin-bottom:8px}
+.dm-sub-stats b{color:var(--dm-text)}
+.dm-help{font-size:10.5px;color:var(--dm-sub);font-weight:700;background:rgba(99,102,241,.08);border-radius:10px;padding:6px 10px;margin-bottom:8px}
+.dm-tk-pc{display:inline-block;margin-top:3px;font-size:9.5px;font-weight:900;color:#a855f7;background:rgba(168,85,247,.13);border-radius:12px;padding:1px 7px}
+.dm-live-table td.dm-tk-cell{line-height:1.2}
+.dm-dr-grid2{grid-template-columns:repeat(2,1fr)}
+.dm-badge{line-height:1.5}
+.dm-mode-chip{display:inline-block;margin-right:6px;background:rgba(255,255,255,.2);border-radius:10px;padding:1px 7px;font-size:9.5px;font-weight:800}
+.dm-main{display:flex;gap:6px;align-items:flex-start}
+.dm-main-content{flex:1;min-width:0}
+.dm-rail{position:sticky;top:0;flex:0 0 34px;display:flex;flex-direction:column;gap:4px;background:var(--dm-bg2);border:1px solid var(--dm-line);border-radius:13px;padding:4px}
+.dm-rail .dm-tab{flex:none;width:100%;height:30px;padding:0;font-size:15px;line-height:1;border-radius:9px;display:flex;align-items:center;justify-content:center;filter:grayscale(.55);opacity:.8;transition:filter .25s,opacity .25s,transform .2s}
+.dm-rail .dm-tab:hover{filter:none;opacity:1;transform:scale(1.12)}
+.dm-rail .dm-tab.active{filter:none;opacity:1}
+.dm-rail .dm-tab-ind{top:0;bottom:auto;left:4px;right:4px;width:auto;height:0;border-radius:9px;background:var(--dm-card);box-shadow:0 3px 10px rgba(99,102,241,.3)}
+.dm-mt-row{cursor:pointer}
+.dm-mt-row:hover td{background:rgba(99,102,241,.07)}
+.dm-mt-detail td{text-align:right!important;background:var(--dm-bg2)!important;padding:8px 10px!important}
+.dm-mt-lbl{font-size:10px;font-weight:800;color:var(--dm-sub);margin:4px 0 5px}
+.dm-mt-chip{display:inline-block;direction:ltr;font-size:10px;font-weight:800;background:rgba(249,115,22,.12);color:#f97316;border-radius:8px;padding:2px 6px;margin:0 0 4px 4px}
+.dm-mt-chip.pc{background:rgba(168,85,247,.13);color:#a855f7}
+.dm-mt-chip i{font-style:normal;opacity:.65;font-weight:700}
+@media (max-width:600px){#dm-panel{width:94%;left:3%}.dm-ring-wrap{width:80px;height:80px}}
+@media (prefers-reduced-motion:reduce){#dm-panel,#dm-panel *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+            `;
       try {
         gmAddStyle(css);
       } catch (e) {
